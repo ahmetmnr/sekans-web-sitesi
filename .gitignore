@@ -1,0 +1,21 @@
+# Bağımlılıklar
+node_modules/
+
+# Yerel/özel
+.claude/
+src/data/old_data/
+
+# Büyük medya — git'e GİRMEZ; bu dosyalar zaten sunucuda (public_html/docs, public_html/images).
+# Yerel kopya: canlı cPanel'den indirilir (bkz. DEPLOY.md 6b).
+public/docs/
+public/images/*
+!public/images/default-cover.svg
+dist/docs/
+dist/images/*
+!dist/images/default-cover.svg
+
+# Sunucu gizli yapılandırması asla commit edilmez (şablonu: api/config.sample.php)
+api/config.php
+
+# Günlükler
+*.log

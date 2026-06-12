@@ -1,0 +1,7 @@
+# uploads/ — yüklenen medyayı sun, ama ASLA kod çalıştırma.
+<FilesMatch "\.(php|phtml|php[0-9]|pl|py|cgi|sh|asp|aspx)$">
+  Require all denied
+</FilesMatch>
+php_flag engine off
+Options -ExecCGI -Indexes
+AddType text/plain .php .phtml

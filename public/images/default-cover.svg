@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" fill="none">
+  <rect width="800" height="500" fill="#1a1a2e"/>
+  <rect width="800" height="500" fill="url(#grad)" opacity="0.6"/>
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="800" y2="500">
+      <stop offset="0%" stop-color="#16213e"/>
+      <stop offset="100%" stop-color="#0f3460"/>
+    </linearGradient>
+  </defs>
+  <!-- Film strip left -->
+  <rect x="60" y="0" width="40" height="500" fill="#ffffff" opacity="0.04"/>
+  <rect x="65" y="15" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="65" y="45" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="65" y="75" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="65" y="105" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="65" y="135" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="65" y="165" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="65" y="195" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="65" y="225" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="65" y="255" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="65" y="285" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="65" y="315" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="65" y="345" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="65" y="375" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="65" y="405" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="65" y="435" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="65" y="465" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="83" y="15" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="83" y="45" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="83" y="75" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="83" y="105" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="83" y="135" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="83" y="165" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="83" y="195" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="83" y="225" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="83" y="255" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="83" y="285" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="83" y="315" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="83" y="345" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="83" y="375" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="83" y="405" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="83" y="435" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="83" y="465" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <!-- Film strip right -->
+  <rect x="700" y="0" width="40" height="500" fill="#ffffff" opacity="0.04"/>
+  <rect x="705" y="15" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="705" y="45" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="705" y="75" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="705" y="105" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="705" y="135" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="705" y="165" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="705" y="195" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="705" y="225" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="705" y="255" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="705" y="285" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="705" y="315" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="705" y="345" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="705" y="375" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="705" y="405" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="705" y="435" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="705" y="465" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="723" y="15" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="723" y="45" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="723" y="75" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="723" y="105" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="723" y="135" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="723" y="165" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="723" y="195" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="723" y="225" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="723" y="255" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="723" y="285" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="723" y="315" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="723" y="345" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="723" y="375" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="723" y="405" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="723" y="435" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <rect x="723" y="465" width="12" height="18" rx="2" fill="#1a1a2e" opacity="0.6"/>
+  <!-- Center film reel icon -->
+  <circle cx="400" cy="220" r="60" stroke="#ffffff" stroke-width="1.5" opacity="0.15" fill="none"/>
+  <circle cx="400" cy="220" r="45" stroke="#ffffff" stroke-width="1" opacity="0.12" fill="none"/>
+  <circle cx="400" cy="220" r="20" stroke="#ffffff" stroke-width="1.5" opacity="0.15" fill="none"/>
+  <circle cx="400" cy="220" r="8" fill="#ffffff" opacity="0.1"/>
+  <!-- Spokes -->
+  <line x1="400" y1="175" x2="400" y2="200" stroke="#ffffff" stroke-width="1.5" opacity="0.1"/>
+  <line x1="400" y1="240" x2="400" y2="265" stroke="#ffffff" stroke-width="1.5" opacity="0.1"/>
+  <line x1="355" y1="220" x2="380" y2="220" stroke="#ffffff" stroke-width="1.5" opacity="0.1"/>
+  <line x1="420" y1="220" x2="445" y2="220" stroke="#ffffff" stroke-width="1.5" opacity="0.1"/>
+  <line x1="369" y1="189" x2="386" y2="206" stroke="#ffffff" stroke-width="1.5" opacity="0.1"/>
+  <line x1="414" y1="234" x2="431" y2="251" stroke="#ffffff" stroke-width="1.5" opacity="0.1"/>
+  <line x1="369" y1="251" x2="386" y2="234" stroke="#ffffff" stroke-width="1.5" opacity="0.1"/>
+  <line x1="414" y1="206" x2="431" y2="189" stroke="#ffffff" stroke-width="1.5" opacity="0.1"/>
+  <!-- SEKANS text -->
+  <text x="400" y="320" font-family="Georgia, 'Times New Roman', serif" font-size="28" fill="#ffffff" opacity="0.12" text-anchor="middle" letter-spacing="8">SEKANS</text>
+</svg>

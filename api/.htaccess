@@ -1,0 +1,33 @@
+# Sekans API — ön denetleyici yönlendirme + güvenlik kilidi
+# /api/* istekleri index.php'ye yönlendirilir (uzantısız yollar: /api/sayi/current).
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /api/
+
+  # Gerçek var olan dosya/dizinleri olduğu gibi geçir (örn. seed_admin.php).
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Geri kalan her şey ön denetleyiciye.
+  RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# CGI/FastCGI altında Authorization başlığını PHP'ye taşı (çerez kullanılsa da zararsız).
+<IfModule mod_rewrite.c>
+  RewriteCond %{HTTP:Authorization} .
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+</IfModule>
+
+# Dizin listelemeyi kapat.
+Options -Indexes
+
+# Gizli/yardımcı dosyalara doğrudan tarayıcı erişimini engelle.
+<FilesMatch "(^config.*\.php$|\.sample$|\.env$|\.sql$|\.log$|\.md$|\.mjs$)">
+  Require all denied
+</FilesMatch>
+
+# lib/ ve routes/ içindeki PHP yardımcıları yalnızca include edilmeli, doğrudan açılmamalı.
+# (index.php ve seed_admin.php kök dizindedir; bu kural alt klasörleri etkilemez.)
+RedirectMatch 403 ^/api/(lib|routes)/.*\.php$

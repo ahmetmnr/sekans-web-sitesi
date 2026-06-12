@@ -1,0 +1,762 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 0 0% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 10%;
+    --radius: 0.25rem;
+    
+    /* Sekans Özel Renkleri */
+    --sekans-dark: 0 0% 10%;
+    --sekans-light: 0 0% 98%;
+    --sekans-gray: 0 0% 45%;
+    --sekans-border: 0 0% 85%;
+    --sekans-accent: 0 72% 51%;
+    --sekans-son-sayi-bg: 0 0% 96%;
+  }
+
+  .dark {
+    --background: 0 0% 5%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 10%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 0 0% 80%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 600;
+  }
+}
+
+@layer components {
+  /* Sekans Logo Stili */
+  .sekans-logo {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: lowercase;
+  }
+  
+  .sekans-logo-sub {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 400;
+    font-size: 0.65em;
+    letter-spacing: 0.1em;
+    text-transform: lowercase;
+    font-style: italic;
+  }
+  
+  /* Ana Menü Stilleri */
+  .main-nav-link {
+    @apply relative text-sm font-medium tracking-wide text-foreground/80 transition-colors hover:text-foreground;
+    font-family: 'Inter', sans-serif;
+  }
+  
+  .main-nav-link::after {
+    content: '';
+    @apply absolute bottom-0 left-0 h-px w-0 bg-foreground transition-all duration-300;
+  }
+  
+  .main-nav-link:hover::after {
+    @apply w-full;
+  }
+  
+  /* Son Sayı Bölmesi */
+  .son-sayi-section {
+    background-color: hsl(var(--sekans-son-sayi-bg));
+  }
+  
+  /* Yazı Listesi - Akan Menü */
+  .yazi-listesi-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--sekans-gray) / 0.3) transparent;
+  }
+  
+  .yazi-listesi-scroll::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .yazi-listesi-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .yazi-listesi-scroll::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--sekans-gray) / 0.3);
+    border-radius: 2px;
+  }
+  
+  /* Yazı Kartı */
+  .yazi-kart {
+    @apply transition-all duration-300;
+  }
+  
+  .yazi-kart:hover .yazi-baslik {
+    @apply text-foreground;
+  }
+  
+  .yazi-baslik {
+    @apply text-foreground/90 transition-colors;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+  }
+  
+  /* Kategori Etiketi */
+  .kategori-etiket {
+    @apply text-xs font-medium tracking-wider uppercase text-muted-foreground;
+  }
+  
+  /* Arşiv Grid */
+  .arsiv-kapak {
+    @apply relative overflow-hidden transition-all duration-500;
+  }
+  
+  .arsiv-kapak:hover {
+    @apply shadow-lg;
+  }
+  
+  .arsiv-kapak:hover img {
+    @apply scale-105;
+  }
+  
+  /* Ara Yazılar Grid */
+  .ara-yazi-kart {
+    @apply cursor-pointer;
+  }
+  
+  .ara-yazi-kart:hover .ara-yazi-baslik {
+    @apply underline underline-offset-4;
+  }
+  
+  /* Buton Stilleri */
+  .btn-sekans {
+    @apply inline-flex items-center justify-center px-6 py-2.5 text-sm font-medium tracking-wide transition-all duration-300;
+  }
+  
+  .btn-sekans-primary {
+    @apply btn-sekans bg-foreground text-background hover:bg-foreground/90;
+  }
+  
+  .btn-sekans-outline {
+    @apply btn-sekans border border-foreground/20 text-foreground hover:bg-foreground hover:text-background;
+  }
+  
+  /* Sayfa Başlıkları */
+  .page-title {
+    @apply text-4xl md:text-5xl lg:text-6xl;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 600;
+  }
+  
+  /* Section Başlıkları */
+  .section-title {
+    @apply text-2xl md:text-3xl;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 600;
+  }
+  
+  /* İçerik Metni */
+  .content-text {
+    @apply text-base leading-relaxed text-foreground/80;
+  }
+  
+  /* PDF Link */
+  .pdf-link {
+    @apply inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground;
+  }
+  
+  /* Footer */
+  .footer-link {
+    @apply text-sm text-muted-foreground transition-colors hover:text-foreground;
+  }
+}
+
+@layer utilities {
+  /* Animasyonlar */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.6s ease-out forwards;
+  }
+  
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Line clamp */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .line-clamp-4 {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* TipTap Editor Stilleri */
+.ProseMirror {
+  outline: none;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #adb5bd;
+  pointer-events: none;
+  height: 0;
+}
+
+.ProseMirror h1 {
+  font-size: 2em;
+  font-weight: 700;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.ProseMirror h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.ProseMirror h3 {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.ProseMirror p {
+  margin-bottom: 1em;
+  line-height: 1.75;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+  padding-left: 1.5em;
+  margin-bottom: 1em;
+}
+
+.ProseMirror ul {
+  list-style-type: disc;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+}
+
+.ProseMirror li {
+  margin-bottom: 0.25em;
+}
+
+.ProseMirror blockquote {
+  border-left: 4px solid #e5e7eb;
+  padding-left: 1em;
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 1em;
+  font-style: italic;
+  color: #6b7280;
+}
+
+.ProseMirror hr {
+  border: none;
+  border-top: 2px solid #e5e7eb;
+  margin: 2em 0;
+}
+
+.ProseMirror code {
+  background-color: #f3f4f6;
+  padding: 0.2em 0.4em;
+  border-radius: 0.25em;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.ProseMirror pre {
+  background-color: #1f2937;
+  color: #f9fafb;
+  padding: 1em;
+  border-radius: 0.5em;
+  overflow-x: auto;
+  margin-bottom: 1em;
+}
+
+.ProseMirror pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5em;
+  margin: 1em 0;
+}
+
+/* Resizable Image - Float/Text Wrap Stilleri */
+.ProseMirror [data-float="left"] {
+  float: left;
+  margin-right: 1rem;
+  margin-bottom: 0.5rem;
+  clear: left;
+}
+
+.ProseMirror [data-float="right"] {
+  float: right;
+  margin-left: 1rem;
+  margin-bottom: 0.5rem;
+  clear: right;
+}
+
+.ProseMirror [data-float="none"] {
+  float: none;
+  clear: both;
+}
+
+/* Float sonrası paragrafların düzgün akması için */
+.ProseMirror p {
+  overflow: hidden;
+}
+
+/* Float temizleme - editör içinde */
+.ProseMirror::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* ============================================
+   Resizable Image - Önizleme ve Okuma Modu Stilleri
+   ============================================ */
+
+/* Figure container stilleri */
+figure.resizable-image {
+  margin: 1rem 0;
+}
+
+figure.resizable-image img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+/* Float stilleri - prose içinde */
+.prose figure.float-left,
+figure.resizable-image.float-left {
+  float: left;
+  margin-right: 1rem;
+  margin-bottom: 0.5rem;
+  margin-left: 0;
+  clear: left;
+}
+
+.prose figure.float-right,
+figure.resizable-image.float-right {
+  float: right;
+  margin-left: 1rem;
+  margin-bottom: 0.5rem;
+  margin-right: 0;
+  clear: right;
+}
+
+/* Prose içinde float sonrası paragraflar */
+.prose p {
+  overflow: hidden;
+}
+
+/* Prose içinde float temizleme */
+.prose::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* Data attribute bazlı stiller (alternatif) */
+figure[data-float="left"] {
+  float: left !important;
+  margin-right: 1rem !important;
+  margin-bottom: 0.5rem !important;
+  clear: left;
+}
+
+figure[data-float="right"] {
+  float: right !important;
+  margin-left: 1rem !important;
+  margin-bottom: 0.5rem !important;
+  clear: right;
+}
+
+figure[data-float="none"] {
+  float: none;
+  clear: both;
+}
+
+figure[data-alignment="left"] {
+  display: flex;
+  justify-content: flex-start;
+}
+
+figure[data-alignment="center"] {
+  display: flex;
+  justify-content: center;
+}
+
+figure[data-alignment="right"] {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* CMS Önizleme özel stilleri */
+.cms-content-preview {
+  /* Float içeriklerin düzgün görünmesi için */
+  display: flow-root;
+}
+
+.cms-content-preview figure {
+  margin: 1rem 0;
+}
+
+.cms-content-preview figure img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+.cms-content-preview figure.float-left,
+.cms-content-preview figure[data-float="left"] {
+  float: left;
+  margin-right: 1.5rem;
+  margin-bottom: 1rem;
+  margin-left: 0;
+  margin-top: 0.25rem;
+}
+
+.cms-content-preview figure.float-right,
+.cms-content-preview figure[data-float="right"] {
+  float: right;
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+  margin-right: 0;
+  margin-top: 0.25rem;
+}
+
+/* Float sonrası içerik temizleme */
+.cms-content-preview::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+
+/* Float içeriklerin tam yüksekliği için */
+.cms-content-preview > *:last-child::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+
+/* Resim ile yazı arasına padding */
+.ProseMirror figure.resizable-image,
+.ProseMirror [data-node-name="resizableImage"] {
+  margin: 1.5rem 0;
+}
+
+.ProseMirror figure.resizable-image + p,
+.ProseMirror figure.resizable-image + h1,
+.ProseMirror figure.resizable-image + h2,
+.ProseMirror figure.resizable-image + h3,
+.ProseMirror [data-node-name="resizableImage"] + p,
+.ProseMirror [data-node-name="resizableImage"] + h1,
+.ProseMirror [data-node-name="resizableImage"] + h2,
+.ProseMirror [data-node-name="resizableImage"] + h3 {
+  margin-top: 1rem;
+}
+
+.ProseMirror p + figure.resizable-image,
+.ProseMirror h1 + figure.resizable-image,
+.ProseMirror h2 + figure.resizable-image,
+.ProseMirror h3 + figure.resizable-image,
+.ProseMirror p + [data-node-name="resizableImage"],
+.ProseMirror h1 + [data-node-name="resizableImage"],
+.ProseMirror h2 + [data-node-name="resizableImage"],
+.ProseMirror h3 + [data-node-name="resizableImage"] {
+  margin-top: 1rem;
+}
+
+/* Caption stilleri */
+.ProseMirror figcaption,
+figure.resizable-image figcaption,
+.cms-content-preview figcaption {
+  text-align: center;
+  font-size: 0.875rem;
+  color: #6B7280;
+  font-style: italic;
+  margin-top: 0.5rem;
+  padding: 0 0.5rem;
+}
+
+/* Resim galeri/grid layout stilleri */
+.image-grid {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+
+.image-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+.image-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.image-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+.image-grid figure {
+  margin: 0;
+}
+
+.image-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0.5rem;
+  aspect-ratio: 4/3;
+}
+
+@media (max-width: 640px) {
+  .image-grid.cols-3,
+  .image-grid.cols-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Referans/dipnot stilleri */
+.footnote-ref {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #2563eb;
+  background: #eff6ff;
+  border-radius: 0.25rem;
+  padding: 0 0.25rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+  text-decoration: none;
+  vertical-align: super;
+  line-height: 1;
+  transition: background-color 0.15s;
+}
+
+.footnote-ref:hover {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.footnotes-section {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.footnotes-section h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #374151;
+}
+
+.footnote-item {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  color: #4B5563;
+}
+
+.footnote-item .footnote-num {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.footnote-item .footnote-num:hover {
+  text-decoration: underline;
+}
+
+/* Prose içindeki footnote-ref linklerini normal link stilinden ayır */
+.prose .footnote-ref,
+.cms-content-preview .footnote-ref {
+  color: #2563eb !important;
+  text-decoration: none !important;
+}
+
+/* Footnote tooltip */
+.footnote-tooltip {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  max-width: 320px;
+  padding: 8px 12px;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #fff;
+  background: #1f2937;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateX(-50%) translateY(-100%);
+  pointer-events: none;
+  word-break: break-word;
+}
+
+.footnote-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1f2937;
+}
+
+/* Footnote hedef vurgulama animasyonu */
+.footnote-highlight {
+  animation: footnoteFlash 2s ease-out;
+}
+
+@keyframes footnoteFlash {
+  0% { background-color: #fef08a; }
+  100% { background-color: transparent; }
+}
+
+.ProseMirror a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.ProseMirror a:hover {
+  color: #1d4ed8;
+}
+
+/* BlockNote Editor Stilleri */
+.mantine-root {
+  --mantine-font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* BlockNote için z-index düzeltmeleri */
+.bn-container[data-theming-css-variables-demo] {
+  --bn-colors-editor-background: #ffffff;
+  --bn-colors-editor-text: #1f2937;
+  --bn-colors-menu-background: #ffffff;
+  --bn-colors-menu-text: #1f2937;
+  --bn-colors-tooltip-background: #1f2937;
+  --bn-colors-tooltip-text: #ffffff;
+  --bn-colors-hovered-background: #f3f4f6;
+  --bn-colors-selected-background: #e5e7eb;
+  --bn-colors-disabled-background: #f9fafb;
+  --bn-colors-disabled-text: #9ca3af;
+  --bn-colors-shadow: rgba(0, 0, 0, 0.1);
+  --bn-colors-border: #e5e7eb;
+  --bn-colors-side-menu: #9ca3af;
+  --bn-font-family: 'Merriweather', Georgia, serif;
+}
+
+/* Slash menü ve toolbar z-index */
+.bn-slash-menu,
+.bn-formatting-toolbar,
+.bn-link-toolbar,
+.bn-side-menu,
+.bn-drag-handle-menu {
+  z-index: 10000 !important;
+}
+
+/* Mantine portal z-index */
+.mantine-Portal {
+  z-index: 10000 !important;
+}

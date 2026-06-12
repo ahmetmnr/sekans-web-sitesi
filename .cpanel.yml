@@ -1,0 +1,21 @@
+---
+# cPanel Git Version Control dağıtım betiği.
+# "Deploy HEAD Commit" düğmesine basıldığında çalışır (pull tek başına çalıştırmaz).
+#
+# DİKKAT — CANLI SİTE: Bu betik dist/ içeriğini public_html/ köküne ve api/ klasörünü
+# public_html/api/ altına kopyalar. Joomla dosyalarına DOKUNMAZ; ancak Joomla'nın
+# index.php'si durduğu sürece Apache onu öncelikli sunabilir. Kesin geçiş (cutover)
+# adımları için DEPLOY.md'ye bakın. İlk dağıtımdan ÖNCE: veritabanı şeması+seed import
+# edilmiş ve /home/<kullanıcı>/sekans_config/config.php oluşturulmuş olmalıdır.
+deployment:
+  tasks:
+    # Frontend (dist -> public_html kökü). docs/ ve images/ git'te yok; sunucudaki mevcut
+    # klasörler olduğu gibi kalır.
+    - export DEPLOYPATH=/home/sekansor/public_html
+    - /bin/cp -R dist/. $DEPLOYPATH/
+    # API
+    - /bin/mkdir -p $DEPLOYPATH/api
+    - /bin/cp -R api/. $DEPLOYPATH/api/
+    # uploads yazılabilir olsun
+    - /bin/mkdir -p $DEPLOYPATH/uploads
+    - /bin/chmod 755 $DEPLOYPATH/uploads
