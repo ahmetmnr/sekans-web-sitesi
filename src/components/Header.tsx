@@ -109,7 +109,14 @@ export default function Header({ onNavigate, currentPage }: HeaderProps) {
                     {arsivSayilari.slice(0, 5).map((sayi) => (
                       <DropdownMenuItem
                         key={sayi.id}
-                        onClick={() => handleNavClick(`sayi-${sayi.id}`)}
+                        className="cursor-pointer"
+                        onClick={() => {
+                          if (sayi.pdfUrl) {
+                            window.open(sayi.pdfUrl, '_blank', 'noopener,noreferrer');
+                          } else {
+                            handleNavClick('arsiv');
+                          }
+                        }}
                       >
                         Sayı {sayi.numara}
                         <span className="ml-auto text-xs text-muted-foreground">{sayi.ay} {sayi.yil}</span>
@@ -219,7 +226,14 @@ export default function Header({ onNavigate, currentPage }: HeaderProps) {
                             {arsivSayilari.slice(0, 3).map((sayi) => (
                               <button
                                 key={sayi.id}
-                                onClick={() => handleNavClick(`sayi-${sayi.id}`)}
+                                onClick={() => {
+                                  if (sayi.pdfUrl) {
+                                    window.open(sayi.pdfUrl, '_blank', 'noopener,noreferrer');
+                                  } else {
+                                    handleNavClick('arsiv');
+                                  }
+                                  setMobileMenuOpen(false);
+                                }}
                                 className="text-sm text-muted-foreground hover:text-foreground block"
                               >
                                 Sayı {sayi.numara}
