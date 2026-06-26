@@ -1,0 +1,44 @@
+# Sekans TEST sunucusu (65.21.234.84) — /opt/sekans
+# Host nginx 80/443'te; statik dosyaları doğrudan /opt/sekans/webroot'tan sunar,
+# /api isteklerini 127.0.0.1:8091'e (php konteyneri) proxy'ler.
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "sekans-test-db-2026"
+      MYSQL_DATABASE: sekans
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  api:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM php:8.2-cli
+        RUN docker-php-ext-install pdo_mysql
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8091:80"
+    environment:
+      # php -S tek iş parçacıklıdır; uzun bir istek (ör. AI) tüm API'yi kilitler.
+      # Worker sayısı vererek eşzamanlı isteklere izin ver (site/CMS donmaz).
+      PHP_CLI_SERVER_WORKERS: "4"
+    volumes:
+      - ./api:/var/www/html/api
+      - ./webroot/uploads:/var/www/html/uploads
+      - ./sekans_config:/var/www/sekans_config:ro
+    command: php -S 0.0.0.0:80 -t /var/www/html
+
+volumes:
+  dbdata:

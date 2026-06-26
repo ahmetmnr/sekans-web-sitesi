@@ -25,7 +25,7 @@ import {
   RotateCcw,
   Wand2,
 } from 'lucide-react';
-import { aiDuzenle, aiStatus, type AIIslem } from '@/lib/openai';
+import { aiDuzenle, aiDergiStilUygula, aiStatus, type AIIslem } from '@/lib/openai';
 
 interface AIEditModalProps {
   open: boolean;
@@ -153,11 +153,13 @@ export function AIEditModal({
     setIsFullContentMode(!isSeciliMetin);
 
     try {
-      const result = await aiDuzenle(
-        hedefIcerik,
-        islem,
-        islem === 'genel' ? ekTalimat : undefined
-      );
+      const result = islem === 'dergi-stil'
+        ? await aiDergiStilUygula(hedefIcerik)
+        : await aiDuzenle(
+            hedefIcerik,
+            islem,
+            islem === 'genel' ? ekTalimat : undefined
+          );
       setSonuc(result);
       setDurum('sonuc');
     } catch (error: unknown) {

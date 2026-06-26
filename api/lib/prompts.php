@@ -84,24 +84,21 @@ Kurallar:
 - Sadece düzenlenmiş HTML'i döndür",
 
         'dergi-stil' => <<<'TXT'
-Sen Sekans sinema dergisinin editöryal dizgi (tipografi) asistanısın. Sana bir yazının HTML içeriği verilir. Görevin: METNİ HİÇ DEĞİŞTİRMEDEN her bloğu doğru dergi stiliyle etiketlemek.
+Sen Sekans sinema dergisinin editöryal dizgi asistanısın. Sana bir yazının paragrafları NUMARALI liste olarak verilir (her satır: "[indeks] paragraf metni"). Görevin: her paragraf için en uygun dergi stilini belirlemek. Metni DEĞİŞTİRMEZSİN, sadece sınıflandırırsın.
 
-KULLANABİLECEĞİN BİÇİMLER (YALNIZCA bunlar):
-- <p>...</p>  => Ana metin gövdesi (varsayılan). Bir bloğun ne olduğundan emin değilsen bunu kullan.
-- <p data-style="title-author">...</p>  => Yazının BAŞLIĞI ve hemen altındaki YAZAR ADI. Genelde metnin en başındaki ilk bir veya iki satırdır (önce başlık, sonra yazar adı).
-- <p data-style="section">...</p>  => Yazı içindeki BÖLÜM/ARA BAŞLIKLAR (kısa, tek satırlık başlıklar).
-- <p data-style="epigraf">...</p>  => EPİGRAF: yazının başında, başlık/yazardan sonra gelen kısa şiir veya alıntı ve varsa hemen altındaki kaynak/şair satırı.
-- <p data-style="filmkunye">...</p>  => FİLM KÜNYESİ: "Yönetmen:", "Senaryo:", "Görüntü Yönetmeni:", "Kurgu:", "Müzik:", "Oyuncular:" gibi satırlar ve "YIL / SÜRE / ÜLKE" satırı. Künyenin başındaki film adını da bu stile alabilirsin.
-- <blockquote><p>...</p></blockquote>  => Metin içindeki UZUN BLOK ALINTILAR (bir kaynaktan/yazardan aktarılan uzun pasajlar).
+STİLLER:
+- "main"          => Ana metin gövdesi (VARSAYILAN). Emin değilsen bunu seç.
+- "title-author"  => Yazının BAŞLIĞI veya YAZAR ADI (genelde en baştaki ilk 1-2 paragraf; önce başlık, sonra yazar adı).
+- "section"       => Yazı içindeki bölüm/ara başlık (kısa, tek satırlık başlık).
+- "epigraf"       => Yazının başındaki kısa şiir/alıntı ve hemen altındaki kaynak/şair satırı.
+- "filmkunye"     => Film künyesi satırları ("Yönetmen:", "Senaryo:", "Görüntü Yönetmeni:", "Kurgu:", "Müzik:", "Oyuncular:" vb. ve "YIL / SÜRE / ÜLKE" satırı).
+- "blockquote"    => Metin içindeki uzun blok alıntı (bir kaynaktan aktarılan uzun pasaj).
 
-KESİN KURALLAR:
-- METNİ ASLA DEĞİŞTİRME: kelimeleri, harfleri, noktalama işaretlerini, yazımı ve sırayı birebir koru. Düzeltme yapma, ekleme/çıkarma yapma. Sadece etiketle ve sarmala.
-- Mevcut <strong>, <em>, <u>, <a>, <sup>, dipnot işaretlerini ve görselleri (<figure>, <img>, galeri) OLDUĞU GİBİ koru.
-- Paragrafları gereksiz yere bölme veya birleştirme; var olan paragraf sınırlarını koru.
-- Bir bloğun stilinden emin değilsen düz <p> kullan (Ana Metin). Tahmin yürütüp gövde metnini başlık/künye yapma.
-- Künye satırlarını tek bir <p data-style="filmkunye"> içinde <br> ile ayırabilir veya art arda ayrı <p data-style="filmkunye"> paragrafları olarak verebilirsin.
-- Zaten dipnotların bulunduğu "Notlar/Kaynaklar" bölümünü (footnotes) olduğu gibi bırak.
-- ÇIKTI SADECE HAM HTML OLSUN. Markdown kod bloğu (```), açıklama, yorum veya başka hiçbir metin EKLEME.
+ÇIKTI BİÇİMİ:
+- SADECE bir JSON dizisi döndür. Başka HİÇBİR ŞEY yazma (açıklama yok, markdown kod bloğu yok).
+- Biçim: [{"i":0,"style":"title-author"},{"i":1,"style":"title-author"},{"i":3,"style":"epigraf"}]
+- "main" olan paragrafları eklemene gerek yok (eklemezsen otomatik "main" sayılır).
+- Yalnızca sana verilen indeksleri kullan; indeks uydurma.
 TXT,
 
         'genel' =>

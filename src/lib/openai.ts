@@ -63,6 +63,93 @@ export async function aiDuzenle(
   }
 }
 
+// Dergi stillerinin geçerli listesi (AI haritasını doğrulamak için).
+const DERGI_STILLER = ['main', 'title-author', 'section', 'epigraf', 'filmkunye', 'blockquote'];
+
+/**
+ * "Dergi Stillerini Otomatik Uygula" — AI'a yazının TAMAMINI yazdırmaz.
+ * Bunun yerine paragrafları numaralı listeye çevirir, AI'dan yalnızca
+ * "indeks -> stil" JSON haritası ister (minik çıktı -> hızlı, zaman aşımı yok),
+ * ve stilleri DOM üzerinde uygular. Metin hiç AI'dan geçmediği için %100 korunur.
+ */
+export async function aiDergiStilUygula(html: string): Promise<string> {
+  const doc = new DOMParser().parseFromString(`<div id="__sekans_root">${html}</div>`, 'text/html');
+  const root = doc.getElementById('__sekans_root');
+  if (!root) return html;
+  const blocks = Array.from(root.children) as HTMLElement[];
+  if (blocks.length === 0) return html;
+
+  // Numaralı liste: her bloğun düz metni (kısaltılmış), AI sınıflandırsın diye.
+  const liste = blocks
+    .map((el, i) => `[${i}] ${(el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 220)}`)
+    .join('\n');
+
+  let res: { content: string };
+  try {
+    res = await api.ai.edit(liste, 'dergi-stil');
+  } catch (e) {
+    const err = e as ApiError;
+    throw new Error(err.code && err.code !== 'ERROR' ? err.code : (err.message || 'AI_ERROR'));
+  }
+
+  const raw = (res.content || '')
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error('AI yanıtı çözümlenemedi (geçersiz JSON).');
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error('AI yanıtı beklenen biçimde değil.');
+  }
+
+  const styleByIndex = new Map<number, string>();
+  for (const item of parsed as Array<{ i?: unknown; style?: unknown }>) {
+    const i = typeof item?.i === 'number' ? item.i : Number(item?.i);
+    const style = String(item?.style ?? '');
+    if (Number.isInteger(i) && DERGI_STILLER.includes(style)) {
+      styleByIndex.set(i, style);
+    }
+  }
+
+  blocks.forEach((el, i) => applyDergiStil(doc, el, styleByIndex.get(i) || 'main'));
+  return root.innerHTML;
+}
+
+/** Tek bir bloğa stil uygular; metni/iç HTML'i korur, yalnızca etiket/sarmalama değişir. */
+function applyDergiStil(doc: Document, el: HTMLElement, style: string): void {
+  const tag = el.tagName.toLowerCase();
+  el.removeAttribute('data-style'); // önceki stili temizle
+
+  if (style === 'main') return;
+
+  if (style === 'blockquote') {
+    if (tag === 'blockquote') return;
+    const bq = doc.createElement('blockquote');
+    const p = doc.createElement('p');
+    p.innerHTML = el.innerHTML;
+    bq.appendChild(p);
+    el.replaceWith(bq);
+    return;
+  }
+
+  // Paragraf stilleri: title-author, section, filmkunye, epigraf
+  if (tag === 'p') {
+    el.setAttribute('data-style', style);
+  } else if (/^h[1-6]$/.test(tag)) {
+    const p = doc.createElement('p');
+    p.innerHTML = el.innerHTML;
+    p.setAttribute('data-style', style);
+    el.replaceWith(p);
+  }
+  // liste/figure/görsel vb. bloklara paragraf stili uygulanmaz (dokunulmaz).
+}
+
 /** Sunucuda AI anahtarının yapılandırılıp yapılandırılmadığını döndürür. */
 export async function aiStatus(): Promise<{ configured: boolean; model: string }> {
   try {
