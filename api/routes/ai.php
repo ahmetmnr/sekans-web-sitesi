@@ -54,7 +54,13 @@ function handle_ai_edit(): void
         ['role' => 'user',   'content' => $userContent],
     ];
 
-    $r = openai_chat($messages);
+    // Dergi-stil: metni AYNEN korumak için temperature=0; uzun yazılar için
+    // daha yüksek çıktı limiti (yapısal etiketleme, içerik üretimi değil).
+    $opts = $islem === 'dergi-stil'
+        ? ['temperature' => 0.0, 'max_tokens' => 16000]
+        : [];
+
+    $r = openai_chat($messages, $opts);
     if (!$r['ok']) {
         // Hata kodu sözleşmesi: istemci (lib/openai.ts) bu kodları bekler.
         fail($r['error'], ai_error_message($r['error']), $r['status']);

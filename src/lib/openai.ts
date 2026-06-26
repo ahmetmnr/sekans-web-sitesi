@@ -6,6 +6,7 @@
 import { api, ApiError } from '@/lib/api';
 
 export type AIIslem =
+  | 'dergi-stil'
   | 'yazim-duzelt'
   | 'paragraf-duzenle'
   | 'sadelestir'
@@ -22,6 +23,7 @@ interface IslemMeta {
 }
 
 const ISLEM_LISTESI: IslemMeta[] = [
+  { id: 'dergi-stil',      ad: 'Dergi Stillerini Uygula', aciklama: 'Başlık, yazar, epigraf, künye, bölüm başlığı ve blok alıntıyı otomatik tanıyıp biçimle' },
   { id: 'yazim-duzelt',    ad: 'Yazım ve İmla Düzelt', aciklama: 'Gramer, noktalama ve Türkçe yazım hatalarını düzelt' },
   { id: 'paragraf-duzenle',ad: 'Paragraf Düzenle',     aciklama: 'Paragraf yapısını iyileştir, gerekirse böl veya birleştir' },
   { id: 'sadelestir',      ad: 'Cümleleri Sadeleştir', aciklama: 'Karmaşık ve uzun cümleleri kısalt, anlaşılır hale getir' },
@@ -47,7 +49,13 @@ export async function aiDuzenle(
 ): Promise<string> {
   try {
     const res = await api.ai.edit(icerik, islem, islem === 'genel' ? ekTalimat : undefined);
-    return (res.content || '').trim();
+    // Model bazen yanıtı ```html ... ``` kod bloğuyla sarabiliyor; temizle.
+    const content = (res.content || '')
+      .trim()
+      .replace(/^```(?:html)?\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+    return content;
   } catch (e) {
     const err = e as ApiError;
     // Sunucu hata kodlarını koru; bilinmeyenleri mesaja indir.

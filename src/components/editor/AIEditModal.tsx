@@ -23,6 +23,7 @@ import {
   X,
   Sparkles,
   RotateCcw,
+  Wand2,
 } from 'lucide-react';
 import { aiDuzenle, aiStatus, type AIIslem } from '@/lib/openai';
 
@@ -41,6 +42,12 @@ const ISLEM_BUTONLARI: {
   aciklama: string;
   ikon: React.ReactNode;
 }[] = [
+  {
+    id: 'dergi-stil',
+    ad: 'Dergi Stillerini Uygula',
+    aciklama: 'Başlık, yazar, epigraf, künye, bölüm başlığı ve blok alıntıyı otomatik tanıyıp biçimle',
+    ikon: <Wand2 className="h-5 w-5" />,
+  },
   {
     id: 'yazim-duzelt',
     ad: 'Yazım Düzelt',
@@ -221,9 +228,24 @@ export function AIEditModal({
               )}
             </div>
 
-            {/* İşlem Butonları */}
+            {/* Öne çıkan işlem: Dergi Stillerini Otomatik Uygula */}
+            <button
+              onClick={() => islemCalistir('dergi-stil')}
+              disabled={!apiKeyVar}
+              className="w-full flex items-center gap-3 p-3 rounded-lg border-2 border-purple-300 bg-purple-50 hover:bg-purple-100 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="text-purple-600 flex-shrink-0"><Wand2 className="h-6 w-6" /></div>
+              <div>
+                <p className="text-sm font-semibold text-purple-900">Dergi Stillerini Otomatik Uygula</p>
+                <p className="text-xs text-purple-700">
+                  Başlık, yazar adı, epigraf, künye, bölüm başlığı ve blok alıntıyı AI tanıyıp biçimler — metni değiştirmeden.
+                </p>
+              </div>
+            </button>
+
+            {/* Diğer İşlem Butonları */}
             <div className="grid grid-cols-2 gap-2">
-              {ISLEM_BUTONLARI.filter(b => b.id !== 'genel').map((islem) => (
+              {ISLEM_BUTONLARI.filter(b => b.id !== 'genel' && b.id !== 'dergi-stil').map((islem) => (
                 <button
                   key={islem.id}
                   onClick={() => islemCalistir(islem.id)}

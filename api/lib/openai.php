@@ -10,7 +10,7 @@ require_once __DIR__ . '/config.php';
 /**
  * @return array{ok:bool,status:int,content:string,error:string}
  */
-function openai_chat(array $messages): array
+function openai_chat(array $messages, array $opts = []): array
 {
     $cfg = sekans_config()['openai'] ?? [];
     $key = (string)($cfg['api_key'] ?? '');
@@ -19,11 +19,12 @@ function openai_chat(array $messages): array
         return ['ok' => false, 'status' => 503, 'content' => '', 'error' => 'AI_NOT_CONFIGURED'];
     }
 
+    // İşleme özel override'lar (ör. dergi-stil için temperature=0, yüksek max_tokens).
     $payload = json_encode([
         'model'       => $cfg['model'] ?? 'gpt-4o-mini',
         'messages'    => $messages,
-        'temperature' => (float)($cfg['temperature'] ?? 0.3),
-        'max_tokens'  => (int)($cfg['max_tokens'] ?? 4096),
+        'temperature' => isset($opts['temperature']) ? (float)$opts['temperature'] : (float)($cfg['temperature'] ?? 0.3),
+        'max_tokens'  => isset($opts['max_tokens']) ? (int)$opts['max_tokens'] : (int)($cfg['max_tokens'] ?? 4096),
     ], JSON_UNESCAPED_UNICODE);
 
     $url     = 'https://api.openai.com/v1/chat/completions';
