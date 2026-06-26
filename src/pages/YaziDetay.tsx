@@ -117,7 +117,7 @@ export default function YaziDetay({
 
           {/* Kategori */}
           <span className="kategori-etiket block mb-3">
-            {yazi.kategori.ad}
+            {yazi.kategori?.ad ?? ''}
           </span>
 
           {/* Başlık */}
@@ -314,7 +314,7 @@ export default function YaziDetay({
                   </button>
                   <div>
                     <span className="inline-block px-2 py-0.5 bg-muted rounded text-xs font-medium">
-                      {yazi.kategori.ad}
+                      {yazi.kategori?.ad ?? ''}
                     </span>
                   </div>
                 </div>

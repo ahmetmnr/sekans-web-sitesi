@@ -26,11 +26,9 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
   return (
     <section className="son-sayi-section py-8 md:py-12">
       <div className="container mx-auto px-4 md:px-6">
-        {/* Sayı Başlığı */}
-        <div className="mb-6 md:mb-8">
-          <h2 className="text-lg md:text-xl font-medium tracking-wide text-foreground/80">
-            {sayi.tamBaslik}
-          </h2>
+        {/* Sayı Başlığı — "Ara Yazılar" bölüm başlığıyla aynı stil (altı çizili) */}
+        <div className="mb-8 md:mb-10 border-b border-border pb-4">
+          <h2 className="section-title">{sayi.tamBaslik}</h2>
         </div>
 
         {/* İçerik Grid */}
@@ -90,17 +88,12 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
                     onClick={() => onYaziClick(yazi)}
                     className="yazi-kart w-full text-left group"
                   >
-                    <div className="flex items-start gap-4">
-                      {/* Sıra Numarası */}
-                      <span className="flex-shrink-0 w-6 text-xs text-muted-foreground font-medium">
-                        {String(index + 1).padStart(2, '0')}
-                      </span>
-                      
-                      {/* Yazı İçeriği */}
+                    <div className="flex items-start">
+                      {/* Yazı İçeriği (sayı sırası gösterilmiyor - numaralandırma kaldırıldı) */}
                       <div className="flex-1 min-w-0">
                         {/* Kategori */}
                         <span className="kategori-etiket block mb-1">
-                          {yazi.kategori.ad}
+                          {yazi.kategori?.ad ?? ''}
                         </span>
                         
                         {/* Başlık */}
@@ -110,7 +103,7 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
                         
                         {/* Yazar */}
                         <p className="mt-2 text-sm text-muted-foreground">
-                          {yazi.yazar.tamAd}
+                          {yazi.yazar?.tamAd ?? ''}
                         </p>
                         
                         {/* PDF Linki */}

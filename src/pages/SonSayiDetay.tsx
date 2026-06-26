@@ -100,13 +100,13 @@ export default function SonSayiDetay({ sayi, onYaziClick, onBackClick }: SonSayi
               >
                 <div>
                   <span className="kategori-etiket block mb-2">
-                    {yazi.kategori.ad}
+                    {yazi.kategori?.ad ?? ''}
                   </span>
                   <h3 className="text-lg md:text-xl font-serif leading-snug mb-2 group-hover:underline underline-offset-4">
                     {yazi.baslik}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    {yazi.yazar.tamAd}
+                    {yazi.yazar?.tamAd ?? ''}
                   </p>
 
                   {/* Spot */}

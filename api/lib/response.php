@@ -10,6 +10,12 @@ function json_headers(): void
     if (!headers_sent()) {
         header('Content-Type: application/json; charset=utf-8');
         header('X-Content-Type-Options: nosniff');
+        // Dinamik + kimlik doğrulamalı API: tarayıcı/proxy/CDN ASLA önbelleğe almasın.
+        // Aksi halde yeni kaydedilen içerik, bayat /bootstrap yüzünden sayfa
+        // yenilenince kaybolmuş görünebilir.
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
     }
 }
 

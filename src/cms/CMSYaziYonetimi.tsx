@@ -407,10 +407,14 @@ export function CMSYaziYonetimi() {
                       id="siraNo"
                       type="number"
                       min="1"
-                      value={formData.siraNo || ''}
-                      onChange={(e) =>
-                        setFormData({ ...formData, siraNo: parseInt(e.target.value) })
-                      }
+                      value={formData.siraNo ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setFormData({
+                          ...formData,
+                          siraNo: v === '' ? undefined : parseInt(v),
+                        });
+                      }}
                     />
                   </div>
                   <div>

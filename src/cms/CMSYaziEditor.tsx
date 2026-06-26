@@ -110,7 +110,8 @@ export function CMSYaziEditor({ yaziId, onBack, onSave }: CMSYaziEditorProps) {
           icerik: formData.icerik,
           yazarId: formData.yazar?.id,
           kategoriId: formData.kategori?.id,
-          siraNo: formData.siraNo,
+          // Boş bırakılırsa sıra numarası verilmez -> yazı listenin sonuna eklenir
+          siraNo: formData.siraNo || (sonSayi.yazilar.length + 1),
           pdfUrl: formData.pdfUrl,
           kapakGorseli: formData.kapakGorseli,
           yayinTarihi: formData.yayinTarihi,
@@ -320,12 +321,19 @@ export function CMSYaziEditor({ yaziId, onBack, onSave }: CMSYaziEditorProps) {
                 id="siraNo"
                 type="number"
                 min="1"
-                value={formData.siraNo || ''}
-                onChange={(e) =>
-                  setFormData({ ...formData, siraNo: parseInt(e.target.value) })
-                }
+                value={formData.siraNo ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setFormData({
+                    ...formData,
+                    siraNo: v === '' ? undefined : parseInt(v),
+                  });
+                }}
                 className="mt-1.5"
               />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Boş bırakılırsa yazı listenin sonuna eklenir.
+              </p>
             </div>
 
             {/* Yayın Tarihi */}

@@ -54,7 +54,9 @@ async function request<T>(
   opts?: { rawBody?: BodyInit; isForm?: boolean }
 ): Promise<{ data: T; meta?: unknown }> {
   const headers: Record<string, string> = {};
-  const init: RequestInit = { method, credentials: 'include', headers };
+  // cache:'no-store' => tarayıcı/CDN bayat yanıt döndürmesin. Aksi halde yeni
+  // kaydedilen içerik sayfa yenilenince (bayat /bootstrap) kaybolmuş görünebilir.
+  const init: RequestInit = { method, credentials: 'include', headers, cache: 'no-store' };
 
   if (method !== 'GET' && csrfToken) {
     headers['X-CSRF-Token'] = csrfToken;

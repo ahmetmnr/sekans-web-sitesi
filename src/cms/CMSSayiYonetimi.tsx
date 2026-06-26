@@ -164,7 +164,7 @@ export function CMSSayiYonetimi() {
                         Düzenle
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>Son Sayıyı Düzenle</DialogTitle>
                         <DialogDescription>
@@ -460,7 +460,7 @@ export function CMSSayiYonetimi() {
 
       {/* Arşiv Dialog */}
       <Dialog open={showArsivDialog} onOpenChange={setShowArsivDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingArsiv ? 'Arşiv Sayısını Düzenle' : 'Yeni Arşiv Sayısı'}

@@ -458,14 +458,17 @@ function ImageComponent({ node, updateAttributes, deleteNode, selected }: ImageN
         )}
       </div>
 
-      {/* Caption */}
-      <input
-        type="text"
-        value={caption || ''}
-        onChange={(e) => updateAttributes({ caption: e.target.value })}
-        placeholder="Açıklama ekleyin..."
-        className="w-full text-center text-sm text-gray-500 italic mt-1 bg-transparent border-0 outline-none focus:text-gray-700 placeholder:text-gray-300"
-      />
+      {/* Caption — yalnızca açıklama varsa ya da görsel seçiliyken/üzerine gelince göster.
+          Böylece boş "Açıklama ekleyin" metni her görselin (örn. yapıştırılan) altında durmaz. */}
+      {(caption || selected || showToolbar) && (
+        <input
+          type="text"
+          value={caption || ''}
+          onChange={(e) => updateAttributes({ caption: e.target.value })}
+          placeholder="Açıklama ekleyin (isteğe bağlı)…"
+          className="w-full text-center text-sm text-gray-500 italic mt-1 bg-transparent border-0 outline-none focus:text-gray-700 placeholder:text-gray-300"
+        />
+      )}
 
       {/* Görsel Düzenleme Modal */}
       <ImageEditor

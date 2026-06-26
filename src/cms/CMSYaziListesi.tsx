@@ -56,13 +56,15 @@ export function CMSYaziListesi({ onEditYazi }: CMSYaziListesiProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Filter and sort
+  // Not: kategori bir kategori silindiğinde null olabilir (FK SET NULL); yazar da
+  // null olabilir. Erişimler güvenli (?.) olmalı, aksi halde tüm liste render'ı çöker.
   const filteredYazilar = sonSayi.yazilar.filter(yazi =>
     yazi.baslik.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    yazi.yazar.tamAd.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    yazi.kategori.ad.toLowerCase().includes(searchTerm.toLowerCase())
+    (yazi.yazar?.tamAd ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (yazi.kategori?.ad ?? '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const sortedYazilar = [...filteredYazilar].sort((a, b) => a.siraNo - b.siraNo);
+  const sortedYazilar = [...filteredYazilar].sort((a, b) => (a.siraNo ?? 0) - (b.siraNo ?? 0));
 
   // Pagination calculations
   const totalItems = sortedYazilar.length;
@@ -206,10 +208,10 @@ export function CMSYaziListesi({ onEditYazi }: CMSYaziListesiProps) {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>{yazi.yazar.tamAd}</TableCell>
+                  <TableCell>{yazi.yazar?.tamAd ?? '—'}</TableCell>
                   <TableCell>
                     <span className="px-2 py-1 text-xs font-medium bg-gray-100 rounded">
-                      {yazi.kategori.ad}
+                      {yazi.kategori?.ad ?? 'Kategori yok'}
                     </span>
                   </TableCell>
                   <TableCell className="text-right">

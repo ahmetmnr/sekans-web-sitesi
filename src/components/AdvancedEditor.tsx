@@ -8,6 +8,7 @@ import Link from '@tiptap/extension-link';
 import { ResizableImage } from './editor/ResizableImage';
 import { ImageGallery } from './editor/ImageGallery';
 import { FootnoteRef, FootnoteItem, FootnotesSection } from './editor/FootnoteExtension';
+import { ParagraphStyle } from './editor/ParagraphStyle';
 import { AIEditModal } from './editor/AIEditModal';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
@@ -43,10 +44,6 @@ import {
   Code,
   Heading1,
   Heading2,
-  Heading3,
-  Heading4,
-  Heading5,
-  Heading6,
   Pilcrow,
   Subscript as SubscriptIcon,
   Superscript as SuperscriptIcon,
@@ -249,11 +246,13 @@ function GalleryGridPicker({ onSelect }: { onSelect: (rows: number, cols: number
 }
 
 // Ana Toolbar
-function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick }: {
+function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick, showInvisibles, onToggleInvisibles }: {
   editor: ReturnType<typeof useEditor>;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
   onAIClick: () => void;
+  showInvisibles: boolean;
+  onToggleInvisibles: () => void;
 }) {
   const [linkUrl, setLinkUrl] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -348,14 +347,32 @@ function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick }: {
     setIsDragging(false);
   };
 
-  const getCurrentHeading = () => {
+  // Stil menüsü etiketi - imlecin bulunduğu bloğun stilini gösterir
+  const getCurrentStyle = () => {
+    if (editor.isActive('blockquote')) return 'Blok Alıntı';
     if (editor.isActive('heading', { level: 1 })) return 'Başlık 1';
     if (editor.isActive('heading', { level: 2 })) return 'Başlık 2';
-    if (editor.isActive('heading', { level: 3 })) return 'Başlık 3';
-    if (editor.isActive('heading', { level: 4 })) return 'Başlık 4';
-    if (editor.isActive('heading', { level: 5 })) return 'Başlık 5';
-    if (editor.isActive('heading', { level: 6 })) return 'Başlık 6';
-    return 'Paragraf';
+    const ds = editor.getAttributes('paragraph').dataStyle as string | null;
+    if (ds === 'title-author') return 'Başlık / Yazar';
+    if (ds === 'section') return 'Bölüm Başlığı';
+    if (ds === 'filmkunye') return 'Film Künye';
+    if (ds === 'epigraf') return 'Epigraf';
+    return 'Ana Metin';
+  };
+
+  // Özel paragraf stilini uygula: paragrafa çevir, data-style ata ve
+  // stile uygun varsayılan hizalamayı ver (editör sonradan değiştirebilir).
+  const applyParagraphStyle = (
+    style: 'title-author' | 'section' | 'filmkunye' | 'epigraf' | null,
+    align: 'left' | 'center' | 'right' | 'justify',
+  ) => {
+    editor
+      .chain()
+      .focus()
+      .setParagraph()
+      .updateAttributes('paragraph', { dataStyle: style })
+      .setTextAlign(align)
+      .run();
   };
 
   return (
@@ -406,44 +423,54 @@ function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick }: {
 
           <Separator orientation="vertical" className="h-6 mx-1" />
 
-          {/* Başlık Dropdown */}
+          {/* Stil Dropdown - Dergi yazıları için özel paragraf stilleri */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 px-2 gap-1 text-xs">
-                <Type className="h-4 w-4" />
-                <span className="hidden sm:inline">{getCurrentHeading()}</span>
-                <ChevronDown className="h-3 w-3" />
+              <Button variant="ghost" size="sm" className="h-8 px-2 gap-1 text-xs min-w-[120px] justify-start">
+                <LetterText className="h-4 w-4" />
+                <span className="hidden sm:inline">{getCurrentStyle()}</span>
+                <ChevronDown className="h-3 w-3 ml-auto" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem onClick={() => editor.chain().focus().setParagraph().run()}>
-                <Pilcrow className="h-4 w-4 mr-2" />
-                Paragraf
+            <DropdownMenuContent align="start" className="w-60">
+              <DropdownMenuItem onClick={() => applyParagraphStyle(null, 'left')}>
+                <Pilcrow className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span>Ana Metin</span>
+                <span className="ml-auto text-[10px] text-gray-400">MAIN</span>
               </DropdownMenuItem>
+
               <DropdownMenuSeparator />
+
+              <DropdownMenuItem onClick={() => applyParagraphStyle('title-author', 'center')}>
+                <Type className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="flex-1 text-center font-bold text-base">Başlık / Yazar Adı</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => applyParagraphStyle('section', 'center')}>
+                <Heading2 className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="flex-1 text-center font-bold">Bölüm Başlığı</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => applyParagraphStyle('filmkunye', 'center')}>
+                <AlignCenter className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="flex-1 text-center text-sm text-gray-600">Film Künye</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => applyParagraphStyle('epigraf', 'right')}>
+                <AlignRight className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="flex-1 text-right text-sm italic text-gray-600">Epigraf</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+                <Quote className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="flex-1 text-sm text-gray-600">Blok Alıntı</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
               <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
-                <Heading1 className="h-4 w-4 mr-2" />
-                <span className="text-2xl font-bold">Başlık 1</span>
+                <Heading1 className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="text-xl font-bold">Başlık 1</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
-                <Heading2 className="h-4 w-4 mr-2" />
-                <span className="text-xl font-bold">Başlık 2</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
-                <Heading3 className="h-4 w-4 mr-2" />
-                <span className="text-lg font-bold">Başlık 3</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}>
-                <Heading4 className="h-4 w-4 mr-2" />
-                <span className="text-base font-bold">Başlık 4</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 5 }).run()}>
-                <Heading5 className="h-4 w-4 mr-2" />
-                <span className="text-sm font-bold">Başlık 5</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 6 }).run()}>
-                <Heading6 className="h-4 w-4 mr-2" />
-                <span className="text-xs font-bold">Başlık 6</span>
+                <Heading2 className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="text-lg font-bold">Başlık 2</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1094,50 +1121,95 @@ function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick }: {
           {/* Referans/Dipnot Ekle */}
           <ToolbarButton
             onClick={() => {
-              // Mevcut referans sayısını HTML'den say
-              const html = editor.getHTML();
-              const matches = html.match(/data-footnote="\d+"/g) || html.match(/class="footnote-ref"/g) || [];
-              const nextNum = String(matches.length + 1);
+              // Sıradaki dipnot numarası = mevcut referans düğümlerinin sayısı + 1
+              let count = 0;
+              editor.state.doc.descendants((node) => {
+                if (node.type.name === 'footnoteRef') count++;
+              });
+              const num = count + 1;
 
-              // İmlecin bulunduğu yere referans işareti ekle
-              editor.chain().focus().insertContent(
-                `<span class="footnote-ref" data-footnote="${nextNum}" data-target="fn-${nextNum}" id="fnref-${nextNum}">[${nextNum}]</span>`
-              ).run();
+              // 1) İmlecin bulunduğu yere referans işaretini DÜĞÜM olarak ekle
+              editor
+                .chain()
+                .focus()
+                .insertContent({
+                  type: 'footnoteRef',
+                  attrs: {
+                    footnoteNum: String(num),
+                    targetId: `fn-${num}`,
+                    refId: `fnref-${num}`,
+                  },
+                })
+                .run();
 
-              // Şimdi güncel HTML'i al (referans eklendikten sonra)
-              const updatedHtml = editor.getHTML();
+              // Yeni not öğesi (italik ipucu metniyle)
+              const newItem = {
+                type: 'footnoteItem',
+                attrs: { footnoteId: `fn-${num}` },
+                content: [
+                  {
+                    type: 'text',
+                    text: 'Not metnini buraya yazın',
+                    marks: [{ type: 'italic' }],
+                  },
+                ],
+              };
 
-              if (!updatedHtml.includes('footnotes-section')) {
-                // İçeriğin sonuna Kaynaklar bölümü ekle
-                const newHtml = updatedHtml +
-                  `<div class="footnotes-section"><h3>Kaynaklar</h3>` +
-                  `<div class="footnote-item" id="fn-${nextNum}">` +
-                  `<span class="footnote-num" data-target="fnref-${nextNum}">[${nextNum}]</span>` +
-                  `<span> Kaynak açıklamasını buraya yazın</span>` +
-                  `</div></div>`;
-                editor.commands.setContent(newHtml);
-              } else {
-                // Mevcut Kaynaklar bölümüne ekle
-                const newItem =
-                  `<div class="footnote-item" id="fn-${nextNum}">` +
-                  `<span class="footnote-num" data-target="fnref-${nextNum}">[${nextNum}]</span>` +
-                  `<span> Kaynak açıklamasını buraya yazın</span>` +
-                  `</div>`;
-                const newHtml = updatedHtml.replace('</div></div><!--footnotes-end-->', newItem + '</div></div><!--footnotes-end-->');
-                // Eğer marker yoksa son </div></div>'den önce ekle
-                if (newHtml === updatedHtml) {
-                  const lastClose = updatedHtml.lastIndexOf('</div>');
-                  const beforeLast = updatedHtml.lastIndexOf('</div>', lastClose - 1);
-                  const finalHtml = updatedHtml.slice(0, beforeLast) + newItem + updatedHtml.slice(beforeLast);
-                  editor.commands.setContent(finalHtml);
-                } else {
-                  editor.commands.setContent(newHtml);
+              // 2) Dipnot bölümünü bul (referans eklendikten sonraki güncel durumda)
+              let sectionPos = -1;
+              let sectionSize = 0;
+              editor.state.doc.descendants((node, pos) => {
+                if (node.type.name === 'footnotesSection') {
+                  sectionPos = pos;
+                  sectionSize = node.nodeSize;
+                  return false;
                 }
+                return true;
+              });
+
+              if (sectionPos >= 0) {
+                // Mevcut "Notlar" bölümünün sonuna ekle.
+                // setContent KULLANILMAZ -> belge yeniden ayrıştırılmaz, imleç/içerik korunur.
+                editor
+                  .chain()
+                  .insertContentAt(sectionPos + sectionSize - 1, newItem, {
+                    updateSelection: false,
+                  })
+                  .run();
+              } else {
+                // Bölüm yoksa belgenin sonunda "Notlar" başlığıyla oluştur
+                editor
+                  .chain()
+                  .insertContentAt(
+                    editor.state.doc.content.size,
+                    {
+                      type: 'footnotesSection',
+                      content: [
+                        {
+                          type: 'heading',
+                          attrs: { level: 3 },
+                          content: [{ type: 'text', text: 'Notlar' }],
+                        },
+                        newItem,
+                      ],
+                    },
+                    { updateSelection: false },
+                  )
+                  .run();
               }
             }}
             tooltip="Referans/Dipnot Ekle"
           >
             <BookmarkPlus className="h-4 w-4" />
+          </ToolbarButton>
+
+          {/* Biçimlendirme İşaretleri (¶) - boşluk/enter göster */}
+          <ToolbarButton
+            onClick={onToggleInvisibles}
+            isActive={showInvisibles}
+            tooltip="Biçimlendirme İşaretlerini Göster/Gizle (¶)"
+          >
+            <Pilcrow className="h-4 w-4" />
           </ToolbarButton>
 
           <Separator orientation="vertical" className="h-6 mx-1" />
@@ -1161,7 +1233,10 @@ function CharacterCounter({ editor }: { editor: ReturnType<typeof useEditor> }) 
   if (!editor) return null;
 
   const characters = editor.storage.characterCount.characters();
-  const words = editor.storage.characterCount.words();
+  // Kelime sayısını metinden hesapla: ardışık boşluk ve satır sonları tek ayraç
+  // sayılır, böylece boş ENTER'lı satırlar kelime olarak sayılmaz (Word ile daha tutarlı).
+  const plain = editor.getText({ blockSeparator: '\n' }).trim();
+  const words = plain ? plain.split(/\s+/).length : 0;
 
   return (
     <div className="flex items-center gap-4 px-4 py-2 bg-gray-50 border-t text-xs text-gray-500">
@@ -1179,6 +1254,7 @@ export function AdvancedEditor({
 }: AdvancedEditorProps & { onAyarlaraGit?: () => void }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [showInvisibles, setShowInvisibles] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -1202,6 +1278,7 @@ export function AdvancedEditor({
       }),
       ResizableImage,
       ImageGallery,
+      ParagraphStyle,
       TextStyle,
       FontFamily,
       Color,
@@ -1253,11 +1330,18 @@ export function AdvancedEditor({
     }`}>
       {/* Toolbar - Her zaman üstte sabit */}
       <div className="flex-shrink-0">
-        <MainToolbar editor={editor} isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} onAIClick={() => setAiModalOpen(true)} />
+        <MainToolbar
+          editor={editor}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
+          onAIClick={() => setAiModalOpen(true)}
+          showInvisibles={showInvisibles}
+          onToggleInvisibles={() => setShowInvisibles((v) => !v)}
+        />
       </div>
 
       {/* İçerik alanı - Scroll edilebilir */}
-      <div className="flex-1 overflow-y-auto">
+      <div className={`flex-1 overflow-y-auto ${showInvisibles ? 'show-invisibles' : ''}`}>
         <EditorContent editor={editor} />
       </div>
 

@@ -57,7 +57,7 @@ function id_by_code(string $table, string $code): ?int
     $st = db()->prepare("SELECT id FROM `$table` WHERE code = ? LIMIT 1");
     $st->execute([$code]);
     $id = $st->fetchColumn();
-    return $id === false ? (int)$id : (int)$id;
+    return $id === false ? null : (int)$id;
 }
 
 /** code'a göre numeric id getir; bulunamazsa 404 ile biter (yardımcı). */
