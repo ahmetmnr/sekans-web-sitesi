@@ -58,7 +58,7 @@ function handle_ai_edit(): void
     // (metni geri yazmaz). Çıktı minik -> hızlı, zaman aşımı olmaz. temperature=0,
     // hızlı model; çıktı küçük olduğundan max_tokens düşük yeter.
     $opts = $islem === 'dergi-stil'
-        ? ['temperature' => 0.0, 'max_tokens' => 4000, 'model' => 'gpt-4o-mini', 'timeout' => 85]
+        ? ['temperature' => 0.0, 'max_tokens' => 4000, 'model' => 'gpt-4o-mini', 'timeout' => 30]
         : [];
 
     $r = openai_chat($messages, $opts);
