@@ -16,6 +16,7 @@ dist/images/*
 
 # Sunucu gizli yapılandırması asla commit edilmez (şablonu: api/config.sample.php)
 api/config.php
+deploy_test/config.php
 
 # Günlükler
 *.log
