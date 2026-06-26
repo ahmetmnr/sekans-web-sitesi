@@ -419,14 +419,26 @@
   margin: 1.2em 0 1.4em;
 }
 
-/* Aynı stilden ardışık satırlar tek satır aralığı gibi sık dursun;
-   bloğun çevresindeki otomatik boşluk korunur. */
-.ProseMirror p[data-style]:has(+ p[data-style]),
-.cms-content-preview p[data-style]:has(+ p[data-style]) {
+/* AYNI stilden ardışık satırlar tek satır aralığı gibi sık dursun; FARKLI
+   stiller arasındaki (ör. Yazar Adı -> Epigraf) otomatik boşluk korunur. */
+.ProseMirror p[data-style="title-author"]:has(+ p[data-style="title-author"]),
+.cms-content-preview p[data-style="title-author"]:has(+ p[data-style="title-author"]),
+.ProseMirror p[data-style="section"]:has(+ p[data-style="section"]),
+.cms-content-preview p[data-style="section"]:has(+ p[data-style="section"]),
+.ProseMirror p[data-style="filmkunye"]:has(+ p[data-style="filmkunye"]),
+.cms-content-preview p[data-style="filmkunye"]:has(+ p[data-style="filmkunye"]),
+.ProseMirror p[data-style="epigraf"]:has(+ p[data-style="epigraf"]),
+.cms-content-preview p[data-style="epigraf"]:has(+ p[data-style="epigraf"]) {
   margin-bottom: 0.15em;
 }
-.ProseMirror p[data-style] + p[data-style],
-.cms-content-preview p[data-style] + p[data-style] {
+.ProseMirror p[data-style="title-author"] + p[data-style="title-author"],
+.cms-content-preview p[data-style="title-author"] + p[data-style="title-author"],
+.ProseMirror p[data-style="section"] + p[data-style="section"],
+.cms-content-preview p[data-style="section"] + p[data-style="section"],
+.ProseMirror p[data-style="filmkunye"] + p[data-style="filmkunye"],
+.cms-content-preview p[data-style="filmkunye"] + p[data-style="filmkunye"],
+.ProseMirror p[data-style="epigraf"] + p[data-style="epigraf"],
+.cms-content-preview p[data-style="epigraf"] + p[data-style="epigraf"] {
   margin-top: 0.15em;
 }
 
