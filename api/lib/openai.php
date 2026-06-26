@@ -19,16 +19,16 @@ function openai_chat(array $messages, array $opts = []): array
         return ['ok' => false, 'status' => 503, 'content' => '', 'error' => 'AI_NOT_CONFIGURED'];
     }
 
-    // İşleme özel override'lar (ör. dergi-stil için temperature=0, yüksek max_tokens).
+    // İşleme özel override'lar (ör. dergi-stil için temperature=0, hızlı model, yüksek max_tokens).
     $payload = json_encode([
-        'model'       => $cfg['model'] ?? 'gpt-4o-mini',
+        'model'       => (string)($opts['model'] ?? ($cfg['model'] ?? 'gpt-4o-mini')),
         'messages'    => $messages,
         'temperature' => isset($opts['temperature']) ? (float)$opts['temperature'] : (float)($cfg['temperature'] ?? 0.3),
         'max_tokens'  => isset($opts['max_tokens']) ? (int)$opts['max_tokens'] : (int)($cfg['max_tokens'] ?? 4096),
     ], JSON_UNESCAPED_UNICODE);
 
     $url     = 'https://api.openai.com/v1/chat/completions';
-    $timeout = (int)($cfg['timeout'] ?? 60);
+    $timeout = isset($opts['timeout']) ? (int)$opts['timeout'] : (int)($cfg['timeout'] ?? 60);
     $headers = [
         'Content-Type: application/json',
         'Authorization: Bearer ' . $key,
