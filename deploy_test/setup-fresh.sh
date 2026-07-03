@@ -99,8 +99,7 @@ server {
     server_name ${DOMAIN};
     ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
-    include /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
     root /opt/sekans/webroot; index index.html; client_max_body_size 64m;
     location /api/ {
         proxy_pass http://127.0.0.1:8091;
