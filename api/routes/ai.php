@@ -54,11 +54,10 @@ function handle_ai_edit(): void
         ['role' => 'user',   'content' => $userContent],
     ];
 
-    // Dergi-stil: AI metni paragraflara bölüp yapısal HTML döndürür (metni aynen
-    // korur). Çıktı ~girdi uzunluğunda olabileceğinden max_tokens yüksek, süre
-    // biraz daha uzun. temperature=0 (kararlı), hızlı model.
+    // Dergi-stil: AI yalnızca "çapa (start) + stil" JSON'u döndürür (metni geri
+    // yazmaz) -> çıktı küçük, hızlı, zaman aşımı olmaz. temperature=0, hızlı model.
     $opts = $islem === 'dergi-stil'
-        ? ['temperature' => 0.0, 'max_tokens' => 8000, 'model' => 'gpt-4o-mini', 'timeout' => 60]
+        ? ['temperature' => 0.0, 'max_tokens' => 3000, 'model' => 'gpt-4o-mini', 'timeout' => 45]
         : [];
 
     $r = openai_chat($messages, $opts);

@@ -66,84 +66,106 @@ export async function aiDuzenle(
 // AI'ın döndürebileceği geçerli paragraf data-style değerleri.
 const IZINLI_STILLER = new Set(['title', 'author', 'section', 'epigraf', 'filmkunye']);
 
+interface Capa { start?: unknown; style?: unknown }
+
 /**
- * "Dergi Stillerini Otomatik Uygula".
+ * "Dergi Stillerini Otomatik Uygula" — ÇAPA (anchor) yöntemi.
  *
- * Metni AI'a gönderir; AI metni KELİMESİ KELİMESİNE koruyarak paragraflara böler
- * ve her paragrafı doğru stille (title/author/section/epigraf/filmkunye) veya
- * blok alıntı ile işaretleyip YAPISAL HTML döndürür. Tek dev paragraf (blob)
- * olarak yapıştırılmış içeriğe de çalışır — segmentasyonu AI yapar.
+ * AI'a yazının TAMAMINI yazdırmaz (bu uzun yazıda zaman aşımına uğruyordu).
+ * Bunun yerine AI yalnızca her paragrafın BAŞLADIĞI yerin ilk birkaç kelimesini
+ * ("start") ve o paragrafın stilini döndürür (minik çıktı -> hızlı, zaman aşımı
+ * yok). Metni bu çapalardan YEREL olarak böleriz; kelimeler AI'dan geçmediği
+ * için %100 korunur. Tek dev paragraf (blob) da böylece paragraflara ayrılır.
  *
- * Dönen HTML güvenlik + geçerli stiller için temizlenir. Kullanıcı Uygula'dan
- * önce sonucu modalde önizler.
+ * Not: Bu yöntem düz metinle çalışır; içerikteki mevcut satır-içi biçimlendirme
+ * (bold/italik) korunmaz — özellik zaten ham/yapıştırılmış metni ilk kez
+ * biçimlemek içindir.
  */
 export async function aiDergiStilUygula(html: string): Promise<string> {
+  // İçeriğin düz metni; tüm boşlukları teke indir (blob olabilir).
+  const doc = new DOMParser().parseFromString(`<div id="__r">${html}</div>`, 'text/html');
+  const metin = (doc.getElementById('__r')?.textContent || '').replace(/\s+/g, ' ').trim();
+  if (!metin) return html;
+
   let res: { content: string };
   try {
-    res = await api.ai.edit(html, 'dergi-stil');
+    res = await api.ai.edit(metin, 'dergi-stil');
   } catch (e) {
     const err = e as ApiError;
     throw new Error(err.code && err.code !== 'ERROR' ? err.code : (err.message || 'AI_ERROR'));
   }
 
-  const out = (res.content || '')
+  const raw = (res.content || '')
     .trim()
-    .replace(/^```(?:html)?\s*/i, '')
+    .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```$/i, '')
     .trim();
 
-  if (!out) throw new Error('AI boş yanıt döndürdü.');
-  return sanitizeDergiHtml(out);
-}
-
-/**
- * AI'dan gelen HTML'i güvenli + geçerli hale getirir:
- *  - script/style/iframe vb. ile tüm on* ve gereksiz öznitelikleri kaldırır,
- *  - yalnızca <p> (geçerli data-style ile) ve <blockquote><p> bloklarını korur,
- *  - sarmalayıcı div/section/article içine iner (düzleştirir).
- */
-function sanitizeDergiHtml(html: string): string {
-  const doc = new DOMParser().parseFromString(`<div id="__r">${html}</div>`, 'text/html');
-  const root = doc.getElementById('__r');
-  if (!root) return html;
-
-  root.querySelectorAll('script, style, iframe, object, embed, link, meta').forEach((n) => n.remove());
-  root.querySelectorAll('*').forEach((el) => {
-    for (const attr of [...el.attributes]) {
-      const name = attr.name.toLowerCase();
-      const izinli =
-        name === 'data-style' ||
-        (el.tagName === 'A' && (name === 'href' || name === 'title'));
-      if (!izinli) el.removeAttribute(attr.name);
-    }
-  });
-
-  const parcalar: string[] = [];
-  collectBlocks(root, parcalar);
-  return parcalar.join('') || html;
-}
-
-/** Üst-seviye blokları toplar; sarmalayıcıların içine iner, bilinmeyeni <p>'ye indirir. */
-function collectBlocks(parent: HTMLElement, out: string[]): void {
-  for (const el of Array.from(parent.children) as HTMLElement[]) {
-    const tag = el.tagName.toLowerCase();
-    if (tag === 'blockquote') {
-      const inner = (el.querySelector('p')?.innerHTML ?? el.innerHTML).trim();
-      if (inner) out.push(`<blockquote><p>${inner}</p></blockquote>`);
-    } else if (tag === 'p' || /^h[1-6]$/.test(tag)) {
-      const ds = el.getAttribute('data-style');
-      const styleAttr = ds && IZINLI_STILLER.has(ds) ? ` data-style="${ds}"` : '';
-      const inner = el.innerHTML.trim();
-      if (inner) out.push(`<p${styleAttr}>${inner}</p>`);
-    } else if (tag === 'div' || tag === 'section' || tag === 'article' || tag === 'main' || tag === 'body') {
-      collectBlocks(el, out); // sarmalayıcı: içine in
-    } else if (tag === 'ul' || tag === 'ol' || tag === 'figure' || tag === 'hr') {
-      out.push(el.outerHTML); // olduğu gibi koru
-    } else {
-      const inner = el.innerHTML.trim();
-      if (inner) out.push(`<p>${inner}</p>`);
-    }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error('AI yanıtı çözümlenemedi (geçersiz JSON).');
   }
+  if (!Array.isArray(parsed)) {
+    throw new Error('AI yanıtı beklenen biçimde değil.');
+  }
+
+  // Çapaları metinde SIRAYLA bul; bulunamayan/geri giden çapa yok sayılır.
+  const lc = metin.toLocaleLowerCase('tr');
+  const sinirlar: { idx: number; style: string }[] = [];
+  let ara = 0;
+  for (const item of parsed as Capa[]) {
+    const anchor = String(item?.start ?? '').replace(/\s+/g, ' ').trim();
+    let style = String(item?.style ?? 'main');
+    if (style !== 'main' && style !== 'blockquote' && !IZINLI_STILLER.has(style)) style = 'main';
+    if (anchor.length < 3) continue;
+    const idx = lc.indexOf(anchor.toLocaleLowerCase('tr'), ara);
+    if (idx < 0) continue;
+    sinirlar.push({ idx, style });
+    ara = idx + 1;
+  }
+
+  // Hiç çapa eşleşmediyse metni bozma: tek paragraf olarak döndür.
+  if (sinirlar.length === 0) return `<p>${escapeHtml(metin)}</p>`;
+
+  const parcalar: { text: string; style: string }[] = [];
+  if (sinirlar[0].idx > 0) {
+    parcalar.push({ text: metin.slice(0, sinirlar[0].idx).trim(), style: 'main' });
+  }
+  for (let i = 0; i < sinirlar.length; i++) {
+    const bas = sinirlar[i].idx;
+    const son = i + 1 < sinirlar.length ? sinirlar[i + 1].idx : metin.length;
+    parcalar.push({ text: metin.slice(bas, son).trim(), style: sinirlar[i].style });
+  }
+
+  return parcalar
+    .filter((p) => p.text)
+    .map((p) => blokHtml(p.text, p.style))
+    .join('');
+}
+
+/** Bir metin parçasını stiline göre güvenli HTML bloğuna sarar (metin escape'lenir). */
+function blokHtml(text: string, style: string): string {
+  const safe = escapeHtml(text);
+  if (style === 'blockquote') return `<blockquote><p>${safe}</p></blockquote>`;
+  if (style === 'filmkunye') return `<p data-style="filmkunye">${kunyeSatirlari(safe)}</p>`;
+  if (IZINLI_STILLER.has(style)) return `<p data-style="${style}">${safe}</p>`;
+  return `<p>${safe}</p>`;
+}
+
+/** Künyede rol etiketlerinin (Senaryo:, Oyuncular: ...) önüne <br> koyar. */
+function kunyeSatirlari(safe: string): string {
+  return safe
+    .replace(
+      /\s+(?=(?:Senaryo|Görüntü\s*Yönetmeni|Kurgu|Müzik|Sanat\s*Yönetmeni|Yapımcı|Oyuncular|Ses|Kostüm|Yapım|Süre)\s*:)/g,
+      '<br>',
+    )
+    .replace(/\s+(?=(?:19|20)\d{2}\s*\/)/g, '<br><br>');
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /** Sunucuda AI anahtarının yapılandırılıp yapılandırılmadığını döndürür. */

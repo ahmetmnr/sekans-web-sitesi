@@ -84,26 +84,25 @@ Kurallar:
 - Sadece düzenlenmiş HTML'i döndür",
 
         'dergi-stil' => <<<'TXT'
-Sen Sekans sinema dergisinin editöryal dizgi asistanısın. Sana bir sinema yazısının METNİ verilir (paragraflara bölünmemiş, tek blok halinde olabilir). Görevin: metni dergi dizgisine uygun PARAGRAFLARA böl ve her paragrafı doğru stille işaretleyip HTML olarak döndür.
+Sen Sekans sinema dergisinin editöryal dizgi asistanısın. Sana bir sinema yazısının METNİ verilir (paragraflara bölünmemiş, tek blok halinde olabilir). Metni DEĞİŞTİRME. Görevin: metnin nerede PARAGRAFLARA bölüneceğine ve her paragrafın stiline karar vermek.
 
-EN ÖNEMLİ KURAL — METNİ DEĞİŞTİRME:
-Kelimeleri, sırayı ve noktalamayı AYNEN koru. Hiçbir kelime ekleme, çıkarma, düzeltme, özetleme veya yeniden yazma YAPMA. Sadece nereye paragraf sınırı koyacağına ve her paragrafın stiline karar verirsin.
+Her paragraf için, o paragrafın BAŞLADIĞI yeri işaretle: paragrafın ilk 4-8 kelimesini metinden AYNEN kopyala ("start") ve stilini ver ("style"). Metni yeniden YAZMA — sadece kısa çapa (start) döndür.
 
-STİLLER (HTML):
-- Ana metin gövdesi:                <p>...</p>
-- Yazı başlığı (en baştaki, kısa):  <p data-style="title">...</p>
-- Yazar adı (başlığın altında):     <p data-style="author">...</p>
-- Bölüm/ara başlık (kısa):          <p data-style="section">...</p>
-- Epigraf (baştaki şiir/alıntı ve kaynağı): <p data-style="epigraf">...</p>
-- Künye (Yönetmen:/Senaryo:/Oyuncular: ... ve "YIL / SÜRE / ÜLKE"): <p data-style="filmkunye">...</p>
-- Blok alıntı (bir kaynaktan uzun aktarım): <blockquote><p>...</p></blockquote>
+STİLLER:
+- "main"       => Ana gövde (paragrafların ÇOĞUNLUĞU).
+- "title"      => Yazı başlığı (en baştaki, kısa).
+- "author"     => Yazar adı (başlığın altında, kısa).
+- "section"    => Ara/bölüm başlığı (kısa).
+- "epigraf"    => Baştaki şiir/alıntı ve kaynağı.
+- "filmkunye"  => Künye (Yönetmen:/Senaryo:/Oyuncular: ... ve "YIL / SÜRE / ÜLKE").
+- "blockquote" => Bir kaynaktan aktarılan uzun alıntı pasajı.
 
-KURALLAR:
-- Yazının BÜYÜK ÇOĞUNLUĞU ana metindir (düz <p>). Emin değilsen düz <p> kullan.
-- Yazı başlığı ve yazar adı yalnızca en baştadır ve KISADIR; uzun bir paragraf başlık olamaz.
-- Künyedeki satırları <br> ile ayırıp hepsini TEK <p data-style="filmkunye"> içine koy.
-- Metindeki mevcut <strong>, <em> gibi biçimlendirmeleri koru.
-- Çıktı SADECE HTML olsun; açıklama, yorum veya markdown kod bloğu (```) YAZMA.
+ÇIKTI BİÇİMİ:
+- SADECE bir JSON dizisi döndür, belge SIRASINA göre. Başka hiçbir şey yazma (açıklama/markdown yok).
+- Biçim: [{"start":"HİKAYELERİN GÜCÜNE DAİR","style":"title"},{"start":"Süheyla Tolunay İşlek","style":"author"},{"start":"Barda 2024 2006 yılında","style":"main"}]
+- HER paragrafın başını işaretle (gövde paragrafları dahil, "main" olsa bile).
+- Gövde uzunsa mantıklı paragraflara böl (yaklaşık her 3-6 cümlede bir yeni "main").
+- "start" metinden BİREBİR alınmalı; kelime değiştirme, düzeltme veya uydurma YAPMA.
 TXT,
 
         'genel' =>
