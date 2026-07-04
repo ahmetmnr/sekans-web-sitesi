@@ -55,9 +55,11 @@ function handle_ai_edit(): void
     ];
 
     // Dergi-stil: AI yalnızca "çapa (start) + stil" JSON'u döndürür (metni geri
-    // yazmaz) -> çıktı küçük, hızlı, zaman aşımı olmaz. temperature=0, hızlı model.
+    // yazmaz) -> çıktı küçük, hızlı, zaman aşımı olmaz. max_tokens SADECE çıktıyı
+    // (JSON'u) sınırlar, makaleyi değil (makale girdi olarak gider, 128k context'e
+    // sığar). 6000, çok uzun yazıda ~200+ paragraf çapasına dahi rahat yeter.
     $opts = $islem === 'dergi-stil'
-        ? ['temperature' => 0.0, 'max_tokens' => 3000, 'model' => 'gpt-4o-mini', 'timeout' => 45]
+        ? ['temperature' => 0.0, 'max_tokens' => 6000, 'model' => 'gpt-4o-mini', 'timeout' => 60]
         : [];
 
     $r = openai_chat($messages, $opts);
