@@ -24,6 +24,7 @@ import {
   Sparkles,
   RotateCcw,
   Wand2,
+  Copy,
 } from 'lucide-react';
 import { aiDuzenle, aiDergiStilUygula, aiStatus, type AIIslem } from '@/lib/openai';
 
@@ -187,11 +188,28 @@ export function AIEditModal({
     }
   };
 
+  // ÜRETİCİ işlemler: gövdeyi DEĞİŞTİRMEZ; yardımcı bir çıktı üretir (başlık
+  // önerileri, spot cümlesi). Bunları "Uygula" ile gövdeye basmak içeriği siler
+  // — bu yüzden yalnızca panoya kopyalanır, kullanıcı ilgili alana yapıştırır.
+  const URETICI_ISLEMLER = new Set<AIIslem>(['baslik-oner', 'spot-yaz']);
+  const isUretici = secilenIslem ? URETICI_ISLEMLER.has(secilenIslem) : false;
+
   const handleUygula = () => {
     if (sonuc) {
       onApply(sonuc, isFullContentMode);
       handleClose(false);
     }
+  };
+
+  const handleKopyala = async () => {
+    // HTML gelirse düz metne indir (başlık/spot zaten düz metindir).
+    const metin = sonuc.replace(/<[^>]+>/g, '').trim();
+    try {
+      await navigator.clipboard.writeText(metin);
+    } catch {
+      // Pano erişimi yoksa sessizce geç; kullanıcı önizlemeden elle kopyalayabilir.
+    }
+    handleClose(false);
   };
 
   return (
@@ -310,13 +328,21 @@ export function AIEditModal({
               </span>
             </div>
 
+            {/* Üretici işlem uyarısı — gövdeyi değiştirmez */}
+            {isUretici && (
+              <div className="flex items-start gap-2 text-xs text-blue-700 bg-blue-50 border border-blue-200 px-3 py-2 rounded-lg">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <span>Bu bir öneridir; yazı gövdesini <b>değiştirmez</b>. "Kopyala" ile alıp yukarıdaki Başlık / Spot alanına yapıştırın.</span>
+              </div>
+            )}
+
             {/* Sonuç Önizleme */}
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-gray-50 px-3 py-2 border-b">
                 <span className="text-xs font-medium text-gray-600">Sonuç Önizlemesi</span>
               </div>
               <div
-                className="p-4 max-h-[300px] overflow-y-auto prose prose-sm max-w-none"
+                className="p-4 max-h-[300px] overflow-y-auto prose prose-sm max-w-none cms-content-preview"
                 dangerouslySetInnerHTML={{ __html: sonuc }}
               />
             </div>
@@ -340,14 +366,25 @@ export function AIEditModal({
                   <X className="h-3.5 w-3.5 mr-1.5" />
                   İptal
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={handleUygula}
-                  className="bg-purple-600 hover:bg-purple-700"
-                >
-                  <Check className="h-3.5 w-3.5 mr-1.5" />
-                  Uygula
-                </Button>
+                {isUretici ? (
+                  <Button
+                    size="sm"
+                    onClick={handleKopyala}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    <Copy className="h-3.5 w-3.5 mr-1.5" />
+                    Kopyala
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={handleUygula}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    <Check className="h-3.5 w-3.5 mr-1.5" />
+                    Uygula
+                  </Button>
+                )}
               </div>
             </div>
           </div>

@@ -63,169 +63,87 @@ export async function aiDuzenle(
   }
 }
 
-// Dergi stillerinin geçerli listesi (AI haritasını doğrulamak için).
-// 'title-author' eski/legacy içerik için kabul edilir (CSS'te başlık gibi render edilir).
-const DERGI_STILLER = ['main', 'title', 'author', 'section', 'epigraf', 'filmkunye', 'blockquote', 'title-author'];
+// AI'ın döndürebileceği geçerli paragraf data-style değerleri.
+const IZINLI_STILLER = new Set(['title', 'author', 'section', 'epigraf', 'filmkunye']);
 
 /**
- * "Dergi Stillerini Otomatik Uygula" — AI'a yazının TAMAMINI yazdırmaz.
- * Paragrafları numaralı listeye çevirir, AI'dan yalnızca "indeks -> stil" JSON
- * haritası ister (minik çıktı -> hızlı) ve stilleri DOM üzerinde uygular. Metin
- * AI'dan geçmediği için %100 korunur.
+ * "Dergi Stillerini Otomatik Uygula".
  *
- * SAĞLAMLIK ÖNLEMLERİ (içerik bir daha bozulmasın diye):
- *  1) Ön-bölme: tek/dev paragraf olarak yapıştırılan metni YALNIZCA net paragraf
- *     sınırlarında (ardışık <br> ya da çift satır sonu) paragraflara böler.
- *  2) Makuliyet denetimi: AI bir bloğu yanlış etiketlerse (ör. tüm gövdeyi
- *     "title-author") uzunluk/biçim kurallarıyla reddedilir ve "main"e düşürülür.
- *     Böylece "her şey kocaman başlık oldu" durumu imkânsız hale gelir.
+ * Metni AI'a gönderir; AI metni KELİMESİ KELİMESİNE koruyarak paragraflara böler
+ * ve her paragrafı doğru stille (title/author/section/epigraf/filmkunye) veya
+ * blok alıntı ile işaretleyip YAPISAL HTML döndürür. Tek dev paragraf (blob)
+ * olarak yapıştırılmış içeriğe de çalışır — segmentasyonu AI yapar.
+ *
+ * Dönen HTML güvenlik + geçerli stiller için temizlenir. Kullanıcı Uygula'dan
+ * önce sonucu modalde önizler.
  */
 export async function aiDergiStilUygula(html: string): Promise<string> {
-  const doc = new DOMParser().parseFromString(`<div id="__sekans_root">${html}</div>`, 'text/html');
-  const root = doc.getElementById('__sekans_root');
-  if (!root) return html;
-
-  // 1) Güvenli ön-bölme (yalnızca net sınırlarda; belirsizse dokunmaz).
-  onBolmeParagraflara(doc, root);
-
-  const blocks = Array.from(root.children) as HTMLElement[];
-  if (blocks.length === 0) return html;
-
-  const metin = (el: HTMLElement) => (el.textContent || '').replace(/\s+/g, ' ').trim();
-  const toplamUzunluk = blocks.reduce((n, el) => n + metin(el).length, 0);
-
-  // Numaralı liste: her bloğun düz metni (kısaltılmış), AI sınıflandırsın diye.
-  const liste = blocks.map((el, i) => `[${i}] ${metin(el).slice(0, 220)}`).join('\n');
-
   let res: { content: string };
   try {
-    res = await api.ai.edit(liste, 'dergi-stil');
+    res = await api.ai.edit(html, 'dergi-stil');
   } catch (e) {
     const err = e as ApiError;
     throw new Error(err.code && err.code !== 'ERROR' ? err.code : (err.message || 'AI_ERROR'));
   }
 
-  const raw = (res.content || '')
+  const out = (res.content || '')
     .trim()
-    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/^```(?:html)?\s*/i, '')
     .replace(/\s*```$/i, '')
     .trim();
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new Error('AI yanıtı çözümlenemedi (geçersiz JSON).');
-  }
-  if (!Array.isArray(parsed)) {
-    throw new Error('AI yanıtı beklenen biçimde değil.');
-  }
+  if (!out) throw new Error('AI boş yanıt döndürdü.');
+  return sanitizeDergiHtml(out);
+}
 
-  const styleByIndex = new Map<number, string>();
-  for (const item of parsed as Array<{ i?: unknown; style?: unknown }>) {
-    const i = typeof item?.i === 'number' ? item.i : Number(item?.i);
-    const style = String(item?.style ?? '');
-    if (Number.isInteger(i) && DERGI_STILLER.includes(style)) {
-      styleByIndex.set(i, style);
+/**
+ * AI'dan gelen HTML'i güvenli + geçerli hale getirir:
+ *  - script/style/iframe vb. ile tüm on* ve gereksiz öznitelikleri kaldırır,
+ *  - yalnızca <p> (geçerli data-style ile) ve <blockquote><p> bloklarını korur,
+ *  - sarmalayıcı div/section/article içine iner (düzleştirir).
+ */
+function sanitizeDergiHtml(html: string): string {
+  const doc = new DOMParser().parseFromString(`<div id="__r">${html}</div>`, 'text/html');
+  const root = doc.getElementById('__r');
+  if (!root) return html;
+
+  root.querySelectorAll('script, style, iframe, object, embed, link, meta').forEach((n) => n.remove());
+  root.querySelectorAll('*').forEach((el) => {
+    for (const attr of [...el.attributes]) {
+      const name = attr.name.toLowerCase();
+      const izinli =
+        name === 'data-style' ||
+        (el.tagName === 'A' && (name === 'href' || name === 'title'));
+      if (!izinli) el.removeAttribute(attr.name);
     }
-  }
-
-  blocks.forEach((el, i) => {
-    let style = styleByIndex.get(i) || 'main';
-    // 2) Güvenlik: AI'ın makul olmayan etiketini reddet, "main"e düşür.
-    if (!stilMakulMu(style, el, metin(el).length, toplamUzunluk)) style = 'main';
-    applyDergiStil(doc, el, style);
   });
-  return root.innerHTML;
+
+  const parcalar: string[] = [];
+  collectBlocks(root, parcalar);
+  return parcalar.join('') || html;
 }
 
-/**
- * AI'ın verdiği stil bu bloğa MAKUL mü? Değilse çağıran "main"e düşürür.
- * Başlık/ara başlık KISADIR; künye belirli kalıplar içerir; hiçbir özel stil
- * tek başına neredeyse tüm belgeyi kaplayamaz (tek-blok yapıştırma koruması).
- */
-function stilMakulMu(style: string, el: HTMLElement, uzunluk: number, toplam: number): boolean {
-  if (style === 'main') return true;
-  const text = (el.textContent || '').trim();
-  const satir = ((el.innerHTML.match(/<br\s*\/?>/gi) || []).length) + 1;
-
-  // Bir blok neredeyse tüm yazıysa hiçbir özel stil olamaz (blok alıntı dahil).
-  if (toplam > 600 && uzunluk > toplam * 0.6) return false;
-
-  switch (style) {
-    case 'title':
-    case 'title-author': return uzunluk <= 160 && satir <= 3;
-    case 'author':       return uzunluk <= 80 && satir <= 2;
-    case 'section':      return uzunluk <= 120 && satir <= 2;
-    case 'filmkunye':
-      return /(\b(Yönetmen|Senaryo|Görüntü\s*Yönetmeni|Kurgu|Müzik|Oyuncu(?:lar)?|Yapımcı|Sanat\s*Yönetmeni|Ses|Kostüm|Süre)\b\s*:)|((?:^|\s)(?:19|20)\d{2}\s*\/)/i.test(text);
-    case 'epigraf':      return uzunluk <= 400;
-    case 'blockquote':   return uzunluk >= 80 && uzunluk < toplam * 0.7;
-    default:             return true;
-  }
-}
-
-/**
- * Tek/dev paragraf olarak yapıştırılan metni paragraflara böler — YALNIZCA net
- * sınırlarda (ardışık <br> ya da çift satır sonu). Belirsizse dokunmaz (metni
- * cümle ortasından bölmez). İyi biçimli çok-paragraflı içeriğe etkisi olmaz.
- */
-function onBolmeParagraflara(doc: Document, root: HTMLElement): void {
-  for (const el of Array.from(root.children) as HTMLElement[]) {
+/** Üst-seviye blokları toplar; sarmalayıcıların içine iner, bilinmeyeni <p>'ye indirir. */
+function collectBlocks(parent: HTMLElement, out: string[]): void {
+  for (const el of Array.from(parent.children) as HTMLElement[]) {
     const tag = el.tagName.toLowerCase();
-    if (tag !== 'p' && tag !== 'div') continue;
-    if ((el.textContent || '').trim().length < 400) continue; // kısa blok bölünmez
-
-    let parts: string[] = [];
-    if (/(<br\s*\/?>\s*){2,}/i.test(el.innerHTML)) {
-      parts = el.innerHTML.split(/(?:<br\s*\/?>\s*){2,}/i);
-    } else if (/\n[ \t]*\n/.test(el.textContent || '')) {
-      parts = (el.textContent || '').split(/\n[ \t]*\n/).map(escapeHtml);
+    if (tag === 'blockquote') {
+      const inner = (el.querySelector('p')?.innerHTML ?? el.innerHTML).trim();
+      if (inner) out.push(`<blockquote><p>${inner}</p></blockquote>`);
+    } else if (tag === 'p' || /^h[1-6]$/.test(tag)) {
+      const ds = el.getAttribute('data-style');
+      const styleAttr = ds && IZINLI_STILLER.has(ds) ? ` data-style="${ds}"` : '';
+      const inner = el.innerHTML.trim();
+      if (inner) out.push(`<p${styleAttr}>${inner}</p>`);
+    } else if (tag === 'div' || tag === 'section' || tag === 'article' || tag === 'main' || tag === 'body') {
+      collectBlocks(el, out); // sarmalayıcı: içine in
+    } else if (tag === 'ul' || tag === 'ol' || tag === 'figure' || tag === 'hr') {
+      out.push(el.outerHTML); // olduğu gibi koru
+    } else {
+      const inner = el.innerHTML.trim();
+      if (inner) out.push(`<p>${inner}</p>`);
     }
-    parts = parts.map((s) => s.trim()).filter(Boolean);
-    if (parts.length < 2) continue; // net paragraf sınırı yoksa dokunma
-
-    const frag = doc.createDocumentFragment();
-    for (const part of parts) {
-      const p = doc.createElement('p');
-      p.innerHTML = part;
-      frag.appendChild(p);
-    }
-    el.replaceWith(frag);
   }
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-/** Tek bir bloğa stil uygular; metni/iç HTML'i korur, yalnızca etiket/sarmalama değişir. */
-function applyDergiStil(doc: Document, el: HTMLElement, style: string): void {
-  const tag = el.tagName.toLowerCase();
-  el.removeAttribute('data-style'); // önceki stili temizle
-
-  if (style === 'main') return;
-
-  if (style === 'blockquote') {
-    if (tag === 'blockquote') return;
-    const bq = doc.createElement('blockquote');
-    const p = doc.createElement('p');
-    p.innerHTML = el.innerHTML;
-    bq.appendChild(p);
-    el.replaceWith(bq);
-    return;
-  }
-
-  // Paragraf stilleri: title-author, section, filmkunye, epigraf
-  if (tag === 'p') {
-    el.setAttribute('data-style', style);
-  } else if (/^h[1-6]$/.test(tag)) {
-    const p = doc.createElement('p');
-    p.innerHTML = el.innerHTML;
-    p.setAttribute('data-style', style);
-    el.replaceWith(p);
-  }
-  // liste/figure/görsel vb. bloklara paragraf stili uygulanmaz (dokunulmaz).
 }
 
 /** Sunucuda AI anahtarının yapılandırılıp yapılandırılmadığını döndürür. */
