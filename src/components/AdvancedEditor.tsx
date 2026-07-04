@@ -353,9 +353,10 @@ function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick, show
     if (editor.isActive('heading', { level: 1 })) return 'Başlık 1';
     if (editor.isActive('heading', { level: 2 })) return 'Başlık 2';
     const ds = editor.getAttributes('paragraph').dataStyle as string | null;
-    if (ds === 'title-author') return 'Başlık / Yazar';
+    if (ds === 'title' || ds === 'title-author') return 'Yazı Başlığı';
+    if (ds === 'author') return 'Yazar Adı';
     if (ds === 'section') return 'Bölüm Başlığı';
-    if (ds === 'filmkunye') return 'Film Künye';
+    if (ds === 'filmkunye') return 'Künye';
     if (ds === 'epigraf') return 'Epigraf';
     return 'Ana Metin';
   };
@@ -363,7 +364,7 @@ function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick, show
   // Özel paragraf stilini uygula: paragrafa çevir, data-style ata ve
   // stile uygun varsayılan hizalamayı ver (editör sonradan değiştirebilir).
   const applyParagraphStyle = (
-    style: 'title-author' | 'section' | 'filmkunye' | 'epigraf' | null,
+    style: 'title' | 'author' | 'section' | 'filmkunye' | 'epigraf' | null,
     align: 'left' | 'center' | 'right' | 'justify',
   ) => {
     editor
@@ -441,9 +442,13 @@ function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick, show
 
               <DropdownMenuSeparator />
 
-              <DropdownMenuItem onClick={() => applyParagraphStyle('title-author', 'center')}>
+              <DropdownMenuItem onClick={() => applyParagraphStyle('title', 'center')}>
                 <Type className="h-4 w-4 mr-2 flex-shrink-0" />
-                <span className="flex-1 text-center font-bold text-base">Başlık / Yazar Adı</span>
+                <span className="flex-1 text-center font-bold text-base">Yazı Başlığı</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => applyParagraphStyle('author', 'center')}>
+                <Type className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="flex-1 text-center font-bold">Yazar Adı</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => applyParagraphStyle('section', 'center')}>
                 <Heading2 className="h-4 w-4 mr-2 flex-shrink-0" />
@@ -451,11 +456,11 @@ function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick, show
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => applyParagraphStyle('filmkunye', 'center')}>
                 <AlignCenter className="h-4 w-4 mr-2 flex-shrink-0" />
-                <span className="flex-1 text-center text-sm text-gray-600">Film Künye</span>
+                <span className="flex-1 text-center text-sm text-gray-600">Künye</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => applyParagraphStyle('epigraf', 'right')}>
                 <AlignRight className="h-4 w-4 mr-2 flex-shrink-0" />
-                <span className="flex-1 text-right text-sm italic text-gray-600">Epigraf</span>
+                <span className="flex-1 text-right text-sm text-gray-600">Epigraf</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => editor.chain().focus().toggleBlockquote().run()}>
                 <Quote className="h-4 w-4 mr-2 flex-shrink-0" />

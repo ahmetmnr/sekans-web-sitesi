@@ -64,25 +64,38 @@ export async function aiDuzenle(
 }
 
 // Dergi stillerinin geçerli listesi (AI haritasını doğrulamak için).
-const DERGI_STILLER = ['main', 'title-author', 'section', 'epigraf', 'filmkunye', 'blockquote'];
+// 'title-author' eski/legacy içerik için kabul edilir (CSS'te başlık gibi render edilir).
+const DERGI_STILLER = ['main', 'title', 'author', 'section', 'epigraf', 'filmkunye', 'blockquote', 'title-author'];
 
 /**
  * "Dergi Stillerini Otomatik Uygula" — AI'a yazının TAMAMINI yazdırmaz.
- * Bunun yerine paragrafları numaralı listeye çevirir, AI'dan yalnızca
- * "indeks -> stil" JSON haritası ister (minik çıktı -> hızlı, zaman aşımı yok),
- * ve stilleri DOM üzerinde uygular. Metin hiç AI'dan geçmediği için %100 korunur.
+ * Paragrafları numaralı listeye çevirir, AI'dan yalnızca "indeks -> stil" JSON
+ * haritası ister (minik çıktı -> hızlı) ve stilleri DOM üzerinde uygular. Metin
+ * AI'dan geçmediği için %100 korunur.
+ *
+ * SAĞLAMLIK ÖNLEMLERİ (içerik bir daha bozulmasın diye):
+ *  1) Ön-bölme: tek/dev paragraf olarak yapıştırılan metni YALNIZCA net paragraf
+ *     sınırlarında (ardışık <br> ya da çift satır sonu) paragraflara böler.
+ *  2) Makuliyet denetimi: AI bir bloğu yanlış etiketlerse (ör. tüm gövdeyi
+ *     "title-author") uzunluk/biçim kurallarıyla reddedilir ve "main"e düşürülür.
+ *     Böylece "her şey kocaman başlık oldu" durumu imkânsız hale gelir.
  */
 export async function aiDergiStilUygula(html: string): Promise<string> {
   const doc = new DOMParser().parseFromString(`<div id="__sekans_root">${html}</div>`, 'text/html');
   const root = doc.getElementById('__sekans_root');
   if (!root) return html;
+
+  // 1) Güvenli ön-bölme (yalnızca net sınırlarda; belirsizse dokunmaz).
+  onBolmeParagraflara(doc, root);
+
   const blocks = Array.from(root.children) as HTMLElement[];
   if (blocks.length === 0) return html;
 
+  const metin = (el: HTMLElement) => (el.textContent || '').replace(/\s+/g, ' ').trim();
+  const toplamUzunluk = blocks.reduce((n, el) => n + metin(el).length, 0);
+
   // Numaralı liste: her bloğun düz metni (kısaltılmış), AI sınıflandırsın diye.
-  const liste = blocks
-    .map((el, i) => `[${i}] ${(el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 220)}`)
-    .join('\n');
+  const liste = blocks.map((el, i) => `[${i}] ${metin(el).slice(0, 220)}`).join('\n');
 
   let res: { content: string };
   try {
@@ -117,8 +130,73 @@ export async function aiDergiStilUygula(html: string): Promise<string> {
     }
   }
 
-  blocks.forEach((el, i) => applyDergiStil(doc, el, styleByIndex.get(i) || 'main'));
+  blocks.forEach((el, i) => {
+    let style = styleByIndex.get(i) || 'main';
+    // 2) Güvenlik: AI'ın makul olmayan etiketini reddet, "main"e düşür.
+    if (!stilMakulMu(style, el, metin(el).length, toplamUzunluk)) style = 'main';
+    applyDergiStil(doc, el, style);
+  });
   return root.innerHTML;
+}
+
+/**
+ * AI'ın verdiği stil bu bloğa MAKUL mü? Değilse çağıran "main"e düşürür.
+ * Başlık/ara başlık KISADIR; künye belirli kalıplar içerir; hiçbir özel stil
+ * tek başına neredeyse tüm belgeyi kaplayamaz (tek-blok yapıştırma koruması).
+ */
+function stilMakulMu(style: string, el: HTMLElement, uzunluk: number, toplam: number): boolean {
+  if (style === 'main') return true;
+  const text = (el.textContent || '').trim();
+  const satir = ((el.innerHTML.match(/<br\s*\/?>/gi) || []).length) + 1;
+
+  // Bir blok neredeyse tüm yazıysa hiçbir özel stil olamaz (blok alıntı dahil).
+  if (toplam > 600 && uzunluk > toplam * 0.6) return false;
+
+  switch (style) {
+    case 'title':
+    case 'title-author': return uzunluk <= 160 && satir <= 3;
+    case 'author':       return uzunluk <= 80 && satir <= 2;
+    case 'section':      return uzunluk <= 120 && satir <= 2;
+    case 'filmkunye':
+      return /(\b(Yönetmen|Senaryo|Görüntü\s*Yönetmeni|Kurgu|Müzik|Oyuncu(?:lar)?|Yapımcı|Sanat\s*Yönetmeni|Ses|Kostüm|Süre)\b\s*:)|((?:^|\s)(?:19|20)\d{2}\s*\/)/i.test(text);
+    case 'epigraf':      return uzunluk <= 400;
+    case 'blockquote':   return uzunluk >= 80 && uzunluk < toplam * 0.7;
+    default:             return true;
+  }
+}
+
+/**
+ * Tek/dev paragraf olarak yapıştırılan metni paragraflara böler — YALNIZCA net
+ * sınırlarda (ardışık <br> ya da çift satır sonu). Belirsizse dokunmaz (metni
+ * cümle ortasından bölmez). İyi biçimli çok-paragraflı içeriğe etkisi olmaz.
+ */
+function onBolmeParagraflara(doc: Document, root: HTMLElement): void {
+  for (const el of Array.from(root.children) as HTMLElement[]) {
+    const tag = el.tagName.toLowerCase();
+    if (tag !== 'p' && tag !== 'div') continue;
+    if ((el.textContent || '').trim().length < 400) continue; // kısa blok bölünmez
+
+    let parts: string[] = [];
+    if (/(<br\s*\/?>\s*){2,}/i.test(el.innerHTML)) {
+      parts = el.innerHTML.split(/(?:<br\s*\/?>\s*){2,}/i);
+    } else if (/\n[ \t]*\n/.test(el.textContent || '')) {
+      parts = (el.textContent || '').split(/\n[ \t]*\n/).map(escapeHtml);
+    }
+    parts = parts.map((s) => s.trim()).filter(Boolean);
+    if (parts.length < 2) continue; // net paragraf sınırı yoksa dokunma
+
+    const frag = doc.createDocumentFragment();
+    for (const part of parts) {
+      const p = doc.createElement('p');
+      p.innerHTML = part;
+      frag.appendChild(p);
+    }
+    el.replaceWith(frag);
+  }
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /** Tek bir bloğa stil uygular; metni/iç HTML'i korur, yalnızca etiket/sarmalama değişir. */

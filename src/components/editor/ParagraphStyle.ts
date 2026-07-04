@@ -9,15 +9,20 @@ import { Extension } from '@tiptap/core';
  *
  * Tanımlı stiller:
  *  - (boş)        → Ana Metin (MAIN), varsayılan paragraf
- *  - title-author → Başlık / Yazar Adı (ortada, kalın)
+ *  - title        → Yazı Başlığı (ortada, kalın, büyük punto)
+ *  - author       → Yazar Adı (ortada, kalın, başlıktan küçük)
  *  - section      → Bölüm Başlığı (ortada, kalın)
- *  - filmkunye    → Film Künye (ortada, küçük punto)
+ *  - filmkunye    → Künye (ortada, küçük punto, sıkı satır aralığı)
  *  - epigraf      → Epigraf (sağa yaslı, küçük punto)
+ *
+ * Not: 'title-author' eski birleşik stildir; artık title/author olarak ayrıldı.
+ * Eski içerik CSS'te başlık gibi render edilmeye devam eder (geriye dönük uyum).
  *
  * Blok alıntı ayrı bir düğüm (blockquote) olarak ele alınır.
  */
 export type ParagraphStyleName =
-  | 'title-author'
+  | 'title'
+  | 'author'
   | 'section'
   | 'filmkunye'
   | 'epigraf';

@@ -400,15 +400,29 @@
   text-align: inherit;
 }
 
-/* --- Başlık / Yazar Adı (ortada, kalın) --- */
-/* Bloğun altında görece büyük otomatik boşluk bırakılır. */
+/* --- Yazı Başlığı (ortada, kalın, büyük punto) ---
+   İtalik editör inisiyatifinde (zorlanmaz). Altında Yazar Adı geleceği için alt
+   boşluk küçük tutulur. 'title-author' eski/legacy içerik için başlık gibi render. */
+.ProseMirror p[data-style="title"],
+.cms-content-preview p[data-style="title"],
 .ProseMirror p[data-style="title-author"],
 .cms-content-preview p[data-style="title-author"] {
   text-align: center;
   font-weight: 700;
-  font-size: 1.4em;
+  font-size: 1.45em;
   line-height: 1.25;
-  margin: 1.5em 0 1.7em;
+  margin: 1.6em 0 0.5em;
+}
+
+/* --- Yazar Adı (ortada, kalın, başlıktan küçük) ---
+   Üstte başlığa yakın, altta gövde/epigrafa kadar görece büyük boşluk. */
+.ProseMirror p[data-style="author"],
+.cms-content-preview p[data-style="author"] {
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.15em;
+  line-height: 1.3;
+  margin: 0.5em 0 1.8em;
 }
 
 /* --- Bölüm Başlığı (ortada, kalın) --- */
@@ -421,12 +435,14 @@
   margin: 1.5em 0 0.8em;
 }
 
-/* --- Film Künye (ortada, küçük punto) --- */
+/* --- Künye (ortada, bir punto küçük, SIKI satır aralığı) ---
+   Ana metinden küçük ve satır aralıksıza yakın. Etiketleri (Yönetmen:, vb.)
+   bold yapmak editör inisiyatifinde. */
 .ProseMirror p[data-style="filmkunye"],
 .cms-content-preview p[data-style="filmkunye"] {
   text-align: center;
   font-size: 0.9em;
-  line-height: 1.3;
+  line-height: 1.2;
   margin: 1.2em 0;
 }
 
@@ -441,8 +457,10 @@
 
 /* AYNI stilden ardışık satırlar tek satır aralığı gibi sık dursun; FARKLI
    stiller arasındaki (ör. Yazar Adı -> Epigraf) otomatik boşluk korunur. */
-.ProseMirror p[data-style="title-author"]:has(+ p[data-style="title-author"]),
-.cms-content-preview p[data-style="title-author"]:has(+ p[data-style="title-author"]),
+.ProseMirror p[data-style="title"]:has(+ p[data-style="title"]),
+.cms-content-preview p[data-style="title"]:has(+ p[data-style="title"]),
+.ProseMirror p[data-style="author"]:has(+ p[data-style="author"]),
+.cms-content-preview p[data-style="author"]:has(+ p[data-style="author"]),
 .ProseMirror p[data-style="section"]:has(+ p[data-style="section"]),
 .cms-content-preview p[data-style="section"]:has(+ p[data-style="section"]),
 .ProseMirror p[data-style="filmkunye"]:has(+ p[data-style="filmkunye"]),
@@ -451,8 +469,10 @@
 .cms-content-preview p[data-style="epigraf"]:has(+ p[data-style="epigraf"]) {
   margin-bottom: 0.15em;
 }
-.ProseMirror p[data-style="title-author"] + p[data-style="title-author"],
-.cms-content-preview p[data-style="title-author"] + p[data-style="title-author"],
+.ProseMirror p[data-style="title"] + p[data-style="title"],
+.cms-content-preview p[data-style="title"] + p[data-style="title"],
+.ProseMirror p[data-style="author"] + p[data-style="author"],
+.cms-content-preview p[data-style="author"] + p[data-style="author"],
 .ProseMirror p[data-style="section"] + p[data-style="section"],
 .cms-content-preview p[data-style="section"] + p[data-style="section"],
 .ProseMirror p[data-style="filmkunye"] + p[data-style="filmkunye"],
