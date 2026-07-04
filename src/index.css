@@ -344,6 +344,26 @@
    aynı görünüm. Özel stiller sans-serif (Inter) gövde fontunu miras alır.
    ============================================ */
 
+/* --- Font: TÜM özel stiller ve blok alıntı her zaman Inter (sans-serif) ---
+   Miras yoluyla zaten Inter geliyor; yine de bazı stillerin (Başlık/Yazar,
+   Epigraf) serif görünmesini kesin olarak engellemek için açıkça sabitliyoruz. */
+.ProseMirror p[data-style],
+.cms-content-preview p[data-style],
+.ProseMirror blockquote,
+.cms-content-preview blockquote,
+.ProseMirror blockquote p,
+.cms-content-preview blockquote p {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* --- Ana Metin (MAIN) iki yana yaslı ---
+   Özel stili olmayan (data-style'sız) gövde paragrafları varsayılan olarak
+   iki yana yaslanır. Editör center/right seçerse satır içi stil bunu ezer. */
+.ProseMirror p:not([data-style]),
+.cms-content-preview p:not([data-style]) {
+  text-align: justify;
+}
+
 /* --- Blok Alıntı ---
    İtalik DEĞİL, soldan/sağdan girik, iki yana yaslı, bir gıdım küçük punto,
    dar satır aralığı, soldaki dikey çizgi yerine ❝ simgesi. */

@@ -101,15 +101,18 @@ function ImageComponent({ node, updateAttributes, deleteNode, selected }: ImageN
       return style;
     }
 
-    // Float yoksa normal hizalama
+    // Float yoksa normal hizalama.
+    // ÖNEMLİ: flex-direction 'column' olmalı — aksi halde görsel ile altındaki
+    // caption yan yana (satır yönünde) dizilir ve ortalama bozulur. Yayın
+    // tarafındaki (renderHTML) düzenle birebir aynı olsun diye column kullanıyoruz.
     switch (alignment) {
       case 'left':
-        return { display: 'flex', justifyContent: 'flex-start' };
+        return { display: 'flex', flexDirection: 'column', alignItems: 'flex-start' };
       case 'right':
-        return { display: 'flex', justifyContent: 'flex-end' };
+        return { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' };
       case 'center':
       default:
-        return { display: 'flex', justifyContent: 'center' };
+        return { display: 'flex', flexDirection: 'column', alignItems: 'center' };
     }
   };
 

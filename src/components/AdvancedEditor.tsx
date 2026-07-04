@@ -433,7 +433,7 @@ function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick, show
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-60">
-              <DropdownMenuItem onClick={() => applyParagraphStyle(null, 'left')}>
+              <DropdownMenuItem onClick={() => applyParagraphStyle(null, 'justify')}>
                 <Pilcrow className="h-4 w-4 mr-2 flex-shrink-0" />
                 <span>Ana Metin</span>
                 <span className="ml-auto text-[10px] text-gray-400">MAIN</span>
@@ -1142,7 +1142,8 @@ function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick, show
                 })
                 .run();
 
-              // Yeni not öğesi (italik ipucu metniyle)
+              // Yeni not öğesi — ipucu metni İTALİK DEĞİL (editör üzerine yazınca
+              // metin otomatik italik kalmasın; italik tamamen editör inisiyatifinde).
               const newItem = {
                 type: 'footnoteItem',
                 attrs: { footnoteId: `fn-${num}` },
@@ -1150,7 +1151,6 @@ function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick, show
                   {
                     type: 'text',
                     text: 'Not metnini buraya yazın',
-                    marks: [{ type: 'italic' }],
                   },
                 ],
               };
@@ -1233,10 +1233,17 @@ function CharacterCounter({ editor }: { editor: ReturnType<typeof useEditor> }) 
   if (!editor) return null;
 
   const characters = editor.storage.characterCount.characters();
-  // Kelime sayısını metinden hesapla: ardışık boşluk ve satır sonları tek ayraç
-  // sayılır, böylece boş ENTER'lı satırlar kelime olarak sayılmaz (Word ile daha tutarlı).
-  const plain = editor.getText({ blockSeparator: '\n' }).trim();
-  const words = plain ? plain.split(/\s+/).length : 0;
+  // Sözcük sayımı: yalnızca ANA GÖVDE sayılır — dipnot/"Notlar" bölümü ve [n]
+  // referans işaretleri hariç. Ardışık boşluk/satır sonu tek ayraç sayılır,
+  // böylece boş ENTER'lı satırlar sözcük olarak sayılmaz. Bu, Word'ün durum
+  // çubuğundaki sözcük sayısıyla (dipnotları saymaz) daha tutarlıdır.
+  let bodyText = '';
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === 'footnotesSection') return false; // dipnot bölümünü atla
+    if (node.isText) bodyText += node.text + ' ';
+    return true;
+  });
+  const words = (bodyText.match(/\S+/g) || []).length;
 
   return (
     <div className="flex items-center gap-4 px-4 py-2 bg-gray-50 border-t text-xs text-gray-500">
