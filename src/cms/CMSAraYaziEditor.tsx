@@ -1,6 +1,7 @@
 // CMS Ara Yazı Editörü - Tam Sayfa
 import { useState, useEffect, useRef } from 'react';
 import { useCMS } from '@/context/CMSContext';
+import { api } from '@/lib/api';
 import { useFootnotes } from '@/hooks/useFootnotes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -83,15 +84,22 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
       .replace(/^-+|-+$/g, '');
   };
 
-  // Mevcut yazıyı yükle
+  // Mevcut yazıyı yükle. ÖNEMLİ: /bootstrap ara yazıları GÖVDESİZ döndürür
+  // (liste hafif kalsın diye), o yüzden düzenlerken TAM içeriği (icerik dahil)
+  // sunucudan ayrı çekiyoruz — aksi halde içerik DB'de olsa bile editör boş görünür.
   useEffect(() => {
-    if (yaziId) {
-      const existingYazi = araYazilar.find(y => y.id === yaziId);
-      if (existingYazi) {
-        setFormData(existingYazi);
-      }
-    }
-  }, [yaziId, araYazilar]);
+    if (!yaziId) return;
+    let cancelled = false;
+    // Listedeki özetle başlığı/spotu hemen doldur, sonra tam içeriği çek.
+    const summary = araYazilar.find(y => y.id === yaziId);
+    if (summary) setFormData(summary);
+    api.araYazi.get(yaziId)
+      .then((full) => { if (!cancelled) setFormData(full); })
+      .catch(() => { /* çekilemezse listedeki özet kalır */ });
+    return () => { cancelled = true; };
+    // araYazilar'ı bağımlılığa koymuyoruz ki liste yenilenince içeriği ezmesin.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [yaziId]);
 
   const handleYazarChange = (yazarId: string) => {
     const yazar = yazarlar.find(y => y.id === yazarId);
