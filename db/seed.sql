@@ -941,3 +941,7 @@ INSERT INTO ayarlar (anahtar, deger) VALUES ('openai_model', 'gpt-4o-mini') ON D
 
 COMMIT;
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- Sayi yasam dongusu durumunu is_current(ten turet (taze kurulum icin):
+--   is_current=1 -> yayinda, aksi halde arsiv. (durum kolonu yeni eklendi.)
+UPDATE sayilar SET durum = IF(is_current = 1, 'yayinda', 'arsiv');

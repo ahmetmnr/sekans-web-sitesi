@@ -16,6 +16,7 @@ require_once __DIR__ . '/routes/cms_writes.php';
 require_once __DIR__ . '/routes/ai.php';
 require_once __DIR__ . '/routes/upload.php';
 require_once __DIR__ . '/routes/admin.php';
+require_once __DIR__ . '/routes/users.php';
 
 // --- Geliştirme CORS (yalnızca app.dev=1) -----------------------------------
 $app = sekans_config()['app'] ?? [];
@@ -96,9 +97,16 @@ $routes = [
     ['PUT',    '#^/arsiv/([^/]+)$#',     'editor', fn($m) => handle_update_arsiv($m[1], read_json_body())],
     ['DELETE', '#^/arsiv/([^/]+)$#',     'editor', fn($m) => handle_delete_arsiv($m[1])],
 
-    // ---- Aktif sayı ----
-    ['PUT',    '#^/sayi/current$#',      'editor', fn($m) => handle_update_current_sayi(read_json_body())],
-    ['POST',   '#^/sayi/publish$#',      'admin',  fn($m) => handle_publish_sayi()],
+    // ---- Sayılar (yaşam döngüsü: taslak/yayinda/arsiv) ----
+    // NOT: 'current'/'publish'/'durum' rotaları GENEL '/sayi/{code}' rotasından ÖNCE gelmeli.
+    ['GET',    '#^/cms/sayilar$#',        'editor', fn($m) => handle_cms_list_sayilar()],
+    ['GET',    '#^/editorler$#',          'editor', fn($m) => handle_list_editorler()],
+    ['POST',   '#^/sayi$#',               'editor', fn($m) => handle_create_sayi(read_json_body())],
+    ['PUT',    '#^/sayi/current$#',       'editor', fn($m) => handle_update_current_sayi(read_json_body())],
+    ['POST',   '#^/sayi/publish$#',       'admin',  fn($m) => handle_publish_sayi()],
+    ['PUT',    '#^/sayi/([^/]+)/durum$#', 'editor', fn($m) => handle_set_sayi_durum($m[1], read_json_body())],
+    ['PUT',    '#^/sayi/([^/]+)$#',       'editor', fn($m) => handle_update_sayi($m[1], read_json_body())],
+    ['DELETE', '#^/sayi/([^/]+)$#',       'editor', fn($m) => handle_delete_sayi($m[1])],
 
     // ---- Yarışma / Hakkımızda ----
     ['PUT',    '#^/yarisma$#',           'editor', fn($m) => handle_update_yarisma(read_json_body())],
@@ -108,6 +116,12 @@ $routes = [
     ['GET',    '#^/export$#',            'admin', fn($m) => handle_export()],
     ['POST',   '#^/import$#',            'admin', fn($m) => handle_import(read_json_body())],
     ['POST',   '#^/reset$#',             'admin', fn($m) => handle_reset()],
+
+    // ---- Admin: kullanıcılar ----
+    ['GET',    '#^/kullanicilar$#',      'admin', fn($m) => handle_list_kullanicilar()],
+    ['POST',   '#^/kullanici$#',         'admin', fn($m) => handle_create_kullanici(read_json_body())],
+    ['PUT',    '#^/kullanici/([^/]+)$#', 'admin', fn($m) => handle_update_kullanici($m[1], read_json_body())],
+    ['DELETE', '#^/kullanici/([^/]+)$#', 'admin', fn($m) => handle_delete_kullanici($m[1])],
 ];
 
 // --- Eşleştir & gönder -------------------------------------------------------

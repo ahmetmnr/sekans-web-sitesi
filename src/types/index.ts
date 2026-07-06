@@ -30,6 +30,9 @@ export interface Yazi {
   yayinTarihi?: string;
 }
 
+// Sayı yaşam döngüsü: taslak (hazırlanıyor) -> yayinda (canlı) -> arsiv (geçmiş)
+export type SayiDurum = 'taslak' | 'yayinda' | 'arsiv';
+
 export interface Sayi {
   id: string;
   numara: string; // e27, e26, etc.
@@ -40,6 +43,9 @@ export interface Sayi {
   pdfUrl: string;
   kunye?: string;
   onsoz?: string;
+  durum?: SayiDurum;        // yaşam döngüsü durumu
+  editorId?: string | null; // sorumlu editör (kullanıcı id) — yalnızca etiket
+  editorAd?: string | null; // sorumlu editör adı (JOIN'den)
   yazilar: Yazi[];
   yayinTarihi: string;
 }
@@ -83,4 +89,22 @@ export interface ArsivSayi {
   kapakGorseli: string;
   pdfUrl: string;
   yayinTarihi: string;
+}
+
+// CMS kullanıcı hesabı (panelde yönetilir). Parola asla taşınmaz.
+export interface Kullanici {
+  id: string;
+  username: string;
+  role: 'admin' | 'editor';
+  name: string;
+  email?: string | null;
+  isActive: boolean;
+  lastLoginAt?: string | null;
+}
+
+// Sorumlu editör atama açılır menüsü için hafif kullanıcı bilgisi.
+export interface EditorOzet {
+  id: string;
+  name: string;
+  role: 'admin' | 'editor';
 }

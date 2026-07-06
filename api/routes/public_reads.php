@@ -23,21 +23,21 @@ function build_sayi_payload(array $sayiRow): array
     return sayi_out($sayiRow, $yazilar);
 }
 
-/** GET /api/sayi/current */
+/** GET /api/sayi/current — canlı (yayında) sayı. */
 function handle_get_current_sayi(): void
 {
-    $row = db()->query("SELECT * FROM sayilar WHERE is_current = 1 ORDER BY id DESC LIMIT 1")->fetch();
+    $row = db()->query("SELECT * FROM sayilar WHERE durum = 'yayinda' ORDER BY id DESC LIMIT 1")->fetch();
     if (!$row) {
         fail('NOT_FOUND', 'Aktif sayı bulunamadı.', 404);
     }
     respond(build_sayi_payload($row));
 }
 
-/** GET /api/arsiv  — arşiv sayıları (is_current=0) */
+/** GET /api/arsiv  — arşiv sayıları (durum='arsiv'). Taslak sayılar siteye ÇIKMAZ. */
 function handle_get_arsiv(): void
 {
     $rows = db()->query(
-        "SELECT * FROM sayilar WHERE is_current = 0 ORDER BY yayin_tarihi DESC, id DESC"
+        "SELECT * FROM sayilar WHERE durum = 'arsiv' ORDER BY yayin_tarihi DESC, id DESC"
     )->fetchAll();
     respond(array_map('arsiv_out', $rows));
 }
@@ -215,10 +215,11 @@ function handle_get_hakkimizda(): void
 /** GET /api/bootstrap — tek seferde tüm açık veriyi döndür (frontend ilk yükleme). */
 function handle_bootstrap(): void
 {
-    $current = db()->query("SELECT * FROM sayilar WHERE is_current = 1 ORDER BY id DESC LIMIT 1")->fetch();
+    $current = db()->query("SELECT * FROM sayilar WHERE durum = 'yayinda' ORDER BY id DESC LIMIT 1")->fetch();
     $sonSayi = $current ? build_sayi_payload($current) : null;
 
-    $arsivRows = db()->query("SELECT * FROM sayilar WHERE is_current = 0 ORDER BY yayin_tarihi DESC, id DESC")->fetchAll();
+    // Yalnızca ARŞİV siteye çıkar; taslak (hazırlanan) sayılar herkese açık bootstrap'ta YER ALMAZ.
+    $arsivRows = db()->query("SELECT * FROM sayilar WHERE durum = 'arsiv' ORDER BY yayin_tarihi DESC, id DESC")->fetchAll();
 
     // Tüm ara yazılar (icerik HARİÇ — bootstrap hafif kalsın; detay ayrı çekilir).
     $yazarMap = load_yazar_map();

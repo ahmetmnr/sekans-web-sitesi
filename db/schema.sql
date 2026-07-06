@@ -77,14 +77,24 @@ CREATE TABLE sayilar (
   pdf_url       VARCHAR(512)    NULL,                   -- issue PDF path
   kunye         TEXT            NULL,                   -- credits / colophon (full issue only)
   onsoz         TEXT            NULL,                   -- editorial / foreword (full issue only)
-  is_current    TINYINT(1)      NOT NULL DEFAULT 0,     -- 1 == sonSayi
+  is_current    TINYINT(1)      NOT NULL DEFAULT 0,     -- 1 == sonSayi (durum='yayinda' ile SENKRON tutulur)
+  -- Sayı yaşam döngüsü: birden çok 'taslak' aynı anda paralel hazırlanabilir.
+  --   taslak  = hazırlanıyor, siteye ÇIKMAZ, yazıları düzenlenebilir (birden çok olabilir)
+  --   yayinda = canlı/güncel sayı (tam olarak 1 tane, is_current=1 ile eş)
+  --   arsiv   = geçmiş yayımlanmış sayı (siteye PDF/arşiv üzerinden çıkar)
+  durum         ENUM('taslak','yayinda','arsiv') NOT NULL DEFAULT 'taslak',
+  editor_id     BIGINT UNSIGNED NULL,                   -- sorumlu editör (FK -> kullanicilar.id); sadece etiket
   yayin_tarihi  DATE            NULL,                   -- publish date '2025-07-01'
   created_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_sayilar_code (code),
   KEY idx_sayilar_is_current (is_current),
+  KEY idx_sayilar_durum (durum),
+  KEY idx_sayilar_editor (editor_id),
   KEY idx_sayilar_yil (yil)
+  -- fk_sayilar_editor (editor_id -> kullanicilar.id) kullanicilar tablosu
+  -- tanımlandıktan SONRA, dosyanın altında ALTER TABLE ile eklenir.
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
@@ -244,6 +254,11 @@ CREATE TABLE giris_denemeleri (
   PRIMARY KEY (id),
   UNIQUE KEY uq_giris_denemeleri_ident (ident)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- sayilar.editor_id -> kullanicilar.id (kullanicilar artık tanımlı olduğundan güvenli).
+ALTER TABLE sayilar
+  ADD CONSTRAINT fk_sayilar_editor FOREIGN KEY (editor_id) REFERENCES kullanicilar (id)
+  ON UPDATE CASCADE ON DELETE SET NULL;
 
 SET FOREIGN_KEY_CHECKS = 1;
 

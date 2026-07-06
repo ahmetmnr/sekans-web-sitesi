@@ -1,8 +1,19 @@
 // CMS Context — API tabanlı veri yönetimi (localStorage YOK).
 // useCMS() veri şekli aynı kalır; bileşenler değişmez. Mutator'lar artık async.
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import type { Sayi, AraYazi, Yazar, Kategori, ArsivSayi, Yazi } from '@/types';
+import type { Sayi, AraYazi, Yazar, Kategori, ArsivSayi, Yazi, SayiDurum, EditorOzet } from '@/types';
 import { api, type YarismaBilgi, type HakkimizdaIcerik } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
+
+// Sayı listesini sırala: yayındaki en üstte, sonra yayın tarihine göre yeni->eski.
+function sortSayilar(list: Sayi[]): Sayi[] {
+  const rank = (d?: SayiDurum) => (d === 'yayinda' ? 0 : 1);
+  return [...list].sort((a, b) =>
+    rank(a.durum) !== rank(b.durum)
+      ? rank(a.durum) - rank(b.durum)
+      : (b.yayinTarihi || '').localeCompare(a.yayinTarihi || '')
+  );
+}
 
 // Boş yer tutucu Sayi — bootstrap çözülene kadar okuma çökmesin.
 const EMPTY_SAYI: Sayi = {
@@ -18,6 +29,8 @@ const EMPTY_HAKKIMIZDA: HakkimizdaIcerik = {
 interface CMSContextType {
   // Veriler
   sonSayi: Sayi;
+  sayilar: Sayi[];            // düzenlenebilir sayılar (taslak + yayında), yazılarıyla
+  editorler: EditorOzet[];   // sorumlu editör atama listesi
   arsivSayilari: ArsivSayi[];
   araYazilar: AraYazi[];
   yazarlar: Yazar[];
@@ -29,9 +42,14 @@ interface CMSContextType {
   isLoading: boolean;
   error: Error | null;
   refresh: () => Promise<void>;
+  refreshSayilar: () => Promise<void>;
 
   // Sayı işlemleri
   setSonSayi: (sayi: Sayi) => Promise<void>;
+  addSayi: (sayi: Partial<Sayi> & { editorId?: string | null }) => Promise<void>;
+  updateSayi: (id: string, patch: Partial<Sayi> & { editorId?: string | null }) => Promise<void>;
+  setSayiDurum: (id: string, durum: SayiDurum) => Promise<void>;
+  deleteSayi: (id: string) => Promise<void>;
   addArsivSayi: (sayi: Partial<ArsivSayi>) => Promise<void>;
   updateArsivSayi: (id: string, sayi: Partial<ArsivSayi>) => Promise<void>;
   deleteArsivSayi: (id: string) => Promise<void>;
@@ -73,7 +91,10 @@ interface CMSContextType {
 const CMSContext = createContext<CMSContextType | undefined>(undefined);
 
 export function CMSProvider({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
   const [sonSayi, setSonSayiState] = useState<Sayi>(EMPTY_SAYI);
+  const [sayilar, setSayilar] = useState<Sayi[]>([]);
+  const [editorler, setEditorler] = useState<EditorOzet[]>([]);
   const [arsivSayilari, setArsivSayilari] = useState<ArsivSayi[]>([]);
   const [araYazilar, setAraYazilar] = useState<AraYazi[]>([]);
   const [yazarlar, setYazarlar] = useState<Yazar[]>([]);
@@ -105,16 +126,62 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  // Düzenlenebilir sayı listesi + editör listesi (yalnızca giriş yapılınca; public'te boş).
+  const refreshSayilar = useCallback(async () => {
+    try {
+      const [list, eds] = await Promise.all([api.sayilar.listCms(), api.editorler.list()]);
+      setSayilar(sortSayilar(list ?? []));
+      setEditorler(eds ?? []);
+    } catch {
+      setSayilar([]);
+      setEditorler([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      void refreshSayilar();
+    } else {
+      setSayilar([]);
+      setEditorler([]);
+    }
+  }, [isAuthenticated, refreshSayilar]);
+
   // --- Sayı ---
   const setSonSayi = useCallback(async (sayi: Sayi) => {
     const updated = await api.sonSayi.update(sayi);
     setSonSayiState(updated);
+    setSayilar((prev) => sortSayilar(prev.map((s) => (s.id === updated.id ? updated : s))));
+  }, []);
+
+  const addSayi = useCallback(async (sayi: Partial<Sayi> & { editorId?: string | null }) => {
+    const saved = await api.sayilar.create(sayi);
+    setSayilar((prev) => sortSayilar([saved, ...prev]));
+  }, []);
+
+  const updateSayi = useCallback(async (id: string, patch: Partial<Sayi> & { editorId?: string | null }) => {
+    const saved = await api.sayilar.update(id, patch);
+    setSayilar((prev) => sortSayilar(prev.map((s) => (s.id === id ? saved : s))));
+    setSonSayiState((prev) => (prev.id === id ? saved : prev));
+  }, []);
+
+  const setSayiDurum = useCallback(async (id: string, durum: SayiDurum) => {
+    await api.sayilar.setDurum(id, durum);
+    // Yayına alma çapraz etkilidir (eski yayındaki sayı arşive iner) — her şeyi tazele.
+    await Promise.all([refresh(), refreshSayilar()]);
+  }, [refresh, refreshSayilar]);
+
+  const deleteSayi = useCallback(async (id: string) => {
+    await api.sayilar.remove(id);
+    setSayilar((prev) => prev.filter((s) => s.id !== id));
+    setArsivSayilari((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
   const publishSonSayi = useCallback(async () => {
     const arsiv = await api.sonSayi.publish();
     setArsivSayilari((prev) => [arsiv, ...prev]);
-  }, []);
+    await refreshSayilar();
+  }, [refreshSayilar]);
 
   const addArsivSayi = useCallback(async (sayi: Partial<ArsivSayi>) => {
     const saved = await api.arsiv.create(sayi);
@@ -131,22 +198,27 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     setArsivSayilari((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
-  // --- Yazı (sayı içi) ---
+  // --- Yazı (sayı içi) — hedef sayı saved.sayiId ile belirlenir (çoklu sayı) ---
   const addYazi = useCallback(async (yazi: Partial<Yazi> & { yazarId?: string; kategoriId?: string }) => {
     const saved = await api.yazi.create(yazi);
-    setSonSayiState((prev) => ({ ...prev, yazilar: [...prev.yazilar, saved] }));
+    setSayilar((prev) => prev.map((s) => (s.id === saved.sayiId ? { ...s, yazilar: [...s.yazilar, saved] } : s)));
+    setSonSayiState((prev) => (prev.id === saved.sayiId ? { ...prev, yazilar: [...prev.yazilar, saved] } : prev));
   }, []);
 
-  const updateYazi = useCallback(async (id: string, updates: Partial<Yazi> & { yazarId?: string; kategoriId?: string }) => {
+  const updateYazi = useCallback(async (id: string, updates: Partial<Yazi> & { yazarId?: string; kategoriId?: string; sayiId?: string }) => {
     const saved = await api.yazi.update(id, updates);
-    setSonSayiState((prev) => ({
-      ...prev,
-      yazilar: prev.yazilar.map((y) => (y.id === id ? saved : y)),
-    }));
+    // Yazı sayı değiştirmiş olabilir: her sayıdan çıkar, hedef sayıya ekle.
+    const place = (yazilar: Yazi[], sayiId: string): Yazi[] => {
+      const without = yazilar.filter((y) => y.id !== id);
+      return sayiId === saved.sayiId ? [...without, saved] : without;
+    };
+    setSayilar((prev) => prev.map((s) => ({ ...s, yazilar: place(s.yazilar, s.id) })));
+    setSonSayiState((prev) => ({ ...prev, yazilar: place(prev.yazilar, prev.id) }));
   }, []);
 
   const deleteYazi = useCallback(async (id: string) => {
     await api.yazi.remove(id);
+    setSayilar((prev) => prev.map((s) => ({ ...s, yazilar: s.yazilar.filter((y) => y.id !== id) })));
     setSonSayiState((prev) => ({ ...prev, yazilar: prev.yazilar.filter((y) => y.id !== id) }));
   }, []);
 
@@ -244,9 +316,10 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const value: CMSContextType = {
-    sonSayi, arsivSayilari, araYazilar, yazarlar, kategoriler, yarismasiBilgi, hakkimizdaIcerik,
-    isLoading, error, refresh,
-    setSonSayi, addArsivSayi, updateArsivSayi, deleteArsivSayi, publishSonSayi,
+    sonSayi, sayilar, editorler, arsivSayilari, araYazilar, yazarlar, kategoriler, yarismasiBilgi, hakkimizdaIcerik,
+    isLoading, error, refresh, refreshSayilar,
+    setSonSayi, addSayi, updateSayi, setSayiDurum, deleteSayi,
+    addArsivSayi, updateArsivSayi, deleteArsivSayi, publishSonSayi,
     addYazi, updateYazi, deleteYazi,
     addAraYazi, updateAraYazi, deleteAraYazi,
     addYazar, updateYazar, deleteYazar,

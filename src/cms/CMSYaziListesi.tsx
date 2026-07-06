@@ -1,5 +1,5 @@
-// CMS Yazı Listesi - Article List with Pagination
-import { useState } from 'react';
+// CMS Yazı Listesi — seçili sayının yazılarını listeler (çoklu sayı destekli).
+import { useState, useEffect } from 'react';
 import { useCMS } from '@/context/CMSContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,21 +44,40 @@ import {
 } from 'lucide-react';
 
 interface CMSYaziListesiProps {
-  onEditYazi: (yaziId?: string) => void;
+  onEditYazi: (yaziId?: string, sayiId?: string) => void;
+  initialSayiId?: string;
 }
 
-export function CMSYaziListesi({ onEditYazi }: CMSYaziListesiProps) {
-  const { sonSayi, deleteYazi } = useCMS();
+export function CMSYaziListesi({ onEditYazi, initialSayiId }: CMSYaziListesiProps) {
+  const { sayilar, sonSayi, deleteYazi } = useCMS();
+
+  // Düzenlenebilir sayılar; boşsa yayındaki sayıya düş.
+  const secilebilir = sayilar.length ? sayilar : (sonSayi.id ? [sonSayi] : []);
+
+  const [selectedSayiId, setSelectedSayiId] = useState<string>(
+    initialSayiId || secilebilir.find((s) => s.durum === 'yayinda')?.id || secilebilir[0]?.id || ''
+  );
+
+  // Sayı Yönetimi'nden "Yazıları Yönet" ile gelince o sayıya odaklan.
+  useEffect(() => {
+    if (initialSayiId) setSelectedSayiId(initialSayiId);
+  }, [initialSayiId]);
+
+  // Seçili sayı listede yoksa uygun bir sayıya düş (durum değişince).
+  const aktifSayi =
+    secilebilir.find((s) => s.id === selectedSayiId) ??
+    secilebilir.find((s) => s.durum === 'yayinda') ??
+    secilebilir[0];
+
+  const yazilar = aktifSayi?.yazilar ?? [];
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Filter and sort
-  // Not: kategori bir kategori silindiğinde null olabilir (FK SET NULL); yazar da
-  // null olabilir. Erişimler güvenli (?.) olmalı, aksi halde tüm liste render'ı çöker.
-  const filteredYazilar = sonSayi.yazilar.filter(yazi =>
+  // Filtreleme — yazar/kategori FK SET NULL ile null olabilir; güvenli erişim.
+  const filteredYazilar = yazilar.filter((yazi) =>
     yazi.baslik.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (yazi.yazar?.tamAd ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (yazi.kategori?.ad ?? '').toLowerCase().includes(searchTerm.toLowerCase())
@@ -66,49 +85,62 @@ export function CMSYaziListesi({ onEditYazi }: CMSYaziListesiProps) {
 
   const sortedYazilar = [...filteredYazilar].sort((a, b) => (a.siraNo ?? 0) - (b.siraNo ?? 0));
 
-  // Pagination calculations
   const totalItems = sortedYazilar.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentItems = sortedYazilar.slice(startIndex, endIndex);
 
-  // Pagination handlers
-  const goToPage = (page: number) => {
-    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-  };
-
+  const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   const goToFirstPage = () => goToPage(1);
   const goToLastPage = () => goToPage(totalPages);
   const goToPrevPage = () => goToPage(currentPage - 1);
   const goToNextPage = () => goToPage(currentPage + 1);
 
-  // Reset to first page when search changes
   const handleSearch = (value: string) => {
     setSearchTerm(value);
     setCurrentPage(1);
   };
 
-  // Reset to first page when items per page changes
   const handleItemsPerPageChange = (value: string) => {
     setItemsPerPage(Number(value));
     setCurrentPage(1);
   };
 
+  const handleSayiChange = (value: string) => {
+    setSelectedSayiId(value);
+    setCurrentPage(1);
+    setSearchTerm('');
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Yazı Yönetimi</h1>
-          <p className="text-gray-600 mt-1">
-            {sonSayi.tamBaslik} sayısındaki yazıları yönetin
-          </p>
+          <p className="text-gray-600 mt-1">Bir sayı seçin ve yazılarını yönetin</p>
         </div>
-        <Button onClick={() => onEditYazi()}>
-          <Plus className="h-4 w-4 mr-2" />
-          Yeni Yazı Ekle
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* Sayı seçici */}
+          <Select value={aktifSayi?.id ?? ''} onValueChange={handleSayiChange}>
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="Sayı seçin" />
+            </SelectTrigger>
+            <SelectContent>
+              {secilebilir.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {(s.tamBaslik || `${s.ay} ${s.yil} — ${s.numara}`) +
+                    (s.durum === 'yayinda' ? '  (yayında)' : '  (taslak)')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={() => onEditYazi(undefined, aktifSayi?.id)} disabled={!aktifSayi}>
+            <Plus className="h-4 w-4 mr-2" />
+            Yeni Yazı Ekle
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -120,7 +152,7 @@ export function CMSYaziListesi({ onEditYazi }: CMSYaziListesiProps) {
                 <FileText className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{sonSayi.yazilar.length}</p>
+                <p className="text-2xl font-bold">{yazilar.length}</p>
                 <p className="text-sm text-gray-500">Toplam Yazı</p>
               </div>
             </div>
@@ -134,7 +166,7 @@ export function CMSYaziListesi({ onEditYazi }: CMSYaziListesiProps) {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {new Set(sonSayi.yazilar.map(y => y.yazar.id)).size}
+                  {new Set(yazilar.map((y) => y.yazar?.id).filter(Boolean)).size}
                 </p>
                 <p className="text-sm text-gray-500">Farklı Yazar</p>
               </div>
@@ -149,7 +181,7 @@ export function CMSYaziListesi({ onEditYazi }: CMSYaziListesiProps) {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {new Set(sonSayi.yazilar.map(y => y.kategori.id)).size}
+                  {new Set(yazilar.map((y) => y.kategori?.id).filter(Boolean)).size}
                 </p>
                 <p className="text-sm text-gray-500">Farklı Kategori</p>
               </div>
@@ -163,12 +195,11 @@ export function CMSYaziListesi({ onEditYazi }: CMSYaziListesiProps) {
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <CardTitle>Yazılar</CardTitle>
-              <CardDescription>
-                Yazıyı düzenlemek için kalem ikonuna tıklayın
-              </CardDescription>
+              <CardTitle>
+                Yazılar {aktifSayi ? `— ${aktifSayi.tamBaslik || aktifSayi.numara}` : ''}
+              </CardTitle>
+              <CardDescription>Yazıyı düzenlemek için kalem ikonuna tıklayın</CardDescription>
             </div>
-            {/* Search */}
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -216,11 +247,7 @@ export function CMSYaziListesi({ onEditYazi }: CMSYaziListesiProps) {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onEditYazi(yazi.id)}
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => onEditYazi(yazi.id, aktifSayi?.id)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <AlertDialog>
@@ -257,7 +284,7 @@ export function CMSYaziListesi({ onEditYazi }: CMSYaziListesiProps) {
                   <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                     {searchTerm
                       ? 'Arama kriterlerine uygun yazı bulunamadı.'
-                      : 'Henüz yazı eklenmemiş. Yeni yazı eklemek için yukarıdaki butonu kullanın.'}
+                      : 'Bu sayıda henüz yazı yok. Yeni yazı eklemek için yukarıdaki butonu kullanın.'}
                   </TableCell>
                 </TableRow>
               )}
@@ -286,38 +313,20 @@ export function CMSYaziListesi({ onEditYazi }: CMSYaziListesiProps) {
               </div>
 
               <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={goToFirstPage}
-                  disabled={currentPage === 1}
-                  className="h-8 w-8 p-0"
-                >
+                <Button variant="outline" size="sm" onClick={goToFirstPage} disabled={currentPage === 1} className="h-8 w-8 p-0">
                   <ChevronsLeft className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={goToPrevPage}
-                  disabled={currentPage === 1}
-                  className="h-8 w-8 p-0"
-                >
+                <Button variant="outline" size="sm" onClick={goToPrevPage} disabled={currentPage === 1} className="h-8 w-8 p-0">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
 
                 <div className="flex items-center gap-1 mx-2">
-                  {/* Page numbers */}
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
+                    if (totalPages <= 5) pageNum = i + 1;
+                    else if (currentPage <= 3) pageNum = i + 1;
+                    else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                    else pageNum = currentPage - 2 + i;
                     return (
                       <Button
                         key={pageNum}
@@ -332,22 +341,10 @@ export function CMSYaziListesi({ onEditYazi }: CMSYaziListesiProps) {
                   })}
                 </div>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={goToNextPage}
-                  disabled={currentPage === totalPages}
-                  className="h-8 w-8 p-0"
-                >
+                <Button variant="outline" size="sm" onClick={goToNextPage} disabled={currentPage === totalPages} className="h-8 w-8 p-0">
                   <ChevronRight className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={goToLastPage}
-                  disabled={currentPage === totalPages}
-                  className="h-8 w-8 p-0"
-                >
+                <Button variant="outline" size="sm" onClick={goToLastPage} disabled={currentPage === totalPages} className="h-8 w-8 p-0">
                   <ChevronsRight className="h-4 w-4" />
                 </Button>
               </div>

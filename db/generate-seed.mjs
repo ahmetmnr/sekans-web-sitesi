@@ -102,6 +102,8 @@ allSayilar.forEach((s) => {
     `${q(s.kunye)}, ${q(s.onsoz)}, ${s.is_current}, ${isoDate(s.yayinTarihi)});`
   );
 });
+// Sayı yaşam döngüsü durumu: is_current'ten türet (durum kolonu varsayılanı 'taslak').
+out.push("UPDATE sayilar SET durum = IF(is_current = 1, 'yayinda', 'arsiv');");
 out.push('');
 
 // --- yazilar (nested in sonSayi.yazilar) ------------------------------------

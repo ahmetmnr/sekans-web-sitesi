@@ -13,7 +13,8 @@ import {
   ArrowLeft,
   Database,
   LogOut,
-  User
+  User,
+  UserCog
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -24,6 +25,7 @@ export type CMSPage =
   | 'ara-yazilar'
   | 'yazarlar'
   | 'kategoriler'
+  | 'kullanicilar'
   | 'yarismasi'
   | 'hakkimizda'
   | 'ayarlar';
@@ -35,13 +37,14 @@ interface CMSLayoutProps {
   onExitCMS: () => void;
 }
 
-const menuItems: { id: CMSPage; label: string; icon: React.ReactNode }[] = [
+const menuItems: { id: CMSPage; label: string; icon: React.ReactNode; adminOnly?: boolean }[] = [
   { id: 'dashboard', label: 'Kontrol Paneli', icon: <LayoutDashboard className="h-5 w-5" /> },
   { id: 'sayilar', label: 'Sayı Yönetimi', icon: <BookOpen className="h-5 w-5" /> },
   { id: 'yazilar', label: 'Yazı Yönetimi', icon: <FileText className="h-5 w-5" /> },
   { id: 'ara-yazilar', label: 'Ara Yazılar', icon: <FileText className="h-5 w-5" /> },
   { id: 'yazarlar', label: 'Yazarlar', icon: <Users className="h-5 w-5" /> },
   { id: 'kategoriler', label: 'Kategoriler', icon: <FolderOpen className="h-5 w-5" /> },
+  { id: 'kullanicilar', label: 'Kullanıcılar', icon: <UserCog className="h-5 w-5" />, adminOnly: true },
   { id: 'yarismasi', label: 'Yarışma', icon: <Trophy className="h-5 w-5" /> },
   { id: 'hakkimizda', label: 'Hakkımızda', icon: <Info className="h-5 w-5" /> },
   { id: 'ayarlar', label: 'Ayarlar', icon: <Settings className="h-5 w-5" /> },
@@ -87,7 +90,9 @@ export function CMSLayout({ children, currentPage, onNavigate, onExitCMS }: CMSL
         {/* Navigation */}
         <nav className="flex-1 p-4 overflow-y-auto">
           <ul className="space-y-1">
-            {menuItems.map((item) => (
+            {menuItems
+              .filter((item) => !item.adminOnly || user?.role === 'admin')
+              .map((item) => (
               <li key={item.id}>
                 <button
                   onClick={() => onNavigate(item.id)}

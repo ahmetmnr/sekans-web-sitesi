@@ -19,16 +19,30 @@ interface CMSDashboardProps {
 }
 
 export function CMSDashboard({ onNavigate }: CMSDashboardProps) {
-  const { sonSayi, arsivSayilari, araYazilar, yazarlar, kategoriler } = useCMS();
+  const { sonSayi, sayilar, arsivSayilari, araYazilar, yazarlar, kategoriler } = useCMS();
+
+  const hazirlananSayisi = sayilar.filter((s) => s.durum === 'taslak').length;
+  const sonSayiYayin = sonSayi.yayinTarihi ? new Date(sonSayi.yayinTarihi) : null;
+  const sonSayiYayinStr = sonSayiYayin && !isNaN(sonSayiYayin.getTime())
+    ? sonSayiYayin.toLocaleDateString('tr-TR')
+    : 'Belirtilmemiş';
 
   const stats = [
     {
-      title: 'Son Sayı',
-      value: sonSayi.numara,
-      description: `${sonSayi.ay} ${sonSayi.yil}`,
+      title: 'Yayındaki Sayı',
+      value: sonSayi.numara || '—',
+      description: sonSayi.numara ? `${sonSayi.ay} ${sonSayi.yil}` : 'Yayında sayı yok',
       icon: <BookOpen className="h-5 w-5" />,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
+    },
+    {
+      title: 'Hazırlanan Sayılar',
+      value: hazirlananSayisi,
+      description: 'Taslak durumunda',
+      icon: <BookOpen className="h-5 w-5" />,
+      color: 'text-amber-600',
+      bgColor: 'bg-amber-50',
     },
     {
       title: 'Arşiv Sayısı',
@@ -153,10 +167,10 @@ export function CMSDashboard({ onNavigate }: CMSDashboardProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BookOpen className="h-5 w-5" />
-              Güncel Sayı: {sonSayi.tamBaslik}
+              Güncel Sayı: {sonSayi.tamBaslik || '—'}
             </CardTitle>
             <CardDescription>
-              Yayın Tarihi: {new Date(sonSayi.yayinTarihi).toLocaleDateString('tr-TR')}
+              Yayın Tarihi: {sonSayiYayinStr}
             </CardDescription>
           </CardHeader>
           <CardContent>

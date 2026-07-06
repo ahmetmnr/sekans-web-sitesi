@@ -12,6 +12,7 @@ import { CMSAraYaziListesi } from './CMSAraYaziListesi';
 import { CMSAraYaziEditor } from './CMSAraYaziEditor';
 import { CMSYazarYonetimi } from './CMSYazarYonetimi';
 import { CMSKategoriYonetimi } from './CMSKategoriYonetimi';
+import { CMSKullaniciYonetimi } from './CMSKullaniciYonetimi';
 import { CMSYarismaYonetimi } from './CMSYarismaYonetimi';
 import { CMSHakkimizdaYonetimi } from './CMSHakkimizdaYonetimi';
 import { CMSAyarlar } from './CMSAyarlar';
@@ -23,13 +24,15 @@ interface CMSProps {
 
 type EditorState =
   | { type: 'none' }
-  | { type: 'yazi'; yaziId?: string }
+  | { type: 'yazi'; yaziId?: string; sayiId?: string }
   | { type: 'ara-yazi'; yaziId?: string; initialTab?: 'edit' | 'preview' };
 
 export function CMS({ onExitCMS }: CMSProps) {
   const { isAuthenticated, isLoading } = useAuth();
   const [currentPage, setCurrentPage] = useState<CMSPage>('dashboard');
   const [editorState, setEditorState] = useState<EditorState>({ type: 'none' });
+  // "Sayı Yönetimi -> Yazıları Yönet" ile açılan yazı listesinin önseçili sayısı.
+  const [yaziListSayiId, setYaziListSayiId] = useState<string | undefined>(undefined);
 
   // Yükleniyor durumu
   if (isLoading) {
@@ -48,9 +51,9 @@ export function CMS({ onExitCMS }: CMSProps) {
     return <CMSLogin />;
   }
 
-  // Yazı editörünü aç
-  const openYaziEditor = (yaziId?: string) => {
-    setEditorState({ type: 'yazi', yaziId });
+  // Yazı editörünü aç (yeni yazıda önseçili sayı geçirilebilir)
+  const openYaziEditor = (yaziId?: string, sayiId?: string) => {
+    setEditorState({ type: 'yazi', yaziId, sayiId });
   };
 
   // Ara yazı editörünü aç
@@ -73,6 +76,7 @@ export function CMS({ onExitCMS }: CMSProps) {
     return (
       <CMSYaziEditor
         yaziId={editorState.yaziId}
+        preselectSayiId={editorState.sayiId}
         onBack={closeEditor}
         onSave={closeEditor}
       />
@@ -95,15 +99,25 @@ export function CMS({ onExitCMS }: CMSProps) {
       case 'dashboard':
         return <CMSDashboard onNavigate={setCurrentPage} />;
       case 'sayilar':
-        return <CMSSayiYonetimi />;
+        return (
+          <CMSSayiYonetimi
+            onManageArticles={(sayiId) => {
+              setYaziListSayiId(sayiId);
+              setCurrentPage('yazilar');
+            }}
+            onNewYazi={(sayiId) => openYaziEditor(undefined, sayiId)}
+          />
+        );
       case 'yazilar':
-        return <CMSYaziListesi onEditYazi={openYaziEditor} />;
+        return <CMSYaziListesi onEditYazi={openYaziEditor} initialSayiId={yaziListSayiId} />;
       case 'ara-yazilar':
         return <CMSAraYaziListesi onEditYazi={openAraYaziEditor} onPreviewYazi={openAraYaziPreview} />;
       case 'yazarlar':
         return <CMSYazarYonetimi />;
       case 'kategoriler':
         return <CMSKategoriYonetimi />;
+      case 'kullanicilar':
+        return <CMSKullaniciYonetimi />;
       case 'yarismasi':
         return <CMSYarismaYonetimi />;
       case 'hakkimizda':

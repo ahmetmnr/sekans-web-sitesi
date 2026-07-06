@@ -3,7 +3,7 @@
 // CSRF token bellekte tutulur (localStorage'a ASLA yazılmaz), POST/PUT/DELETE'e eklenir.
 
 import type {
-  Sayi, ArsivSayi, AraYazi, Yazar, Kategori, Yazi,
+  Sayi, ArsivSayi, AraYazi, Yazar, Kategori, Yazi, SayiDurum, Kullanici, EditorOzet,
 } from '@/types';
 
 export const API_BASE: string =
@@ -157,11 +157,37 @@ export const api = {
     logout: () => post<{ loggedOut: boolean }>('/auth/logout'),
   },
 
-  // Sayı
+  // Sayı (yayında/canlı — geriye dönük uyum)
   sonSayi: {
     get: () => get<Sayi>('/sayi/current'),
     update: (patch: Partial<Sayi>) => put<Sayi>('/sayi/current', patch),
     publish: () => post<ArsivSayi>('/sayi/publish'),
+  },
+
+  // Sayılar (yaşam döngüsü — CMS): taslak + yayında sayıları yazılarıyla yönet.
+  sayilar: {
+    listCms: () => get<Sayi[]>('/cms/sayilar'),
+    create: (s: Partial<Sayi> & { editorId?: string | null }) => post<Sayi>('/sayi', s),
+    update: (id: string, patch: Partial<Sayi> & { editorId?: string | null }) =>
+      put<Sayi>(`/sayi/${encodeURIComponent(id)}`, patch),
+    setDurum: (id: string, durum: SayiDurum) =>
+      put<Sayi>(`/sayi/${encodeURIComponent(id)}/durum`, { durum }),
+    remove: (id: string) => del<{ deleted: string }>(`/sayi/${encodeURIComponent(id)}`),
+  },
+
+  // Editör özet listesi (sorumlu editör atama açılır menüsü)
+  editorler: {
+    list: () => get<EditorOzet[]>('/editorler'),
+  },
+
+  // Kullanıcılar (admin)
+  kullanicilar: {
+    list: () => get<Kullanici[]>('/kullanicilar'),
+    create: (k: { username: string; password: string; name: string; role: 'admin' | 'editor'; email?: string }) =>
+      post<Kullanici>('/kullanici', k),
+    update: (id: string, patch: Partial<{ name: string; email: string; role: 'admin' | 'editor'; isActive: boolean; password: string }>) =>
+      put<Kullanici>(`/kullanici/${encodeURIComponent(id)}`, patch),
+    remove: (id: string) => del<{ deleted: string }>(`/kullanici/${encodeURIComponent(id)}`),
   },
 
   // Arşiv
@@ -177,7 +203,7 @@ export const api = {
     get: (id: string) => get<Yazi>(`/yazi/${encodeURIComponent(id)}`),
     create: (y: Partial<Yazi> & { yazarId?: string; kategoriId?: string; sayiId?: string }) =>
       post<Yazi>('/yazi', y),
-    update: (id: string, patch: Partial<Yazi> & { yazarId?: string; kategoriId?: string }) =>
+    update: (id: string, patch: Partial<Yazi> & { yazarId?: string; kategoriId?: string; sayiId?: string }) =>
       put<Yazi>(`/yazi/${encodeURIComponent(id)}`, patch),
     remove: (id: string) => del<{ deleted: string }>(`/yazi/${encodeURIComponent(id)}`),
   },

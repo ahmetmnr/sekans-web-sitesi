@@ -25,22 +25,31 @@ import {
   User,
   FolderOpen,
 } from 'lucide-react';
-import type { Yazi } from '@/types';
+import type { Yazi, Sayi } from '@/types';
 
 interface CMSYaziEditorProps {
   yaziId?: string;
+  preselectSayiId?: string; // "Yeni Yazı" açılırken önseçili sayı
   onBack: () => void;
   onSave: () => void;
 }
 
-export function CMSYaziEditor({ yaziId, onBack, onSave }: CMSYaziEditorProps) {
+export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYaziEditorProps) {
   const {
     sonSayi,
+    sayilar,
     yazarlar,
     kategoriler,
     addYazi,
     updateYazi,
   } = useCMS();
+
+  // Düzenlenebilir sayılar (taslak + yayında). Beklenmedik boşlukta yayındaki sayıya düş.
+  const secilebilirSayilar: Sayi[] = sayilar.length ? sayilar : (sonSayi.id ? [sonSayi] : []);
+  const yayindaki = secilebilirSayilar.find((s) => s.durum === 'yayinda') ?? secilebilirSayilar[0];
+  const varsayilanSayiId = preselectSayiId || yayindaki?.id || '';
+  const varsayilanSira =
+    (secilebilirSayilar.find((s) => s.id === varsayilanSayiId)?.yazilar.length ?? 0) + 1;
 
   const [activeTab, setActiveTab] = useState('edit');
   const [isSaving, setIsSaving] = useState(false);
@@ -52,8 +61,8 @@ export function CMSYaziEditor({ yaziId, onBack, onSave }: CMSYaziEditorProps) {
     baslik: '',
     spot: '',
     icerik: '',
-    siraNo: sonSayi.yazilar.length + 1,
-    sayiId: sonSayi.id,
+    siraNo: varsayilanSira,
+    sayiId: varsayilanSayiId,
     pdfUrl: '',
     kapakGorseli: '',
     yayinTarihi: new Date().toISOString().split('T')[0],
@@ -61,15 +70,31 @@ export function CMSYaziEditor({ yaziId, onBack, onSave }: CMSYaziEditorProps) {
 
   useFootnotes(previewRef, [formData.icerik, activeTab]);
 
-  // Mevcut yazıyı yükle
+  // Mevcut yazıyı yükle (tüm düzenlenebilir sayılar arasında ara)
   useEffect(() => {
-    if (yaziId) {
-      const existingYazi = sonSayi.yazilar.find(y => y.id === yaziId);
+    if (!yaziId) return;
+    const all = sayilar.length ? sayilar : (sonSayi.id ? [sonSayi] : []);
+    for (const s of all) {
+      const existingYazi = s.yazilar.find((y) => y.id === yaziId);
       if (existingYazi) {
-        setFormData(existingYazi);
+        setFormData({ ...existingYazi, sayiId: existingYazi.sayiId || s.id });
+        return;
       }
     }
-  }, [yaziId, sonSayi.yazilar]);
+  }, [yaziId, sayilar, sonSayi]);
+
+  // Yeni yazıda sayılar sonradan yüklenirse varsayılan sayıyı ata (boş kalmasın).
+  useEffect(() => {
+    if (yaziId) return;
+    setFormData((f) => {
+      if (f.sayiId) return f;
+      const list = sayilar.length ? sayilar : (sonSayi.id ? [sonSayi] : []);
+      if (!list.length) return f;
+      const def = preselectSayiId || list.find((s) => s.durum === 'yayinda')?.id || list[0].id;
+      const sira = (list.find((s) => s.id === def)?.yazilar.length ?? 0) + 1;
+      return { ...f, sayiId: def, siraNo: sira };
+    });
+  }, [sayilar, sonSayi, yaziId, preselectSayiId]);
 
   const handleYazarChange = (yazarId: string) => {
     const yazar = yazarlar.find(y => y.id === yazarId);
@@ -100,6 +125,15 @@ export function CMSYaziEditor({ yaziId, onBack, onSave }: CMSYaziEditorProps) {
       return;
     }
 
+    if (!formData.sayiId) {
+      alert('Lütfen bu yazının gireceği sayıyı seçin');
+      return;
+    }
+
+    // Seçili sayıdaki yazı sayısına göre varsayılan sıra.
+    const hedefSayi = secilebilirSayilar.find((s) => s.id === formData.sayiId);
+    const varsayilanSonSira = (hedefSayi?.yazilar.length ?? 0) + 1;
+
     setIsSaving(true);
 
     try {
@@ -110,8 +144,9 @@ export function CMSYaziEditor({ yaziId, onBack, onSave }: CMSYaziEditorProps) {
           icerik: formData.icerik,
           yazarId: formData.yazar?.id,
           kategoriId: formData.kategori?.id,
+          sayiId: formData.sayiId, // yazı başka sayıya taşınabilir
           // Boş bırakılırsa sıra numarası verilmez -> yazı listenin sonuna eklenir
-          siraNo: formData.siraNo || (sonSayi.yazilar.length + 1),
+          siraNo: formData.siraNo || varsayilanSonSira,
           pdfUrl: formData.pdfUrl,
           kapakGorseli: formData.kapakGorseli,
           yayinTarihi: formData.yayinTarihi,
@@ -124,8 +159,8 @@ export function CMSYaziEditor({ yaziId, onBack, onSave }: CMSYaziEditorProps) {
           icerik: formData.icerik,
           yazarId: formData.yazar?.id,
           kategoriId: formData.kategori?.id,
-          sayiId: sonSayi.id,
-          siraNo: formData.siraNo || sonSayi.yazilar.length + 1,
+          sayiId: formData.sayiId,
+          siraNo: formData.siraNo || varsayilanSonSira,
           pdfUrl: formData.pdfUrl,
           kapakGorseli: formData.kapakGorseli,
           yayinTarihi: formData.yayinTarihi,
@@ -311,6 +346,32 @@ export function CMSYaziEditor({ yaziId, onBack, onSave }: CMSYaziEditorProps) {
             </div>
 
             <hr />
+
+            {/* Sayı — bu yazının hangi sayıya gireceği */}
+            <div>
+              <Label htmlFor="sayi" className="text-sm font-medium">
+                Sayı *
+              </Label>
+              <Select
+                value={formData.sayiId || ''}
+                onValueChange={(sayiId) => setFormData({ ...formData, sayiId })}
+              >
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue placeholder="Sayı seçin" />
+                </SelectTrigger>
+                <SelectContent>
+                  {secilebilirSayilar.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {(s.tamBaslik || `${s.ay} ${s.yil} — ${s.numara}`) +
+                        (s.durum === 'yayinda' ? '  (yayında)' : '  (taslak)')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Yazının gireceği sayıyı buradan seçebilir, sonradan taşıyabilirsiniz.
+              </p>
+            </div>
 
             {/* Sıra Numarası */}
             <div>

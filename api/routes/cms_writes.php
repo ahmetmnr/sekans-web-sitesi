@@ -86,6 +86,10 @@ function handle_update_yazi(string $code, array $b): void
         $kc = (string)($b['kategoriId'] ?? ($b['kategori']['id'] ?? ''));
         $set[] = 'kategori_id = ?'; $params[] = $kc !== '' ? require_id_by_code('kategoriler', $kc, 'Kategori') : null;
     }
+    // Yazıyı başka bir sayıya taşı (editör sağ paneldeki "Sayı" menüsünü değiştirdiğinde).
+    if (array_key_exists('sayiId', $b) && (string)$b['sayiId'] !== '') {
+        $set[] = 'sayi_id = ?'; $params[] = require_id_by_code('sayilar', (string)$b['sayiId'], 'Sayı');
+    }
     if (!$set) fail('VALIDATION', 'Güncellenecek alan yok.', 400);
     $params[] = $id;
     db()->prepare("UPDATE yazilar SET " . implode(', ', $set) . " WHERE id = ?")->execute($params);
@@ -276,9 +280,10 @@ function handle_create_arsiv(array $b): void
     if ($numara === '') fail('VALIDATION', 'Sayı numarası gerekli.', 400);
     $code = trim((string)($b['id'] ?? '')) ?: $numara;
     if (id_by_code('sayilar', $code)) $code = gen_code('sayi');
+    // Arşiv sayısı doğrudan durum='arsiv' olur (public arşiv sorgusu durum'a bakar).
     db()->prepare(
-        "INSERT INTO sayilar (code, numara, ay, yil, kapak_gorseli, pdf_url, is_current, yayin_tarihi)
-         VALUES (?,?,?,?,?,?,0,?)"
+        "INSERT INTO sayilar (code, numara, ay, yil, kapak_gorseli, pdf_url, is_current, durum, yayin_tarihi)
+         VALUES (?,?,?,?,?,?,0,'arsiv',?)"
     )->execute([
         $code, $numara, (string)($b['ay'] ?? ''), (int)($b['yil'] ?? 0),
         $b['kapakGorseli'] ?? '', $b['pdfUrl'] ?? '', norm_date($b['yayinTarihi'] ?? null),
@@ -353,14 +358,153 @@ function handle_publish_sayi(): void
             $pdo->rollBack();
             fail('NO_CURRENT_ISSUE', 'Yayınlanacak aktif sayı yok.', 409);
         }
-        // Tüm sayıları arşive al; bu satır arşiv kaydı olur (DUPLICATE oluşturmaz).
-        $pdo->exec("UPDATE sayilar SET is_current = 0");
+        // Yayındaki sayıyı arşive al (durum + is_current birlikte).
+        $pdo->exec("UPDATE sayilar SET is_current = 0, durum = 'arsiv' WHERE durum = 'yayinda'");
         $pdo->commit();
     } catch (Throwable $e) {
         $pdo->rollBack();
         throw $e;
     }
     respond(arsiv_out($row));
+}
+
+/* ============================ SAYILAR (yaşam döngüsü) ===================== */
+
+/** Numerik kullanıcı id'sinin geçerli olduğunu doğrula, int döndür. */
+function require_editor_id(string $idStr): int
+{
+    $id = (int)$idStr;
+    if ($id <= 0) fail('VALIDATION', 'Geçersiz editör.', 400);
+    $st = db()->prepare("SELECT id FROM kullanicilar WHERE id = ? LIMIT 1");
+    $st->execute([$id]);
+    if (!$st->fetchColumn()) fail('NOT_FOUND', 'Editör bulunamadı.', 404);
+    return $id;
+}
+
+/** code ile sayıyı (editör adı JOIN + yazılar gömülü) serileştir. */
+function cms_sayi_by_code(string $code): array
+{
+    $st = db()->prepare(
+        "SELECT s.*, k.name AS editor_ad FROM sayilar s
+         LEFT JOIN kullanicilar k ON k.id = s.editor_id
+         WHERE s.code = ? LIMIT 1"
+    );
+    $st->execute([$code]);
+    $row = $st->fetch();
+    if (!$row) fail('NOT_FOUND', 'Sayı bulunamadı.', 404);
+    return build_sayi_payload($row);
+}
+
+/** GET /api/cms/sayilar — düzenlenebilir sayılar (taslak + yayında), yazılarıyla. editör+ */
+function handle_cms_list_sayilar(): void
+{
+    $rows = db()->query(
+        "SELECT s.*, k.name AS editor_ad
+         FROM sayilar s
+         LEFT JOIN kullanicilar k ON k.id = s.editor_id
+         WHERE s.durum IN ('taslak','yayinda')
+         ORDER BY FIELD(s.durum,'yayinda','taslak'), s.yayin_tarihi DESC, s.id DESC"
+    )->fetchAll();
+    respond(array_map(fn($r) => build_sayi_payload($r), $rows));
+}
+
+/** GET /api/editorler — atama açılır menüsü için aktif kullanıcılar {id,name,role}. editör+ */
+function handle_list_editorler(): void
+{
+    $rows = db()->query(
+        "SELECT id, name, role FROM kullanicilar WHERE is_active = 1 ORDER BY (role='admin') DESC, name ASC"
+    )->fetchAll();
+    respond(array_map('editor_out', $rows));
+}
+
+/** POST /api/sayi — yeni TASLAK sayı oluştur. editör+ */
+function handle_create_sayi(array $b): void
+{
+    $numara = trim((string)($b['numara'] ?? ''));
+    if ($numara === '') fail('VALIDATION', 'Sayı numarası gerekli.', 400, ['numara' => 'zorunlu']);
+
+    $code = trim((string)($b['id'] ?? '')) ?: $numara;
+    if (id_by_code('sayilar', $code)) $code = gen_code('sayi');
+
+    $editorId = (!empty($b['editorId'])) ? require_editor_id((string)$b['editorId']) : null;
+
+    $ay  = (string)($b['ay'] ?? '');
+    $yil = (int)($b['yil'] ?? 0);
+    $tamBaslik = trim((string)($b['tamBaslik'] ?? '')) ?: trim("$ay $yil | Sayı $numara");
+
+    db()->prepare(
+        "INSERT INTO sayilar (code, numara, ay, yil, tam_baslik, kapak_gorseli, pdf_url, kunye, onsoz, is_current, durum, editor_id, yayin_tarihi)
+         VALUES (?,?,?,?,?,?,?,?,?,0,'taslak',?,?)"
+    )->execute([
+        $code, $numara, $ay, $yil, $tamBaslik,
+        $b['kapakGorseli'] ?? '', $b['pdfUrl'] ?? '', $b['kunye'] ?? null, $b['onsoz'] ?? null,
+        $editorId, norm_date($b['yayinTarihi'] ?? null),
+    ]);
+    respond(cms_sayi_by_code($code), null, 201);
+}
+
+/** PUT /api/sayi/{code} — herhangi bir sayının meta alanlarını + sorumlu editörünü güncelle. editör+ */
+function handle_update_sayi(string $code, array $b): void
+{
+    $id = require_id_by_code('sayilar', $code, 'Sayı');
+    $set = [];
+    $params = [];
+    foreach (['numara'=>'numara','ay'=>'ay','tamBaslik'=>'tam_baslik','kapakGorseli'=>'kapak_gorseli','pdfUrl'=>'pdf_url','kunye'=>'kunye','onsoz'=>'onsoz'] as $k=>$col) {
+        if (array_key_exists($k,$b)) { $set[]="$col = ?"; $params[]=$b[$k]; }
+    }
+    if (array_key_exists('yil',$b)) { $set[]='yil = ?'; $params[]=(int)$b['yil']; }
+    if (array_key_exists('yayinTarihi',$b)) { $set[]='yayin_tarihi = ?'; $params[]=norm_date($b['yayinTarihi']); }
+    if (array_key_exists('editorId',$b)) {
+        $set[]='editor_id = ?';
+        $params[] = ($b['editorId'] === null || $b['editorId'] === '') ? null : require_editor_id((string)$b['editorId']);
+    }
+    if ($set) {
+        $params[] = $id;
+        db()->prepare("UPDATE sayilar SET " . implode(', ', $set) . " WHERE id = ?")->execute($params);
+    }
+    respond(cms_sayi_by_code($code));
+}
+
+/**
+ * PUT /api/sayi/{code}/durum  body {durum: taslak|yayinda|arsiv}
+ * yayinda => bu sayı canlıya alınır; önceki yayında sayı otomatik arşive iner. editör+
+ */
+function handle_set_sayi_durum(string $code, array $b): void
+{
+    $durum = (string)($b['durum'] ?? '');
+    if (!in_array($durum, ['taslak','yayinda','arsiv'], true)) {
+        fail('VALIDATION', 'Geçersiz durum (taslak/yayinda/arsiv olmalı).', 400);
+    }
+    $id = require_id_by_code('sayilar', $code, 'Sayı');
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        if ($durum === 'yayinda') {
+            $pdo->exec("UPDATE sayilar SET durum='arsiv', is_current=0 WHERE durum='yayinda'");
+            $pdo->prepare("UPDATE sayilar SET durum='yayinda', is_current=1 WHERE id=?")->execute([$id]);
+        } elseif ($durum === 'arsiv') {
+            $pdo->prepare("UPDATE sayilar SET durum='arsiv', is_current=0 WHERE id=?")->execute([$id]);
+        } else { // taslak
+            $pdo->prepare("UPDATE sayilar SET durum='taslak', is_current=0 WHERE id=?")->execute([$id]);
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+    respond(cms_sayi_by_code($code));
+}
+
+/** DELETE /api/sayi/{code} — yayındaki sayı hariç herhangi bir sayıyı sil (yazılar CASCADE). editör+ */
+function handle_delete_sayi(string $code): void
+{
+    $id = require_id_by_code('sayilar', $code, 'Sayı');
+    $durum = (string)db()->query("SELECT durum FROM sayilar WHERE id = " . (int)$id)->fetchColumn();
+    if ($durum === 'yayinda') {
+        fail('CANNOT_DELETE_CURRENT', 'Yayındaki sayı silinemez. Önce başka bir sayıyı yayına alın.', 409);
+    }
+    db()->prepare("DELETE FROM sayilar WHERE id = ?")->execute([$id]);
+    respond(['deleted' => $code]);
 }
 
 /* ============================ YARIŞMA / HAKKIMIZDA ========================= */

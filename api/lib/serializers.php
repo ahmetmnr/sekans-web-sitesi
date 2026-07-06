@@ -54,8 +54,11 @@ function yazi_out(array $r, ?array $yazar, ?array $kategori, string $sayiCode): 
 }
 
 /**
- * Sayi { id, numara, ay, yil, tamBaslik, kapakGorseli, pdfUrl, kunye?, onsoz?, yazilar[], yayinTarihi }
+ * Sayi { id, numara, ay, yil, tamBaslik, kapakGorseli, pdfUrl, kunye?, onsoz?,
+ *        durum, editorId?, editorAd?, yazilar[], yayinTarihi }
  * $yazilar önceden serileştirilmiş Yazi[] dizisidir.
+ * durum/editor alanları $r'de yoksa güvenli varsayılanlara düşer (geriye dönük uyum).
+ * editor_ad alanı yalnızca kullanicilar ile JOIN yapılan sorgularda bulunur.
  */
 function sayi_out(array $r, array $yazilar): array
 {
@@ -69,6 +72,9 @@ function sayi_out(array $r, array $yazilar): array
         'pdfUrl'       => $r['pdf_url'] ?? '',
         'kunye'        => $r['kunye'] ?? null,
         'onsoz'        => $r['onsoz'] ?? null,
+        'durum'        => $r['durum'] ?? 'yayinda',
+        'editorId'     => isset($r['editor_id']) && $r['editor_id'] !== null ? (string)$r['editor_id'] : null,
+        'editorAd'     => $r['editor_ad'] ?? null,
         'yazilar'      => $yazilar,
         'yayinTarihi'  => $r['yayin_tarihi'] ?? '',
     ];
@@ -110,4 +116,31 @@ function ara_yazi_out(array $r, ?array $yazar, bool $includeIcerik = true): arra
         $out['icerik'] = $r['icerik'] ?? '';
     }
     return $out;
+}
+
+/**
+ * Kullanici { id, username, role, name, email?, isActive, lastLoginAt? }
+ * password_hash ASLA döndürülmez.
+ */
+function kullanici_out(array $r): array
+{
+    return [
+        'id'          => (string)$r['id'],
+        'username'    => $r['username'],
+        'role'        => $r['role'],
+        'name'        => $r['name'],
+        'email'       => $r['email'] ?? null,
+        'isActive'    => (bool)((int)$r['is_active']),
+        'lastLoginAt' => $r['last_login_at'] ?? null,
+    ];
+}
+
+/** Editör seçim listesi için hafif çıktı { id, name, role } (atama açılır menüsü). */
+function editor_out(array $r): array
+{
+    return [
+        'id'   => (string)$r['id'],
+        'name' => $r['name'],
+        'role' => $r['role'],
+    ];
 }

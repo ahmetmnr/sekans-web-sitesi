@@ -13,9 +13,10 @@ require_once __DIR__ . '/public_reads.php';
 /** GET /api/export */
 function handle_export(): void
 {
-    $current = db()->query("SELECT * FROM sayilar WHERE is_current = 1 ORDER BY id DESC LIMIT 1")->fetch();
+    $current = db()->query("SELECT * FROM sayilar WHERE durum = 'yayinda' ORDER BY id DESC LIMIT 1")->fetch();
     $sonSayi = $current ? build_sayi_payload($current) : null;
-    $arsiv = array_map('arsiv_out', db()->query("SELECT * FROM sayilar WHERE is_current = 0 ORDER BY yayin_tarihi DESC, id DESC")->fetchAll());
+    // Not: taslak (hazırlanan) sayılar yedeğe henüz dahil edilmez; yalnızca arşiv + yayında.
+    $arsiv = array_map('arsiv_out', db()->query("SELECT * FROM sayilar WHERE durum = 'arsiv' ORDER BY yayin_tarihi DESC, id DESC")->fetchAll());
 
     // Ara yazılar TAM içerikle (yedek için).
     $yazarMap = load_yazar_map();
@@ -118,17 +119,17 @@ function import_seed_arrays(PDO $pdo, array $b): void
     foreach (($b['kategoriler'] ?? []) as $i => $k) {
         $ki->execute([(string)($k['id']??gen_code('kat')), $k['ad']??'', $k['slug']??slugify($k['ad']??''), $i+1]);
     }
-    // sayilar (sonSayi + arsiv)
-    $si = $pdo->prepare("INSERT INTO sayilar (code, numara, ay, yil, tam_baslik, kapak_gorseli, pdf_url, kunye, onsoz, is_current, yayin_tarihi) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+    // sayilar (sonSayi + arsiv) — durum, is_current ile senkron yazılır.
+    $si = $pdo->prepare("INSERT INTO sayilar (code, numara, ay, yil, tam_baslik, kapak_gorseli, pdf_url, kunye, onsoz, is_current, durum, yayin_tarihi) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
     $son = $b['sonSayi'] ?? null;
     if ($son) {
         $si->execute([(string)($son['id']??'son'), $son['numara']??'', $son['ay']??'', (int)($son['yil']??0),
             $son['tamBaslik']??'', $son['kapakGorseli']??'', $son['pdfUrl']??'', $son['kunye']??null, $son['onsoz']??null,
-            1, norm_date($son['yayinTarihi']??null)]);
+            1, 'yayinda', norm_date($son['yayinTarihi']??null)]);
     }
     foreach (($b['arsivSayilari'] ?? []) as $a) {
         $si->execute([(string)($a['id']??gen_code('sayi')), $a['numara']??'', $a['ay']??'', (int)($a['yil']??0),
-            '', $a['kapakGorseli']??'', $a['pdfUrl']??'', null, null, 0, norm_date($a['yayinTarihi']??null)]);
+            '', $a['kapakGorseli']??'', $a['pdfUrl']??'', null, null, 0, 'arsiv', norm_date($a['yayinTarihi']??null)]);
     }
     // yazilar (sonSayi.yazilar)
     if ($son && !empty($son['yazilar'])) {
