@@ -111,7 +111,7 @@ interface AdvancedEditorProps {
 
 // Font aileleri
 const fontFamilies = [
-  { name: 'Varsayılan', value: '' },
+  { name: 'Varsayılan (Inter)', value: '' },
   { name: 'Serif (Garamond)', value: 'Cormorant Garamond, Georgia, serif' },
   { name: 'Sans-serif (Inter)', value: 'Inter, system-ui, sans-serif' },
   { name: 'Monospace', value: 'ui-monospace, monospace' },
@@ -416,9 +416,9 @@ function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick, show
 
           {/* Font Ailesi */}
           <Select
-            value={editor.getAttributes('textStyle').fontFamily || ''}
+            value={editor.getAttributes('textStyle').fontFamily || 'default'}
             onValueChange={(value) => {
-              if (value) {
+              if (value && value !== 'default') {
                 editor.chain().focus().setFontFamily(value).run();
               } else {
                 editor.chain().focus().unsetFontFamily().run();
