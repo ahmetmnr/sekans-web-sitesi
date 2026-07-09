@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sekans — Editör Stilleri Önizleme</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600;700&display=swap');
+
+  body{ font-family:'Inter',system-ui,-apple-system,sans-serif; color:#1a1a1a; background:#eef0f3; margin:0; padding:32px; }
+  .sayfa{ background:#fff; max-width:760px; margin:0 auto 28px; padding:48px 56px; box-shadow:0 1px 6px rgba(0,0,0,.12); border-radius:6px; }
+  .etiket{ max-width:760px; margin:0 auto 8px; font:600 13px Inter; color:#2563eb; }
+
+  /* ====== index.css'teki gerçek stillerle birebir aynı kurallar ====== */
+  .cms-content-preview p{ margin-bottom:1em; line-height:1.75; }
+
+  /* Font: tüm özel stiller ve blok alıntı her zaman Inter (satır içi fontları da ezer) */
+  .cms-content-preview p[data-style], .cms-content-preview p[data-style] *,
+  .cms-content-preview blockquote, .cms-content-preview blockquote *{
+    font-family:'Inter',system-ui,-apple-system,sans-serif !important;
+  }
+
+  /* Başlık-YazarAdı (birleşik): altta görece BÜYÜK otomatik boşluk */
+  .cms-content-preview p[data-style="title-author"]{
+    text-align:center; font-weight:700; font-size:1.45em; line-height:1.25; margin:1.6em 0 2.2em;
+  }
+  /* Yazı Başlığı (altına Yazar Adı geleceği için alt boşluk küçük) */
+  .cms-content-preview p[data-style="title"]{
+    text-align:center; font-weight:700; font-size:1.45em; line-height:1.25; margin:1.6em 0 .5em;
+  }
+  /* Yazar Adı (altta gövdeye kadar büyük boşluk) */
+  .cms-content-preview p[data-style="author"]{
+    text-align:center; font-weight:700; font-size:1.15em; line-height:1.3; margin:.5em 0 2.2em;
+  }
+  /* Bölüm Başlığı */
+  .cms-content-preview p[data-style="section"]{
+    text-align:center; font-weight:700; font-size:1.15em; line-height:1.3; margin:1.8em 0 1em;
+  }
+  /* Film Künye */
+  .cms-content-preview p[data-style="filmkunye"]{
+    text-align:center; font-size:.9em; line-height:1.2; margin:1.4em 0;
+  }
+  /* Epigraf */
+  .cms-content-preview p[data-style="epigraf"]{
+    text-align:right; font-size:.9em; line-height:1.4; margin:1.4em 0 1.6em;
+  }
+  /* AYNI stilden ardışık satırlar tek satır aralığı (sık); farklı stiller arası boşluk korunur */
+  .cms-content-preview p[data-style="title-author"]:has(+ p[data-style="title-author"]),
+  .cms-content-preview p[data-style="section"]:has(+ p[data-style="section"]),
+  .cms-content-preview p[data-style="filmkunye"]:has(+ p[data-style="filmkunye"]),
+  .cms-content-preview p[data-style="epigraf"]:has(+ p[data-style="epigraf"]){ margin-bottom:.15em; }
+  .cms-content-preview p[data-style="title-author"] + p[data-style="title-author"],
+  .cms-content-preview p[data-style="section"] + p[data-style="section"],
+  .cms-content-preview p[data-style="filmkunye"] + p[data-style="filmkunye"],
+  .cms-content-preview p[data-style="epigraf"] + p[data-style="epigraf"]{ margin-top:.15em; }
+
+  /* Blok Alıntı */
+  .cms-content-preview blockquote{
+    position:relative; border-left:none; margin:1.5em 2.2em; padding:0;
+    font-style:normal; font-size:.92em; line-height:1.45; text-align:justify; color:#3f4451;
+  }
+  .cms-content-preview blockquote::before{
+    content:"\275D"; position:absolute; left:-1.5em; top:-.05em;
+    font-size:1.7em; line-height:1; color:#b8bcc6;
+  }
+  .cms-content-preview blockquote p{ margin:0; font-size:inherit; line-height:inherit; text-align:inherit; }
+</style>
+</head>
+<body>
+
+  <div class="etiket">1) Senin EPİGRAF örneğin — bizim "Başlık / Yazar Adı" + "Epigraf" stilleriyle</div>
+  <div class="sayfa cms-content-preview">
+    <p data-style="title-author">HİKAYELERİN GÜCÜNE DAİR: <em>O DA BİR ŞEY Mİ</em></p>
+    <p data-style="title-author">Süheyla Tolunay İşlek</p>
+
+    <p data-style="epigraf"><em>Yavaş olma zamanı şimdi<br>Duvara yaslanıp bekle<br>Sert havalar geçene kadar.</em></p>
+    <p data-style="epigraf"><em>Dene, elinden geldiğince,<br>İzin verme sakın<br>Şüphenin tel fırçası<br>Yüreğinden söküp atmasın<br>Sana ait olanları<br>Ve o kararsız ışığını.</em></p>
+    <p data-style="epigraf">John O'Donohue<sup>1</sup></p>
+
+    <p>Burası "Ana Metin" (MAIN) stili. Normal gövde metni; satır aralığı tek değil, rahat okunur. Epigrafın altında otomatik makul boşluk bırakıldığını görüyorsun — elle enter atmana gerek yok.</p>
+  </div>
+
+  <div class="etiket">2) Diğer stiller (aynı CSS)</div>
+  <div class="sayfa cms-content-preview">
+    <p data-style="section">Bölüm Başlığı (ortalı, kalın)</p>
+    <p>Ana metin örneği. Bölüm başlığının altında ve üstünde otomatik boşluk var.</p>
+
+    <blockquote><p>Sinemanın büyüleyici dünyası, perdede hayat bulan beyaz ışıkla başlar. İtalik değil, soldan ve sağdan içeri girik, iki yana yaslı; başında otomatik ❝ işareti. Gerektiğinde elle bold ya da italik yapabilirsin.</p></blockquote>
+
+    <p>Blok alıntıdan sonra ana metin devam ediyor.</p>
+
+    <p data-style="section"><em>Barda</em></p>
+    <p data-style="filmkunye"><strong>Yönetmen:</strong> Hande Türkel<br><strong>Senaryo:</strong> Cem Özüduru, Ozan Ağaç<br><strong>Görüntü Yönetmeni:</strong> Melik Uslu<br><strong>Kurgu:</strong> Sercan Güdücü<br><strong>Müzik:</strong> Cem Öget<br><strong>Oyuncular:</strong> İdris Nebi Taşkan, Melisa Berberoğlu, Cem Söküt<br>2024 / 98′ / Türkiye</p>
+    <p>Künye "Film Künye" stilinde: ortalı, bir punto küçük, tek satır aralığı (satırlar arası sık). Etiketleri elle <strong>bold</strong> yapabilirsin.</p>
+  </div>
+
+</body>
+</html>

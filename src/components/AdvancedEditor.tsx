@@ -363,16 +363,31 @@ function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick, show
 
   // Özel paragraf stilini uygula: paragrafa çevir, data-style ata ve
   // stile uygun varsayılan hizalamayı ver (editör sonradan değiştirebilir).
+  // Ayrıca bloktaki satır içi font işaretleri temizlenir: stil fontu her
+  // zaman varsayılan Inter'dir (Word'den yapıştırılan serif fontlar kalmasın).
   const applyParagraphStyle = (
     style: 'title' | 'author' | 'section' | 'filmkunye' | 'epigraf' | null,
     align: 'left' | 'center' | 'right' | 'justify',
   ) => {
+    const { from, to } = editor.state.selection;
+    // Seçimin kapsadığı blokların tamamına yay (font temizliği blok bazında)
+    let start = from;
+    let end = to;
+    editor.state.doc.nodesBetween(from, to, (node, pos) => {
+      if (node.isTextblock) {
+        start = Math.min(start, pos + 1);
+        end = Math.max(end, pos + node.nodeSize - 1);
+      }
+    });
     editor
       .chain()
       .focus()
       .setParagraph()
       .updateAttributes('paragraph', { dataStyle: style })
       .setTextAlign(align)
+      .setTextSelection({ from: start, to: end })
+      .unsetFontFamily()
+      .setTextSelection({ from, to })
       .run();
   };
 
@@ -1242,11 +1257,14 @@ function CharacterCounter({ editor }: { editor: ReturnType<typeof useEditor> }) 
   // referans işaretleri hariç. Ardışık boşluk/satır sonu tek ayraç sayılır,
   // böylece boş ENTER'lı satırlar sözcük olarak sayılmaz. Bu, Word'ün durum
   // çubuğundaki sözcük sayısıyla (dipnotları saymaz) daha tutarlıdır.
+  // textBetween: blok sonları '\n' ile ayrılır, ama AYNI blok içindeki metin
+  // parçaları (kelime ortasında bold/italik değişimi gibi) araya boşluk
+  // KONMADAN birleşir — aksi halde "keli|me" iki kelime sayılırdı. Atom
+  // düğümler (görsel, dipnot işareti [n]) '' ile hiç sayılmaz.
   let bodyText = '';
-  editor.state.doc.descendants((node) => {
-    if (node.type.name === 'footnotesSection') return false; // dipnot bölümünü atla
-    if (node.isText) bodyText += node.text + ' ';
-    return true;
+  editor.state.doc.forEach((node) => {
+    if (node.type.name === 'footnotesSection') return; // dipnot bölümünü atla
+    bodyText += node.textBetween(0, node.content.size, '\n', '') + '\n';
   });
   const words = (bodyText.match(/\S+/g) || []).length;
 

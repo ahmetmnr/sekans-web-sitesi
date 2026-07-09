@@ -49,7 +49,7 @@ function ImageComponent({ node, updateAttributes, deleteNode, selected }: ImageN
   const containerRef = useRef<HTMLDivElement>(null);
   const startPos = useRef({ x: 0, y: 0, width: 0, height: 0 });
 
-  const { src, alt, width, height, alignment, float: imageFloat, caption } = node.attrs;
+  const { src, alt, width, alignment, float: imageFloat, caption } = node.attrs;
 
   // Düzenlenmiş görseli kaydet
   const handleEditorSave = (editedSrc: string) => {
@@ -60,19 +60,25 @@ function ImageComponent({ node, updateAttributes, deleteNode, selected }: ImageN
   // Yüzde genişlik kontrolü
   const isPercentWidth = typeof width === 'string' && width.includes('%');
 
-  // Boyut hesaplama
+  // Boyut hesaplama.
+  // ÖNEMLİ: height her zaman auto — genişlik max-width:100% ile kısılınca
+  // sabit yükseklik görüntünün ölçeğini (en/boy oranını) bozuyordu.
   const getStyle = () => {
-    const style: React.CSSProperties = {};
+    const style: React.CSSProperties = { height: 'auto' };
     if (isPercentWidth) {
-      // Yüzde genişlikte wrapper zaten boyutu ayarlıyor, resim %100 olsun
+      // Yüzde genişlikte iç sarmalayıcı boyutu ayarlıyor, resim %100 olsun
       style.width = '100%';
     } else if (width) {
       style.width = `${width}px`;
     }
-    if (height) {
-      style.height = typeof height === 'string' && height.includes('%') ? height : `${height}px`;
-    }
     return style;
+  };
+
+  // Yüzde genişlikte iç sarmalayıcının genişliği: float yokken yüzde flex
+  // kapsayıcıya göre çözülür; float'ta dış sarmalayıcı zaten yüzde genişlikte.
+  const getInnerStyle = (): React.CSSProperties | undefined => {
+    if (!isPercentWidth) return undefined;
+    return { width: imageFloat === 'none' ? (width as string) : '100%' };
   };
 
   // Hizalama ve float için wrapper style
@@ -135,31 +141,20 @@ function ImageComponent({ node, updateAttributes, deleteNode, selected }: ImageN
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = moveEvent.clientX - startPos.current.x;
       const deltaY = moveEvent.clientY - startPos.current.y;
+      const aspectRatio = startPos.current.width / startPos.current.height;
 
+      // En/boy oranı HER ZAMAN korunur; yalnızca genişlik saklanır (height:auto).
+      // Yatay kenar/köşelerde deltaX, dikey kenarlarda deltaY oranla çevrilir.
       let newWidth = startPos.current.width;
-      let newHeight = startPos.current.height;
-
-      // Köşeye göre boyut hesapla
       if (corner.includes('e')) newWidth = startPos.current.width + deltaX;
-      if (corner.includes('w')) newWidth = startPos.current.width - deltaX;
-      if (corner.includes('s')) newHeight = startPos.current.height + deltaY;
-      if (corner.includes('n')) newHeight = startPos.current.height - deltaY;
-
-      // En/boy oranını koru (Shift tuşu ile serbest)
-      if (!moveEvent.shiftKey) {
-        const aspectRatio = startPos.current.width / startPos.current.height;
-        if (corner === 'se' || corner === 'nw') {
-          newHeight = newWidth / aspectRatio;
-        } else if (corner === 'sw' || corner === 'ne') {
-          newHeight = newWidth / aspectRatio;
-        }
-      }
+      else if (corner.includes('w')) newWidth = startPos.current.width - deltaX;
+      else if (corner === 's') newWidth = startPos.current.width + deltaY * aspectRatio;
+      else if (corner === 'n') newWidth = startPos.current.width - deltaY * aspectRatio;
 
       // Minimum boyut
       newWidth = Math.max(50, newWidth);
-      newHeight = Math.max(50, newHeight);
 
-      updateAttributes({ width: Math.round(newWidth), height: Math.round(newHeight) });
+      updateAttributes({ width: Math.round(newWidth), height: null });
     };
 
     const handleMouseUp = () => {
@@ -172,36 +167,11 @@ function ImageComponent({ node, updateAttributes, deleteNode, selected }: ImageN
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  // Hızlı boyut presetleri
+  // Hızlı boyut presetleri — yüzde olarak saklanır; böylece editörde ve
+  // yayında (farklı sütun genişliklerinde) aynı oranda görünür.
   const setPresetSize = (preset: 'small' | 'medium' | 'large' | 'full') => {
-    const img = imageRef.current;
-    if (!img) return;
-
-    const containerWidth = containerRef.current?.parentElement?.offsetWidth || 800;
-    const naturalRatio = img.naturalWidth / img.naturalHeight;
-
-    let newWidth: number;
-    switch (preset) {
-      case 'small':
-        newWidth = Math.min(200, containerWidth * 0.25);
-        break;
-      case 'medium':
-        newWidth = Math.min(400, containerWidth * 0.5);
-        break;
-      case 'large':
-        newWidth = Math.min(600, containerWidth * 0.75);
-        break;
-      case 'full':
-        newWidth = containerWidth - 48; // padding için
-        break;
-      default:
-        newWidth = 400;
-    }
-
-    updateAttributes({
-      width: Math.round(newWidth),
-      height: Math.round(newWidth / naturalRatio),
-    });
+    const percents = { small: '25%', medium: '50%', large: '75%', full: '100%' } as const;
+    updateAttributes({ width: percents[preset], height: null });
   };
 
   // Orijinal boyuta dön
@@ -221,6 +191,7 @@ function ImageComponent({ node, updateAttributes, deleteNode, selected }: ImageN
     >
       <div
         className={`relative inline-block group ${selected ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
+        style={getInnerStyle()}
         onMouseEnter={() => setShowToolbar(true)}
         onMouseLeave={() => !isResizing && setShowToolbar(false)}
       >
@@ -238,7 +209,17 @@ function ImageComponent({ node, updateAttributes, deleteNode, selected }: ImageN
 
         {/* Üst Toolbar */}
         {(showToolbar || selected) && (
-          <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-white rounded-lg shadow-lg border p-1 z-10">
+          <div
+            className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-white rounded-lg shadow-lg border p-1 z-10"
+            // ProseMirror (draggable atom düğüm) mousedown'u yakalayıp sürükleme/
+            // seçim başlatınca buton tıklamaları yutuluyordu (ör. Ortala
+            // çalışmıyor, ama portal'da açılan Sarma menüsü çalışıyordu).
+            // Olay editöre inmesin.
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
             {/* Hizalama */}
             <Button
               variant={alignment === 'left' && imageFloat === 'none' ? 'secondary' : 'ghost'}
@@ -454,9 +435,9 @@ function ImageComponent({ node, updateAttributes, deleteNode, selected }: ImageN
         )}
 
         {/* Boyut Göstergesi */}
-        {isResizing && width && height && (
+        {isResizing && width && (
           <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-            {Math.round(Number(width))} × {Math.round(Number(height))}
+            {isPercentWidth ? width : `${Math.round(Number(width))} px`}
           </div>
         )}
       </div>
@@ -470,6 +451,7 @@ function ImageComponent({ node, updateAttributes, deleteNode, selected }: ImageN
           onChange={(e) => updateAttributes({ caption: e.target.value })}
           placeholder="Açıklama ekleyin (isteğe bağlı)…"
           className="w-full text-center text-sm text-gray-500 italic mt-1 bg-transparent border-0 outline-none focus:text-gray-700 placeholder:text-gray-300"
+          onMouseDown={(e) => e.stopPropagation()}
         />
       )}
 
@@ -551,7 +533,9 @@ export const ResizableImage = Node.create({
             alt: img.getAttribute('alt'),
             title: img.getAttribute('title'),
             width,
-            height: img.style.height ? parseInt(img.style.height) : null,
+            // Eski içerikteki sabit yükseklikler ölçeği bozuyordu; artık
+            // yükseklik saklanmaz (height:auto), yüklerken de temizlenir.
+            height: null,
             alignment: element.getAttribute('data-alignment') || 'center',
             float: element.getAttribute('data-float') || 'none',
             caption: figcaption?.textContent || '',
@@ -565,14 +549,14 @@ export const ResizableImage = Node.create({
           alt: element.getAttribute('alt'),
           title: element.getAttribute('title'),
           width: element.style.width ? parseInt(element.style.width) : null,
-          height: element.style.height ? parseInt(element.style.height) : null,
+          height: null,
         }),
       },
     ];
   },
 
   renderHTML({ HTMLAttributes }) {
-    const { src, alt, title, width, height, alignment, float: imageFloat, caption } = HTMLAttributes;
+    const { src, alt, title, width, alignment, float: imageFloat, caption } = HTMLAttributes;
 
     const isPercent = typeof width === 'string' && width.includes('%');
 
@@ -598,15 +582,15 @@ export const ResizableImage = Node.create({
       }
     }
 
-    // Img style hesapla
-    let imgStyle = 'max-width: 100%; border-radius: 0.5rem;';
+    // Img style hesapla. height her zaman auto: sabit yükseklik, genişlik
+    // max-width ile kısıldığında en/boy oranını bozuyordu.
+    let imgStyle = 'max-width: 100%; height: auto; border-radius: 0.5rem;';
     if (isPercent) {
-      imgStyle += ' width: 100%;';
+      // Float'ta yüzdeyi figure taşır; float yokken yüzde doğrudan img'de
+      // (figure tam genişlikte flex kapsayıcı olduğundan yüzde ona göre çözülür).
+      imgStyle += imageFloat === 'left' || imageFloat === 'right' ? ' width: 100%;' : ` width: ${width};`;
     } else if (width) {
       imgStyle += ` width: ${width}px;`;
-    }
-    if (height) {
-      imgStyle += typeof height === 'string' && height.includes('%') ? ` height: ${height};` : ` height: ${height}px;`;
     }
 
     const children: unknown[] = [
