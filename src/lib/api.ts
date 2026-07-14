@@ -4,6 +4,7 @@
 
 import type {
   Sayi, ArsivSayi, AraYazi, Yazar, Kategori, Yazi, SayiDurum, Kullanici, EditorOzet,
+  AramaSonuclari, IndeksGiris, StatikSayfaIcerik,
 } from '@/types';
 
 export const API_BASE: string =
@@ -117,6 +118,10 @@ const del = <T>(path: string) => request<T>('DELETE', path).then((r) => r.data);
 export interface YarismaBilgi {
   baslik: string;
   aciklama: string;
+  basvuruTarihleri?: string; // bilgi kartı: "Her yıl Mart-Nisan aylarında"
+  kategoriMetni?: string;    // bilgi kartı: "Film Eleştirisi ve Film Çözümlemesi"
+  odulMetni?: string;        // bilgi kartı: "Para ödülü ve dergide yayınlanma"
+  basvuruEmail?: string;     // başvuru CTA e-posta adresi
   gecmisKazananlar: { yil: number; birinci: string; ikinci: string }[];
 }
 export interface HakkimizdaIcerik {
@@ -130,6 +135,7 @@ export interface HakkimizdaIcerik {
 }
 export interface BootstrapData {
   sonSayi: Sayi | null;
+  anasayfaSayilari?: Sayi[]; // ana sayfada gösterilecek sayılar (yayındaki + admin seçimi)
   arsivSayilari: ArsivSayi[];
   araYazilar: AraYazi[];
   yazarlar: Yazar[];
@@ -253,6 +259,19 @@ export const api = {
     get: () => get<HakkimizdaIcerik>('/hakkimizda'),
     update: (b: HakkimizdaIcerik) => put<HakkimizdaIcerik>('/hakkimizda', b),
   },
+
+  // Statik sayfalar (ör. yazi-standartlari) — admin panelden düzenlenir
+  sayfa: {
+    get: (slug: string) => get<StatikSayfaIcerik>(`/sayfa/${encodeURIComponent(slug)}`),
+    update: (slug: string, b: { baslik: string; icerik: string }) =>
+      put<StatikSayfaIcerik>(`/sayfa/${encodeURIComponent(slug)}`, b),
+  },
+
+  // Site içi arama
+  arama: (q: string) => get<AramaSonuclari>(`/arama?q=${encodeURIComponent(q)}`),
+
+  // Sekans İndeks (tüm yayımlanmış içerik dökümü)
+  indeks: () => get<{ girisler: IndeksGiris[] }>('/indeks'),
 
   // Yükleme
   uploadFile: (file: File, kind: 'image' | 'pdf' | 'foto') => {

@@ -1,6 +1,7 @@
 // CMS Hakkımızda Yönetimi - About Page Management
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCMS } from '@/context/CMSContext';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,13 +20,56 @@ import {
   Mail,
   MapPin,
   Globe,
+  FileText,
+  Loader2,
 } from 'lucide-react';
+
+// Menüde "Hakkımızda" altında görünen statik sayfa (slug sabit).
+const YAZI_STANDARTLARI_SLUG = 'yazi-standartlari';
 
 export function CMSHakkimizdaYonetimi() {
   const { hakkimizdaIcerik, updateHakkimizdaIcerik } = useCMS();
 
   const [editingContent, setEditingContent] = useState(false);
   const [editingContact, setEditingContact] = useState(false);
+
+  // --- Sekans Yazı Standartları (statik sayfa) ---
+  const [standartBaslik, setStandartBaslik] = useState('Sekans Yazı Standartları');
+  const [standartIcerik, setStandartIcerik] = useState('');
+  const [standartYukleniyor, setStandartYukleniyor] = useState(true);
+  const [editingStandart, setEditingStandart] = useState(false);
+  const [standartForm, setStandartForm] = useState({ baslik: '', icerik: '' });
+  const [standartKaydediliyor, setStandartKaydediliyor] = useState(false);
+
+  useEffect(() => {
+    let iptal = false;
+    api.sayfa.get(YAZI_STANDARTLARI_SLUG)
+      .then((d) => {
+        if (iptal) return;
+        setStandartBaslik(d.baslik || 'Sekans Yazı Standartları');
+        setStandartIcerik(d.icerik || '');
+      })
+      .catch(() => { /* sayfa henüz yok — varsayılanlarla kal */ })
+      .finally(() => { if (!iptal) setStandartYukleniyor(false); });
+    return () => { iptal = true; };
+  }, []);
+
+  const handleStandartSubmit = async () => {
+    setStandartKaydediliyor(true);
+    try {
+      const saved = await api.sayfa.update(YAZI_STANDARTLARI_SLUG, {
+        baslik: standartForm.baslik || 'Sekans Yazı Standartları',
+        icerik: standartForm.icerik,
+      });
+      setStandartBaslik(saved.baslik);
+      setStandartIcerik(saved.icerik);
+      setEditingStandart(false);
+    } catch (error) {
+      alert((error as Error).message || 'Kaydedilemedi');
+    } finally {
+      setStandartKaydediliyor(false);
+    }
+  };
 
   const [contentForm, setContentForm] = useState({
     baslik: hakkimizdaIcerik.baslik,
@@ -201,6 +245,54 @@ export function CMSHakkimizdaYonetimi() {
         </CardContent>
       </Card>
 
+      {/* Sekans Yazı Standartları (statik sayfa) */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-gray-500" />
+                Sekans Yazı Standartları
+              </CardTitle>
+              <CardDescription>
+                Menüde "Hakkımızda → Sekans Yazı Standartları" altında ve İletişim sayfasında görünen sayfa.
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              disabled={standartYukleniyor}
+              onClick={() => {
+                setStandartForm({ baslik: standartBaslik, icerik: standartIcerik });
+                setEditingStandart(true);
+              }}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Düzenle
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {standartYukleniyor ? (
+            <div className="py-6 text-center">
+              <Loader2 className="h-5 w-5 animate-spin text-gray-400 mx-auto" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-medium text-gray-700">Başlık</h3>
+                <p className="text-gray-900 mt-1 text-lg font-semibold">{standartBaslik}</p>
+              </div>
+              <div>
+                <h3 className="font-medium text-gray-700">İçerik</h3>
+                <div className="text-gray-600 mt-1 whitespace-pre-line bg-gray-50 p-4 rounded-lg min-h-[3rem]">
+                  {standartIcerik || <span className="text-gray-400">Henüz içerik girilmemiş.</span>}
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* İçerik Düzenleme Dialog */}
       <Dialog open={editingContent} onOpenChange={setEditingContent}>
         <DialogContent className="max-w-2xl">
@@ -303,6 +395,45 @@ export function CMSHakkimizdaYonetimi() {
               İptal
             </Button>
             <Button onClick={handleContactSubmit}>Kaydet</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Yazı Standartları Düzenleme Dialog */}
+      <Dialog open={editingStandart} onOpenChange={setEditingStandart}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Sekans Yazı Standartlarını Düzenle</DialogTitle>
+            <DialogDescription>
+              Bize yazı göndermek isteyenler için standartları güncelleyin (Markdown desteklenir).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div>
+              <Label htmlFor="std-baslik">Başlık</Label>
+              <Input
+                id="std-baslik"
+                value={standartForm.baslik}
+                onChange={(e) => setStandartForm({ ...standartForm, baslik: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="std-icerik">İçerik (Markdown desteklenir)</Label>
+              <Textarea
+                id="std-icerik"
+                value={standartForm.icerik}
+                onChange={(e) => setStandartForm({ ...standartForm, icerik: e.target.value })}
+                rows={15}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingStandart(false)}>
+              İptal
+            </Button>
+            <Button onClick={handleStandartSubmit} disabled={standartKaydediliyor}>
+              {standartKaydediliyor ? 'Kaydediliyor...' : 'Kaydet'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

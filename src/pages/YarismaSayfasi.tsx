@@ -5,6 +5,10 @@ interface YarismaSayfasiProps {
   yarismasi: {
     baslik: string;
     aciklama: string;
+    basvuruTarihleri?: string;
+    kategoriMetni?: string;
+    odulMetni?: string;
+    basvuruEmail?: string;
     gecmisKazananlar: {
       yil: number;
       birinci: string;
@@ -22,6 +26,12 @@ export default function YarismaSayfasi({ yarismasi, onBackClick }: YarismaSayfas
       .replace(/\n\n/g, '</p><p>')
       .replace(/\n/g, '<br/>');
   };
+
+  // Bilgi kartları ve başvuru e-postası admin panelden düzenlenir; boşsa eski varsayılanlar.
+  const basvuruTarihleri = yarismasi.basvuruTarihleri || 'Her yıl Mart-Nisan aylarında';
+  const kategoriMetni = yarismasi.kategoriMetni || 'Film Eleştirisi ve Film Çözümlemesi';
+  const odulMetni = yarismasi.odulMetni || 'Para ödülü ve dergide yayınlanma';
+  const basvuruEmail = yarismasi.basvuruEmail || 'info@sekans.org';
 
   return (
     <main className="animate-fade-in py-8 md:py-12">
@@ -58,23 +68,23 @@ export default function YarismaSayfasi({ yarismasi, onBackClick }: YarismaSayfas
             <Calendar className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
             <h3 className="font-medium mb-1">Başvuru Tarihleri</h3>
             <p className="text-sm text-muted-foreground">
-              Her yıl Mart-Nisan aylarında
+              {basvuruTarihleri}
             </p>
           </div>
-          
+
           <div className="bg-muted/50 p-6 text-center">
             <FileText className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
             <h3 className="font-medium mb-1">Kategoriler</h3>
             <p className="text-sm text-muted-foreground">
-              Film Eleştirisi ve Film Çözümlemesi
+              {kategoriMetni}
             </p>
           </div>
-          
+
           <div className="bg-muted/50 p-6 text-center">
             <Award className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
             <h3 className="font-medium mb-1">Ödüller</h3>
             <p className="text-sm text-muted-foreground">
-              Para ödülü ve dergide yayınlanma
+              {odulMetni}
             </p>
           </div>
         </div>
@@ -124,12 +134,12 @@ export default function YarismaSayfasi({ yarismasi, onBackClick }: YarismaSayfas
             Yarışma başvuruları her yıl Mart ayında açılır. 
             Güncel duyurular için bizi takip edin.
           </p>
-          <a 
-            href="mailto:info@sekans.org"
+          <a
+            href={`mailto:${basvuruEmail}`}
             className="inline-flex items-center gap-2 text-sm font-medium underline underline-offset-4 hover:no-underline"
           >
             <Mail className="w-4 h-4" />
-            info@sekans.org
+            {basvuruEmail}
           </a>
         </div>
       </div>

@@ -274,6 +274,24 @@ function handle_delete_kategori(string $code): void
 
 /* ============================ ARŞİV SAYILARI =============================== */
 
+/** Menü/ana sayfa alanlarını (menuEtiket, menuGoster, anasayfaGoster) SET listesine ekle. */
+function sayi_menu_fields(array $b, array &$set, array &$params): void
+{
+    if (array_key_exists('menuEtiket', $b)) {
+        $set[] = 'menu_etiket = ?';
+        $v = trim((string)($b['menuEtiket'] ?? ''));
+        $params[] = $v !== '' ? $v : null;
+    }
+    if (array_key_exists('menuGoster', $b)) {
+        $set[] = 'menu_goster = ?';
+        $params[] = !empty($b['menuGoster']) ? 1 : 0;
+    }
+    if (array_key_exists('anasayfaGoster', $b)) {
+        $set[] = 'anasayfa_goster = ?';
+        $params[] = !empty($b['anasayfaGoster']) ? 1 : 0;
+    }
+}
+
 function handle_create_arsiv(array $b): void
 {
     $numara = trim((string)($b['numara'] ?? ''));
@@ -305,6 +323,7 @@ function handle_update_arsiv(string $code, array $b): void
     if (array_key_exists('kapakGorseli',$b)) { $set[]='kapak_gorseli = ?'; $params[]=$b['kapakGorseli']; }
     if (array_key_exists('pdfUrl',$b)) { $set[]='pdf_url = ?'; $params[]=$b['pdfUrl']; }
     if (array_key_exists('yayinTarihi',$b)) { $set[]='yayin_tarihi = ?'; $params[]=norm_date($b['yayinTarihi']); }
+    sayi_menu_fields($b, $set, $params);
     if (!$set) fail('VALIDATION', 'Güncellenecek alan yok.', 400);
     $params[] = $id;
     db()->prepare("UPDATE sayilar SET " . implode(', ', $set) . " WHERE id = ?")->execute($params);
@@ -338,6 +357,7 @@ function handle_update_current_sayi(array $b): void
     }
     if (array_key_exists('yil',$b)) { $set[]='yil = ?'; $params[]=(int)$b['yil']; }
     if (array_key_exists('yayinTarihi',$b)) { $set[]='yayin_tarihi = ?'; $params[]=norm_date($b['yayinTarihi']); }
+    sayi_menu_fields($b, $set, $params);
     if ($set) {
         $params[] = $id;
         db()->prepare("UPDATE sayilar SET " . implode(', ', $set) . " WHERE id = ?")->execute($params);
@@ -454,6 +474,7 @@ function handle_update_sayi(string $code, array $b): void
     }
     if (array_key_exists('yil',$b)) { $set[]='yil = ?'; $params[]=(int)$b['yil']; }
     if (array_key_exists('yayinTarihi',$b)) { $set[]='yayin_tarihi = ?'; $params[]=norm_date($b['yayinTarihi']); }
+    sayi_menu_fields($b, $set, $params);
     if (array_key_exists('editorId',$b)) {
         $set[]='editor_id = ?';
         $params[] = ($b['editorId'] === null || $b['editorId'] === '') ? null : require_editor_id((string)$b['editorId']);
@@ -514,8 +535,18 @@ function handle_update_yarisma(array $b): void
     $pdo = db();
     $pdo->beginTransaction();
     try {
-        $pdo->prepare("UPDATE yarisma_bilgi SET baslik = ?, aciklama = ? WHERE id = 1")
-            ->execute([(string)($b['baslik'] ?? ''), $b['aciklama'] ?? '']);
+        $set = ['baslik = ?', 'aciklama = ?'];
+        $params = [(string)($b['baslik'] ?? ''), $b['aciklama'] ?? ''];
+        // Bilgi kartları + başvuru e-postası (yalnızca gönderildiyse — eski istemcilerle uyumlu)
+        foreach ([
+            'basvuruTarihleri' => 'basvuru_tarihleri',
+            'kategoriMetni'    => 'kategori_metni',
+            'odulMetni'        => 'odul_metni',
+            'basvuruEmail'     => 'basvuru_email',
+        ] as $k => $col) {
+            if (array_key_exists($k, $b)) { $set[] = "$col = ?"; $params[] = (string)($b[$k] ?? ''); }
+        }
+        $pdo->prepare("UPDATE yarisma_bilgi SET " . implode(', ', $set) . " WHERE id = 1")->execute($params);
         // Kazananları tamamen yeniden yaz (istemci tüm diziyi gönderir).
         if (array_key_exists('gecmisKazananlar', $b) && is_array($b['gecmisKazananlar'])) {
             $pdo->exec("DELETE FROM yarisma_kazananlar");
@@ -530,6 +561,23 @@ function handle_update_yarisma(array $b): void
         throw $e;
     }
     handle_get_yarisma();
+}
+
+/** PUT /api/sayfa/{slug} — statik sayfayı güncelle (yoksa oluştur). editör+ */
+function handle_update_sayfa(string $slug, array $b): void
+{
+    $slug = slugify($slug);
+    if ($slug === '') fail('VALIDATION', 'Geçersiz sayfa adresi.', 400);
+    $baslik = trim((string)($b['baslik'] ?? ''));
+    if ($baslik === '') fail('VALIDATION', 'Başlık gerekli.', 400, ['baslik' => 'zorunlu']);
+    db()->prepare(
+        "INSERT INTO sayfalar (slug, baslik, icerik) VALUES (?,?,?)
+         ON DUPLICATE KEY UPDATE baslik = VALUES(baslik), icerik = VALUES(icerik)"
+    )->execute([$slug, $baslik, $b['icerik'] ?? '']);
+    $st = db()->prepare("SELECT slug, baslik, icerik FROM sayfalar WHERE slug = ? LIMIT 1");
+    $st->execute([$slug]);
+    $r = $st->fetch();
+    respond(['slug' => $r['slug'], 'baslik' => $r['baslik'], 'icerik' => $r['icerik'] ?? '']);
 }
 
 function handle_update_hakkimizda(array $b): void

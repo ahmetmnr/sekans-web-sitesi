@@ -73,6 +73,9 @@ CREATE TABLE sayilar (
   ay            VARCHAR(40)     NOT NULL,               -- month name 'Temmuz'
   yil           SMALLINT UNSIGNED NOT NULL,             -- year 2025
   tam_baslik    VARCHAR(255)    NULL,                   -- 'Temmuz 2025 | Sayı e27' (tamBaslik)
+  menu_etiket   VARCHAR(120)    NULL,                   -- "Sayılar" menüsünde görünen özel ad (ör. 'Lynch Sayısı'); boşsa 'Sayı e27'
+  menu_goster   TINYINT(1)      NOT NULL DEFAULT 1,     -- "Sayılar" menüsünde listelensin mi (admin panelden)
+  anasayfa_goster TINYINT(1)    NOT NULL DEFAULT 0,     -- ana sayfada yayındaki sayıya EK olarak göster (çift sayı düzeni)
   kapak_gorseli VARCHAR(512)    NULL,                   -- cover image path
   pdf_url       VARCHAR(512)    NULL,                   -- issue PDF path
   kunye         TEXT            NULL,                   -- credits / colophon (full issue only)
@@ -163,10 +166,14 @@ CREATE TABLE ara_yazilar (
 -- Single row (id=1). gecmisKazananlar normalized into yarisma_kazananlar.
 -- -----------------------------------------------------------------------------
 CREATE TABLE yarisma_bilgi (
-  id          TINYINT UNSIGNED NOT NULL DEFAULT 1,
-  baslik      VARCHAR(255)     NOT NULL,
-  aciklama    LONGTEXT         NULL,                    -- markdown/plain description
-  updated_at  TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  id                TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  baslik            VARCHAR(255)     NOT NULL,
+  aciklama          LONGTEXT         NULL,              -- markdown/plain description
+  basvuru_tarihleri VARCHAR(255)     NULL,              -- bilgi kartı: "Her yıl Mart-Nisan aylarında"
+  kategori_metni    VARCHAR(255)     NULL,              -- bilgi kartı: "Film Eleştirisi ve Film Çözümlemesi"
+  odul_metni        VARCHAR(255)     NULL,              -- bilgi kartı: "Para ödülü ve dergide yayınlanma"
+  basvuru_email     VARCHAR(255)     NULL,              -- başvuru CTA e-posta adresi
+  updated_at        TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   CONSTRAINT chk_yarisma_bilgi_singleton CHECK (id = 1)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -179,6 +186,7 @@ CREATE TABLE yarisma_kazananlar (
   yil         SMALLINT UNSIGNED NOT NULL,
   birinci     VARCHAR(500)    NULL,                     -- first place text
   ikinci      VARCHAR(500)    NULL,                     -- second place text
+  sira_no     INT             NOT NULL DEFAULT 0,       -- display order (client array order)
   created_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_yarisma_kazananlar_yil (yil),
@@ -202,6 +210,20 @@ CREATE TABLE hakkimizda (
   updated_at        TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   CONSTRAINT chk_hakkimizda_singleton CHECK (id = 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- sayfalar (static pages) — admin panelden düzenlenebilir serbest sayfalar.
+-- İlk kullanım: 'yazi-standartlari' (Sekans Yazı Standartları).
+-- -----------------------------------------------------------------------------
+CREATE TABLE sayfalar (
+  id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  slug        VARCHAR(160)    NOT NULL,                 -- ör. 'yazi-standartlari'
+  baslik      VARCHAR(255)    NOT NULL,
+  icerik      LONGTEXT        NULL,                     -- markdown-benzeri metin
+  updated_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_sayfalar_slug (slug)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
@@ -271,3 +293,6 @@ INSERT INTO yarisma_bilgi (id, baslik, aciklama) VALUES (1, '', NULL)
   ON DUPLICATE KEY UPDATE id = id;
 INSERT INTO hakkimizda (id, baslik) VALUES (1, '')
   ON DUPLICATE KEY UPDATE id = id;
+INSERT INTO sayfalar (slug, baslik, icerik) VALUES
+  ('yazi-standartlari', 'Sekans Yazı Standartları', NULL)
+  ON DUPLICATE KEY UPDATE slug = slug;

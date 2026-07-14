@@ -1,4 +1,4 @@
-import { ArrowLeft, Mail, MapPin, Send, User, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Mail, MapPin, Send, User, MessageSquare, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,9 +7,10 @@ import { useState } from 'react';
 
 interface IletisimSayfasiProps {
   onBackClick: () => void;
+  onYaziStandartlariClick?: () => void;
 }
 
-export default function IletisimSayfasi({ onBackClick }: IletisimSayfasiProps) {
+export default function IletisimSayfasi({ onBackClick, onYaziStandartlariClick }: IletisimSayfasiProps) {
   const [formData, setFormData] = useState({
     ad: '',
     email: '',
@@ -84,6 +85,22 @@ export default function IletisimSayfasi({ onBackClick }: IletisimSayfasiProps) {
                 </div>
               </div>
             </div>
+
+            {/* Yazı Göndermek İster misiniz? */}
+            {onYaziStandartlariClick && (
+              <div className="mt-10">
+                <h3 className="text-sm font-semibold uppercase tracking-wider mb-3">
+                  Bize Yazı Göndermek İster misiniz?
+                </h3>
+                <button
+                  onClick={onYaziStandartlariClick}
+                  className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4"
+                >
+                  <FileText className="w-4 h-4" />
+                  Sekans Yazı Standartları
+                </button>
+              </div>
+            )}
 
             {/* Sosyal Medya */}
             <div className="mt-10">

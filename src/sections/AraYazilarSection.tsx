@@ -20,7 +20,7 @@ export default function AraYazilarSection({
       <div className="container mx-auto px-4 md:px-6">
         {/* Başlık ve "Tümünü Gör" Linki */}
         <div className="flex items-center justify-between mb-8 md:mb-10 border-b border-border pb-4">
-          <h2 className="section-title">Ara Yazılar</h2>
+          <h2 className="section-title">Blog</h2>
           <button
             onClick={onTumunuGorClick}
             className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors group"

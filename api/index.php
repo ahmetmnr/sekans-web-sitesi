@@ -59,6 +59,9 @@ $routes = [
     ['GET',  '#^/kategoriler$#',         null, fn($m) => handle_get_kategoriler()],
     ['GET',  '#^/yarisma$#',             null, fn($m) => handle_get_yarisma()],
     ['GET',  '#^/hakkimizda$#',          null, fn($m) => handle_get_hakkimizda()],
+    ['GET',  '#^/sayfa/([^/]+)$#',       null, fn($m) => handle_get_sayfa($m[1])],
+    ['GET',  '#^/arama$#',               null, fn($m) => handle_search()],
+    ['GET',  '#^/indeks$#',              null, fn($m) => handle_get_indeks()],
 
     // ---- Auth ----
     ['POST', '#^/auth/login$#',          null,   fn($m) => handle_login()],
@@ -108,9 +111,10 @@ $routes = [
     ['PUT',    '#^/sayi/([^/]+)$#',       'editor', fn($m) => handle_update_sayi($m[1], read_json_body())],
     ['DELETE', '#^/sayi/([^/]+)$#',       'editor', fn($m) => handle_delete_sayi($m[1])],
 
-    // ---- Yarışma / Hakkımızda ----
+    // ---- Yarışma / Hakkımızda / Statik sayfalar ----
     ['PUT',    '#^/yarisma$#',           'editor', fn($m) => handle_update_yarisma(read_json_body())],
     ['PUT',    '#^/hakkimizda$#',        'editor', fn($m) => handle_update_hakkimizda(read_json_body())],
+    ['PUT',    '#^/sayfa/([^/]+)$#',     'editor', fn($m) => handle_update_sayfa($m[1], read_json_body())],
 
     // ---- Admin: export / import / reset ----
     ['GET',    '#^/export$#',            'admin', fn($m) => handle_export()],

@@ -9,16 +9,18 @@ interface AraYazilarSayfasiProps {
   onBackClick: () => void;
   baslik?: string;
   aciklama?: string;
+  initialKategori?: string; // sayfa açılışında ön-seçili kategori filtresi
 }
 
 export default function AraYazilarSayfasi({
   araYazilar,
   onAraYaziClick,
   onBackClick,
-  baslik = 'Ara Yazılar',
+  baslik = 'Blog',
   aciklama = 'Sekans dergisinin rutin sayılarından ayrı olarak yayınlanan, güncel sinema yazıları ve derinlemesine analizler.',
+  initialKategori,
 }: AraYazilarSayfasiProps) {
-  const [activeKategori, setActiveKategori] = useState<string | null>(null);
+  const [activeKategori, setActiveKategori] = useState<string | null>(initialKategori ?? null);
 
   // Kategoriler
   const kategoriler = useMemo(() =>

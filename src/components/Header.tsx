@@ -1,8 +1,7 @@
-import { useState } from 'react';
-import { Search, Menu, ChevronDown } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Search, Menu, ChevronDown, Loader2, FileText, BookOpen, User } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   DropdownMenu,
@@ -12,41 +11,109 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useCMS } from '@/context/CMSContext';
+import { api } from '@/lib/api';
+import type { AraYazi, AramaSonuclari, AramaYaziSonuc } from '@/types';
 
 interface HeaderProps {
   onNavigate: (page: string) => void;
   currentPage: string;
+  // Arama sonuçlarından detay açma
+  onYaziAc?: (sonuc: AramaYaziSonuc) => void;
+  onAraYaziAc?: (araYazi: AraYazi) => void;
+  onYazarAc?: (yazarId: string) => void;
 }
 
-const navItems = [
+interface NavChild {
+  nav: string;   // onNavigate'e gönderilen kimlik
+  page: string;  // aktiflik kontrolü için sayfa kimliği
+  label: string;
+}
+
+interface NavItem {
+  id: string;
+  label: string;
+  type?: 'sayilar';
+  children?: NavChild[];
+}
+
+// Menü yapısı: children olanlar açılır menüdür. "Sayılar" dinamik (CMS verisinden) kurulur.
+const navItems: NavItem[] = [
   { id: 'anasayfa', label: 'Ana Sayfa' },
-  { id: 'hakkimizda', label: 'Hakkımızda' },
-  { id: 'sonsayi', label: 'Son Sayı', type: 'dropdown' },
+  {
+    id: 'hakkimizda-menu', label: 'Hakkımızda', children: [
+      { nav: 'hakkimizda', page: 'hakkimizda', label: 'Sekans Sinema Grubu' },
+      { nav: 'yazistandartlari', page: 'yazistandartlari', label: 'Sekans Yazı Standartları' },
+      { nav: 'duyurular', page: 'duyurular', label: 'Duyurular' },
+    ],
+  },
+  { id: 'sonsayi', label: 'Sayılar', type: 'sayilar' },
   { id: 'yarisma', label: 'Yarışma' },
-  { id: 'arayazilar', label: 'Yazılar', type: 'bolumler' },
+  {
+    id: 'yazilar-menu', label: 'Yazılar', children: [
+      { nav: 'indeks', page: 'indeks', label: 'Sekans İndeks' },
+      { nav: 'arayazilar-arayazi', page: 'arayazilar', label: 'Ara Yazılar' },
+      { nav: 'sinemakitapligi', page: 'sinemakitapligi', label: 'Sinema Kitaplığı' },
+      { nav: 'textsinenglish', page: 'textsinenglish', label: 'Texts in English' },
+    ],
+  },
   { id: 'yazarlar', label: 'Yazarlar' },
-  { id: 'arsiv', label: 'Arşiv' },
+  {
+    id: 'arsiv-menu', label: 'Arşiv', children: [
+      { nav: 'arsiv', page: 'arsiv', label: 'e-Sayılar' },
+      { nav: 'basilisayilar', page: 'basilisayilar', label: 'Basılı Sayılar' },
+    ],
+  },
   { id: 'iletisim', label: 'İletişim' },
 ];
 
-// Canlı siteden taşınan bölümler ("Yazılar" menüsü altında)
-const bolumItems = [
-  { id: 'arayazilar', label: 'Ara Yazılar' },
-  { id: 'yazarlarimizdan', label: 'Yazarlarımızdan' },
-  { id: 'sinemakitapligi', label: 'Sinema Kitaplığı' },
-  { id: 'basilisayilar', label: 'Basılı Sayılar' },
-  { id: 'duyurular', label: 'Duyurular' },
-];
+// Menüde en fazla bu kadar arşiv sayısı listelenir (admin panelden aç/kapat).
+const MENU_SAYI_LIMIT = 8;
 
-export default function Header({ onNavigate, currentPage }: HeaderProps) {
+export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc, onYazarAc }: HeaderProps) {
+  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<AramaSonuclari | null>(null);
+  const [searching, setSearching] = useState(false);
+  const searchSeq = useRef(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { sonSayi, arsivSayilari } = useCMS();
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Arama fonksiyonu - şimdilik sadece konsola yazdırıyor
-    console.log('Arama:', searchQuery);
+  // Menüde görünecek arşiv sayıları (admin panelden aç/kapat + özel etiket).
+  const menuSayilari = arsivSayilari
+    .filter((s) => s.menuGoster !== false)
+    .slice(0, MENU_SAYI_LIMIT);
+  const sayiEtiketi = (s: { menuEtiket?: string | null; numara: string }) =>
+    s.menuEtiket?.trim() ? s.menuEtiket : `Sayı ${s.numara}`;
+
+  // Canlı arama: 300ms gecikmeli, en az 2 karakter.
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setSearchResults(null);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const seq = ++searchSeq.current;
+    const timer = setTimeout(() => {
+      api.arama(q)
+        .then((res) => {
+          if (searchSeq.current === seq) setSearchResults(res);
+        })
+        .catch(() => {
+          if (searchSeq.current === seq) setSearchResults({ yazilar: [], araYazilar: [], yazarlar: [] });
+        })
+        .finally(() => {
+          if (searchSeq.current === seq) setSearching(false);
+        });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearchQuery('');
+    setSearchResults(null);
   };
 
   const handleNavClick = (pageId: string) => {
@@ -55,13 +122,20 @@ export default function Header({ onNavigate, currentPage }: HeaderProps) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const isDropdownActive = (item: NavItem) =>
+    item.children?.some((c) => c.page === currentPage) ?? false;
+
+  const toplamSonuc = searchResults
+    ? searchResults.yazilar.length + searchResults.araYazilar.length + searchResults.yazarlar.length
+    : 0;
+
   return (
     <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur-sm border-b border-border">
       <div className="container mx-auto px-4 md:px-6">
         {/* Üst Bölüm - Logo */}
         <div className="flex items-center justify-between py-4 md:py-6">
           {/* Logo */}
-          <button 
+          <button
             onClick={() => handleNavClick('anasayfa')}
             className="flex flex-col items-center text-center"
           >
@@ -72,29 +146,29 @@ export default function Header({ onNavigate, currentPage }: HeaderProps) {
           {/* Desktop Menü */}
           <nav className="hidden lg:flex items-center gap-8">
             {navItems.map((item) => (
-              item.type === 'bolumler' ? (
+              item.children ? (
                 <DropdownMenu key={item.id}>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className={`main-nav-link flex items-center gap-1 ${bolumItems.some((b) => b.id === currentPage) ? 'text-foreground after:w-full' : ''}`}
+                      className={`main-nav-link flex items-center gap-1 ${isDropdownActive(item) ? 'text-foreground after:w-full' : ''}`}
                     >
                       {item.label}
                       <ChevronDown className="w-3 h-3" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="center" className="w-56">
-                    {bolumItems.map((b) => (
-                      <DropdownMenuItem key={b.id} onClick={() => handleNavClick(b.id)}>
-                        {b.label}
+                    {item.children.map((c) => (
+                      <DropdownMenuItem key={c.nav} onClick={() => handleNavClick(c.nav)}>
+                        {c.label}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
-              ) : item.type === 'dropdown' ? (
+              ) : item.type === 'sayilar' ? (
                 <DropdownMenu key={item.id}>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className={`main-nav-link flex items-center gap-1 ${currentPage === item.id || currentPage === 'sayidetay' ? 'text-foreground after:w-full' : ''}`}
+                      className={`main-nav-link flex items-center gap-1 ${currentPage === 'sonsayi' || currentPage === 'sayidetay' ? 'text-foreground after:w-full' : ''}`}
                     >
                       Sayılar
                       <ChevronDown className="w-3 h-3" />
@@ -102,11 +176,11 @@ export default function Header({ onNavigate, currentPage }: HeaderProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="center" className="w-56">
                     <DropdownMenuItem onClick={() => handleNavClick('sonsayi')}>
-                      <span className="font-medium">Son Sayı</span>
+                      <span className="font-medium">{sonSayi.menuEtiket?.trim() ? sonSayi.menuEtiket : 'Son Sayı'}</span>
                       <span className="ml-auto text-xs text-muted-foreground">{sonSayi.numara}</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    {arsivSayilari.slice(0, 5).map((sayi) => (
+                    {menuSayilari.map((sayi) => (
                       <DropdownMenuItem
                         key={sayi.id}
                         className="cursor-pointer"
@@ -118,7 +192,7 @@ export default function Header({ onNavigate, currentPage }: HeaderProps) {
                           }
                         }}
                       >
-                        Sayı {sayi.numara}
+                        {sayiEtiketi(sayi)}
                         <span className="ml-auto text-xs text-muted-foreground">{sayi.ay} {sayi.yil}</span>
                       </DropdownMenuItem>
                     ))}
@@ -142,69 +216,155 @@ export default function Header({ onNavigate, currentPage }: HeaderProps) {
 
           {/* Sağ Taraf - Arama ve Mobil Menü */}
           <div className="flex items-center gap-3">
-            {/* Arama Butonu */}
-            <Dialog>
+            {/* Arama */}
+            <Dialog open={searchOpen} onOpenChange={(open) => { if (!open) { closeSearch(); } else { setSearchOpen(true); } }}>
               <DialogTrigger asChild>
-                <button 
+                <button
                   className="p-2 text-foreground/70 hover:text-foreground transition-colors"
                   aria-label="Ara"
                 >
                   <Search className="w-5 h-5" />
                 </button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-lg">
+              <DialogContent className="sm:max-w-xl">
                 <DialogHeader>
                   <DialogTitle className="font-serif text-2xl">Arama</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSearch} className="mt-4">
-                  <div className="flex gap-2">
+                <div className="mt-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       type="text"
                       placeholder="Yazı, yazar veya konu ara..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="flex-1"
+                      className="pl-9"
+                      autoFocus
                     />
-                    <Button type="submit" className="btn-sekans-primary">
-                      Ara
-                    </Button>
+                    {searching && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                    )}
                   </div>
-                </form>
+
+                  {/* Sonuçlar */}
+                  <div className="mt-4 max-h-[55vh] overflow-y-auto">
+                    {searchQuery.trim().length < 2 ? (
+                      <p className="text-sm text-muted-foreground py-6 text-center">
+                        Aramak için en az 2 karakter yazın.
+                      </p>
+                    ) : searchResults && toplamSonuc === 0 && !searching ? (
+                      <p className="text-sm text-muted-foreground py-6 text-center">
+                        “{searchQuery.trim()}” için sonuç bulunamadı.
+                      </p>
+                    ) : searchResults ? (
+                      <div className="space-y-5">
+                        {searchResults.yazilar.length > 0 && (
+                          <div>
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                              <BookOpen className="w-3.5 h-3.5" /> Dergi Yazıları
+                            </h3>
+                            <ul className="divide-y divide-border/60">
+                              {searchResults.yazilar.map((y) => (
+                                <li key={y.id}>
+                                  <button
+                                    className="w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
+                                    onClick={() => { closeSearch(); onYaziAc?.(y); }}
+                                  >
+                                    <span className="block text-sm font-medium leading-snug">{y.baslik}</span>
+                                    <span className="block text-xs text-muted-foreground mt-0.5">
+                                      {y.yazarAd}
+                                      {y.kategoriAd ? ` · ${y.kategoriAd}` : ''}
+                                      {y.sayiNumara ? ` · Sayı ${y.sayiNumara} (${y.sayiAy} ${y.sayiYil})` : ''}
+                                    </span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {searchResults.araYazilar.length > 0 && (
+                          <div>
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                              <FileText className="w-3.5 h-3.5" /> Blog
+                            </h3>
+                            <ul className="divide-y divide-border/60">
+                              {searchResults.araYazilar.map((ay) => (
+                                <li key={ay.id}>
+                                  <button
+                                    className="w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
+                                    onClick={() => { closeSearch(); onAraYaziAc?.(ay); }}
+                                  >
+                                    <span className="block text-sm font-medium leading-snug">{ay.baslik}</span>
+                                    <span className="block text-xs text-muted-foreground mt-0.5">
+                                      {ay.yazar?.tamAd ?? ''}
+                                      {ay.kategori ? ` · ${ay.kategori}` : ''}
+                                    </span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {searchResults.yazarlar.length > 0 && (
+                          <div>
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                              <User className="w-3.5 h-3.5" /> Yazarlar
+                            </h3>
+                            <ul className="divide-y divide-border/60">
+                              {searchResults.yazarlar.map((yz) => (
+                                <li key={yz.id}>
+                                  <button
+                                    className="w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
+                                    onClick={() => { closeSearch(); onYazarAc?.(yz.id); }}
+                                  >
+                                    <span className="block text-sm font-medium">{yz.tamAd}</span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
               </DialogContent>
             </Dialog>
 
             {/* Mobil Menü */}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
-                <button 
+                <button
                   className="lg:hidden p-2 text-foreground/70 hover:text-foreground transition-colors"
                   aria-label="Menü"
                 >
                   <Menu className="w-6 h-6" />
                 </button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[280px] sm:w-[350px]">
+              <SheetContent side="right" className="w-[280px] sm:w-[350px] overflow-y-auto">
                 <div className="flex flex-col gap-6 mt-8">
                   <nav className="flex flex-col gap-4">
                     {navItems.map((item) => (
-                      item.type === 'bolumler' ? (
+                      item.children ? (
                         <div key={item.id}>
                           <span className="text-left text-lg font-medium py-2 border-b border-border/50 text-muted-foreground block">
                             {item.label}
                           </span>
                           <div className="pl-4 mt-2 space-y-2">
-                            {bolumItems.map((b) => (
+                            {item.children.map((c) => (
                               <button
-                                key={b.id}
-                                onClick={() => handleNavClick(b.id)}
-                                className={`text-sm block ${currentPage === b.id ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+                                key={c.nav}
+                                onClick={() => handleNavClick(c.nav)}
+                                className={`text-sm block ${currentPage === c.page ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
                               >
-                                {b.label}
+                                {c.label}
                               </button>
                             ))}
                           </div>
                         </div>
-                      ) : item.type === 'dropdown' ? (
+                      ) : item.type === 'sayilar' ? (
                         <div key={item.id}>
                           <button
                             onClick={() => handleNavClick('sonsayi')}
@@ -223,7 +383,7 @@ export default function Header({ onNavigate, currentPage }: HeaderProps) {
                             >
                               Son Sayı ({sonSayi.numara})
                             </button>
-                            {arsivSayilari.slice(0, 3).map((sayi) => (
+                            {menuSayilari.slice(0, 3).map((sayi) => (
                               <button
                                 key={sayi.id}
                                 onClick={() => {
@@ -236,7 +396,7 @@ export default function Header({ onNavigate, currentPage }: HeaderProps) {
                                 }}
                                 className="text-sm text-muted-foreground hover:text-foreground block"
                               >
-                                Sayı {sayi.numara}
+                                {sayiEtiketi(sayi)}
                               </button>
                             ))}
                             <button

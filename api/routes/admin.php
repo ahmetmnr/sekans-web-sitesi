@@ -28,18 +28,22 @@ function handle_export(): void
     $yazarlar = array_map('yazar_out', db()->query("SELECT * FROM yazarlar ORDER BY id ASC")->fetchAll());
     $kategoriler = array_map('kategori_out', db()->query("SELECT * FROM kategoriler ORDER BY sira_no ASC")->fetchAll());
 
-    $bilgi = db()->query("SELECT * FROM yarisma_bilgi WHERE id=1")->fetch() ?: [];
-    $kaz = db()->query("SELECT yil,birinci,ikinci FROM yarisma_kazananlar ORDER BY yil DESC")->fetchAll();
-    $yarismasiBilgi = [
-        'baslik' => $bilgi['baslik'] ?? '', 'aciklama' => $bilgi['aciklama'] ?? '',
-        'gecmisKazananlar' => array_map(fn($k) => ['yil'=>(int)$k['yil'],'birinci'=>$k['birinci'],'ikinci'=>$k['ikinci']], $kaz),
-    ];
+    $yarismasiBilgi = yarisma_payload();
     $h = db()->query("SELECT * FROM hakkimizda WHERE id=1")->fetch() ?: [];
     $hakkimizdaIcerik = [
         'baslik'=>$h['baslik']??'','icerik'=>$h['icerik']??'',
         'iletisim'=>['email'=>$h['iletisim_email']??'','adres'=>$h['iletisim_adres']??'',
             'sosyal'=>['twitter'=>$h['sosyal_twitter']??'','instagram'=>$h['sosyal_instagram']??'','facebook'=>$h['sosyal_facebook']??'']],
     ];
+
+    // Statik sayfalar (ör. yazi-standartlari) — yedeğe dahil (tablo yoksa boş dizi).
+    $sayfalar = [];
+    try {
+        $sayfalar = array_map(
+            fn($r) => ['slug'=>$r['slug'], 'baslik'=>$r['baslik'], 'icerik'=>$r['icerik'] ?? ''],
+            db()->query("SELECT slug, baslik, icerik FROM sayfalar ORDER BY id ASC")->fetchAll()
+        );
+    } catch (PDOException $e) { /* sayfalar tablosu henüz yok */ }
 
     respond([
         'sonSayi' => $sonSayi,
@@ -49,6 +53,7 @@ function handle_export(): void
         'kategoriler' => $kategoriler,
         'yarismasiBilgi' => $yarismasiBilgi,
         'hakkimizdaIcerik' => $hakkimizdaIcerik,
+        'sayfalar' => $sayfalar,
         'exportDate' => date('c'),
     ]);
 }
@@ -120,16 +125,22 @@ function import_seed_arrays(PDO $pdo, array $b): void
         $ki->execute([(string)($k['id']??gen_code('kat')), $k['ad']??'', $k['slug']??slugify($k['ad']??''), $i+1]);
     }
     // sayilar (sonSayi + arsiv) — durum, is_current ile senkron yazılır.
-    $si = $pdo->prepare("INSERT INTO sayilar (code, numara, ay, yil, tam_baslik, kapak_gorseli, pdf_url, kunye, onsoz, is_current, durum, yayin_tarihi) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
+    // Menü/ana sayfa alanları (menu_etiket, menu_goster, anasayfa_goster) korunur.
+    $si = $pdo->prepare(
+        "INSERT INTO sayilar (code, numara, ay, yil, tam_baslik, menu_etiket, menu_goster, anasayfa_goster, kapak_gorseli, pdf_url, kunye, onsoz, is_current, durum, yayin_tarihi)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+    );
     $son = $b['sonSayi'] ?? null;
     if ($son) {
         $si->execute([(string)($son['id']??'son'), $son['numara']??'', $son['ay']??'', (int)($son['yil']??0),
-            $son['tamBaslik']??'', $son['kapakGorseli']??'', $son['pdfUrl']??'', $son['kunye']??null, $son['onsoz']??null,
+            $son['tamBaslik']??'', ($son['menuEtiket'] ?? null) ?: null, !empty($son['menuGoster']) || !isset($son['menuGoster']) ? 1 : 0, !empty($son['anasayfaGoster']) ? 1 : 0,
+            $son['kapakGorseli']??'', $son['pdfUrl']??'', $son['kunye']??null, $son['onsoz']??null,
             1, 'yayinda', norm_date($son['yayinTarihi']??null)]);
     }
     foreach (($b['arsivSayilari'] ?? []) as $a) {
         $si->execute([(string)($a['id']??gen_code('sayi')), $a['numara']??'', $a['ay']??'', (int)($a['yil']??0),
-            '', $a['kapakGorseli']??'', $a['pdfUrl']??'', null, null, 0, 'arsiv', norm_date($a['yayinTarihi']??null)]);
+            '', ($a['menuEtiket'] ?? null) ?: null, (!isset($a['menuGoster']) || !empty($a['menuGoster'])) ? 1 : 0, !empty($a['anasayfaGoster']) ? 1 : 0,
+            $a['kapakGorseli']??'', $a['pdfUrl']??'', null, null, 0, 'arsiv', norm_date($a['yayinTarihi']??null)]);
     }
     // yazilar (sonSayi.yazilar)
     if ($son && !empty($son['yazilar'])) {
@@ -155,7 +166,12 @@ function import_seed_arrays(PDO $pdo, array $b): void
     // yarisma + hakkimizda
     if (!empty($b['yarismasiBilgi'])) {
         $yb = $b['yarismasiBilgi'];
-        $pdo->prepare("UPDATE yarisma_bilgi SET baslik=?, aciklama=? WHERE id=1")->execute([$yb['baslik']??'', $yb['aciklama']??'']);
+        $pdo->prepare(
+            "UPDATE yarisma_bilgi SET baslik=?, aciklama=?, basvuru_tarihleri=?, kategori_metni=?, odul_metni=?, basvuru_email=? WHERE id=1"
+        )->execute([
+            $yb['baslik']??'', $yb['aciklama']??'',
+            $yb['basvuruTarihleri']??null, $yb['kategoriMetni']??null, $yb['odulMetni']??null, $yb['basvuruEmail']??null,
+        ]);
         $kz = $pdo->prepare("INSERT INTO yarisma_kazananlar (yil, birinci, ikinci, sira_no) VALUES (?,?,?,?)");
         foreach (($yb['gecmisKazananlar'] ?? []) as $i => $k) {
             $kz->execute([(int)($k['yil']??0), $k['birinci']??'', $k['ikinci']??'', $i]);
@@ -165,5 +181,17 @@ function import_seed_arrays(PDO $pdo, array $b): void
         $h = $b['hakkimizdaIcerik']; $il = $h['iletisim']??[]; $so = $il['sosyal']??[];
         $pdo->prepare("UPDATE hakkimizda SET baslik=?, icerik=?, iletisim_email=?, iletisim_adres=?, sosyal_twitter=?, sosyal_instagram=?, sosyal_facebook=? WHERE id=1")
             ->execute([$h['baslik']??'', $h['icerik']??'', $il['email']??'', $il['adres']??'', $so['twitter']??'', $so['instagram']??'', $so['facebook']??'']);
+    }
+    // Statik sayfalar (varsa) — slug bazında upsert.
+    if (!empty($b['sayfalar']) && is_array($b['sayfalar'])) {
+        $sp = $pdo->prepare(
+            "INSERT INTO sayfalar (slug, baslik, icerik) VALUES (?,?,?)
+             ON DUPLICATE KEY UPDATE baslik=VALUES(baslik), icerik=VALUES(icerik)"
+        );
+        foreach ($b['sayfalar'] as $s) {
+            $slug = trim((string)($s['slug'] ?? ''));
+            if ($slug === '') continue;
+            $sp->execute([$slug, (string)($s['baslik'] ?? ''), $s['icerik'] ?? '']);
+        }
     }
 }

@@ -945,3 +945,20 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- Sayi yasam dongusu durumunu is_current(ten turet (taze kurulum icin):
 --   is_current=1 -> yayinda, aksi halde arsiv. (durum kolonu yeni eklendi.)
 UPDATE sayilar SET durum = IF(is_current = 1, 'yayinda', 'arsiv');
+
+-- =============================================================================
+-- Müşteri geri bildirimleri (Temmuz 2026) — kategori adı düzenlemeleri.
+-- Taze kurulumda üst menü/sayfa adlarının doğru görünmesi için (canlı DB'de
+-- ayrıca migrations/2026-07-14_menu_anasayfa_sayfalar.sql çalıştırılır).
+-- 'Sekans Sinema Grubu' + 'Duyuru' -> 'Duyurular'; 'Arşiv Yazıları' -> 'Texts in English'.
+-- =============================================================================
+UPDATE kategoriler SET ad = 'Duyurular', slug = 'duyurular' WHERE ad = 'Sekans Sinema Grubu';
+UPDATE ara_yazilar
+SET kategori_ad = 'Duyurular',
+    kategori_id = (SELECT id FROM kategoriler WHERE ad = 'Duyurular' LIMIT 1)
+WHERE kategori_ad IN ('Duyuru', 'Sekans Sinema Grubu');
+UPDATE kategoriler SET ad = 'Texts in English', slug = 'texts-in-english' WHERE ad = 'Arşiv Yazıları';
+UPDATE ara_yazilar
+SET kategori_ad = 'Texts in English',
+    kategori_id = (SELECT id FROM kategoriler WHERE ad = 'Texts in English' LIMIT 1)
+WHERE kategori_ad = 'Arşiv Yazıları';

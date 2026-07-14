@@ -55,6 +55,10 @@ export function CMSYarismaYonetimi() {
   const [infoForm, setInfoForm] = useState({
     baslik: yarismasiBilgi.baslik,
     aciklama: yarismasiBilgi.aciklama,
+    basvuruTarihleri: yarismasiBilgi.basvuruTarihleri ?? '',
+    kategoriMetni: yarismasiBilgi.kategoriMetni ?? '',
+    odulMetni: yarismasiBilgi.odulMetni ?? '',
+    basvuruEmail: yarismasiBilgi.basvuruEmail ?? '',
   });
 
   const [showKazananDialog, setShowKazananDialog] = useState(false);
@@ -66,6 +70,10 @@ export function CMSYarismaYonetimi() {
     updateYarismasiBilgi({
       baslik: infoForm.baslik,
       aciklama: infoForm.aciklama,
+      basvuruTarihleri: infoForm.basvuruTarihleri,
+      kategoriMetni: infoForm.kategoriMetni,
+      odulMetni: infoForm.odulMetni,
+      basvuruEmail: infoForm.basvuruEmail,
     });
     setEditingInfo(false);
   };
@@ -193,6 +201,10 @@ export function CMSYarismaYonetimi() {
                   setInfoForm({
                     baslik: yarismasiBilgi.baslik,
                     aciklama: yarismasiBilgi.aciklama,
+                    basvuruTarihleri: yarismasiBilgi.basvuruTarihleri ?? '',
+                    kategoriMetni: yarismasiBilgi.kategoriMetni ?? '',
+                    odulMetni: yarismasiBilgi.odulMetni ?? '',
+                    basvuruEmail: yarismasiBilgi.basvuruEmail ?? '',
                   });
                   setEditingInfo(true);
                 }}
@@ -200,11 +212,11 @@ export function CMSYarismaYonetimi() {
                 <Pencil className="h-4 w-4 mr-2" />
                 Düzenle
               </Button>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Yarışma Bilgilerini Düzenle</DialogTitle>
                   <DialogDescription>
-                    Yarışma başlığı ve açıklamasını güncelleyin
+                    Başlık, açıklama, bilgi kartları ve başvuru e-postasını güncelleyin
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -222,8 +234,55 @@ export function CMSYarismaYonetimi() {
                       id="aciklama"
                       value={infoForm.aciklama}
                       onChange={(e) => setInfoForm({ ...infoForm, aciklama: e.target.value })}
-                      rows={12}
+                      rows={10}
                     />
+                  </div>
+                  <div className="border-t pt-4">
+                    <p className="font-medium text-sm text-gray-700 mb-3">
+                      Bilgi Kartları (yarışma sayfasındaki üç kutu)
+                    </p>
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="basvuruTarihleri">Başvuru Tarihleri</Label>
+                        <Input
+                          id="basvuruTarihleri"
+                          value={infoForm.basvuruTarihleri}
+                          onChange={(e) => setInfoForm({ ...infoForm, basvuruTarihleri: e.target.value })}
+                          placeholder="Her yıl Mart-Nisan aylarında"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="kategoriMetni">Kategoriler</Label>
+                        <Input
+                          id="kategoriMetni"
+                          value={infoForm.kategoriMetni}
+                          onChange={(e) => setInfoForm({ ...infoForm, kategoriMetni: e.target.value })}
+                          placeholder="Film Eleştirisi ve Film Çözümlemesi"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="odulMetni">Ödüller</Label>
+                        <Input
+                          id="odulMetni"
+                          value={infoForm.odulMetni}
+                          onChange={(e) => setInfoForm({ ...infoForm, odulMetni: e.target.value })}
+                          placeholder="Para ödülü ve dergide yayınlanma"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="border-t pt-4">
+                    <Label htmlFor="basvuruEmail">Başvuru E-postası</Label>
+                    <Input
+                      id="basvuruEmail"
+                      type="email"
+                      value={infoForm.basvuruEmail}
+                      onChange={(e) => setInfoForm({ ...infoForm, basvuruEmail: e.target.value })}
+                      placeholder="info@sekans.org"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Yarışma sayfasının altındaki "Başvuru Yapmak İster Misiniz?" kutusunda görünür.
+                    </p>
                   </div>
                 </div>
                 <DialogFooter>
@@ -247,6 +306,24 @@ export function CMSYarismaYonetimi() {
               <div className="text-gray-600 mt-1 whitespace-pre-line bg-gray-50 p-4 rounded-lg">
                 {yarismasiBilgi.aciklama}
               </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <h3 className="font-medium text-gray-700 text-sm">Başvuru Tarihleri</h3>
+                <p className="text-gray-600 text-sm mt-1">{yarismasiBilgi.basvuruTarihleri || '—'}</p>
+              </div>
+              <div>
+                <h3 className="font-medium text-gray-700 text-sm">Kategoriler</h3>
+                <p className="text-gray-600 text-sm mt-1">{yarismasiBilgi.kategoriMetni || '—'}</p>
+              </div>
+              <div>
+                <h3 className="font-medium text-gray-700 text-sm">Ödüller</h3>
+                <p className="text-gray-600 text-sm mt-1">{yarismasiBilgi.odulMetni || '—'}</p>
+              </div>
+            </div>
+            <div>
+              <h3 className="font-medium text-gray-700 text-sm">Başvuru E-postası</h3>
+              <p className="text-gray-600 text-sm mt-1">{yarismasiBilgi.basvuruEmail || '—'}</p>
             </div>
           </div>
         </CardContent>

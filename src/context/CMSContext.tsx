@@ -20,7 +20,11 @@ const EMPTY_SAYI: Sayi = {
   id: '', numara: '', ay: '', yil: 0, tamBaslik: '',
   kapakGorseli: '', pdfUrl: '', yazilar: [], yayinTarihi: '',
 };
-const EMPTY_YARISMA: YarismaBilgi = { baslik: '', aciklama: '', gecmisKazananlar: [] };
+const EMPTY_YARISMA: YarismaBilgi = {
+  baslik: '', aciklama: '',
+  basvuruTarihleri: '', kategoriMetni: '', odulMetni: '', basvuruEmail: '',
+  gecmisKazananlar: [],
+};
 const EMPTY_HAKKIMIZDA: HakkimizdaIcerik = {
   baslik: '', icerik: '',
   iletisim: { email: '', adres: '', sosyal: { twitter: '', instagram: '', facebook: '' } },
@@ -29,6 +33,7 @@ const EMPTY_HAKKIMIZDA: HakkimizdaIcerik = {
 interface CMSContextType {
   // Veriler
   sonSayi: Sayi;
+  anasayfaSayilari: Sayi[];   // ana sayfada gösterilecek sayılar (yayındaki + admin seçimi)
   sayilar: Sayi[];            // düzenlenebilir sayılar (taslak + yayında), yazılarıyla
   editorler: EditorOzet[];   // sorumlu editör atama listesi
   arsivSayilari: ArsivSayi[];
@@ -93,6 +98,7 @@ const CMSContext = createContext<CMSContextType | undefined>(undefined);
 export function CMSProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
   const [sonSayi, setSonSayiState] = useState<Sayi>(EMPTY_SAYI);
+  const [anasayfaSayilari, setAnasayfaSayilari] = useState<Sayi[]>([]);
   const [sayilar, setSayilar] = useState<Sayi[]>([]);
   const [editorler, setEditorler] = useState<EditorOzet[]>([]);
   const [arsivSayilari, setArsivSayilari] = useState<ArsivSayi[]>([]);
@@ -111,6 +117,11 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     try {
       const d = await api.bootstrap();
       setSonSayiState(d.sonSayi ?? EMPTY_SAYI);
+      // Ana sayfa sayıları: API göndermezse (eski sürüm) yayındaki sayıya düş.
+      const anasayfa = d.anasayfaSayilari && d.anasayfaSayilari.length > 0
+        ? d.anasayfaSayilari
+        : (d.sonSayi ? [d.sonSayi] : []);
+      setAnasayfaSayilari(anasayfa);
       setArsivSayilari(d.arsivSayilari ?? []);
       setAraYazilar(d.araYazilar ?? []);
       setYazarlar(d.yazarlar ?? []);
@@ -191,7 +202,11 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   const updateArsivSayi = useCallback(async (id: string, updates: Partial<ArsivSayi>) => {
     const saved = await api.arsiv.update(id, updates);
     setArsivSayilari((prev) => prev.map((s) => (s.id === id ? saved : s)));
-  }, []);
+    // Ana sayfa seçimi değiştiyse ana sayfa sayı listesi de tazelensin.
+    if ('anasayfaGoster' in updates) {
+      await refresh();
+    }
+  }, [refresh]);
 
   const deleteArsivSayi = useCallback(async (id: string) => {
     await api.arsiv.remove(id);
@@ -316,7 +331,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const value: CMSContextType = {
-    sonSayi, sayilar, editorler, arsivSayilari, araYazilar, yazarlar, kategoriler, yarismasiBilgi, hakkimizdaIcerik,
+    sonSayi, anasayfaSayilari, sayilar, editorler, arsivSayilari, araYazilar, yazarlar, kategoriler, yarismasiBilgi, hakkimizdaIcerik,
     isLoading, error, refresh, refreshSayilar,
     setSonSayi, addSayi, updateSayi, setSayiDurum, deleteSayi,
     addArsivSayi, updateArsivSayi, deleteArsivSayi, publishSonSayi,

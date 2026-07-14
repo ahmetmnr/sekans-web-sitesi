@@ -50,10 +50,10 @@ export default function Footer({ onNavigate }: FooterProps) {
               {[
                 { id: 'anasayfa', label: 'Ana Sayfa' },
                 { id: 'sonsayi', label: 'Son Sayı' },
-                { id: 'arayazilar', label: 'Ara Yazılar' },
-                { id: 'yazarlarimizdan', label: 'Yazarlarımızdan' },
+                { id: 'indeks', label: 'Sekans İndeks' },
+                { id: 'arayazilar', label: 'Blog' },
                 { id: 'sinemakitapligi', label: 'Sinema Kitaplığı' },
-                { id: 'basilisayilar', label: 'Basılı Sayılar' },
+                { id: 'textsinenglish', label: 'Texts in English' },
                 { id: 'duyurular', label: 'Duyurular' },
                 { id: 'arsiv', label: 'Arşiv' },
                 { id: 'yarisma', label: 'Yarışma' },

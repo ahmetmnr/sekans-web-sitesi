@@ -22,6 +22,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Plus, Pencil, Trash2, BookOpen, Archive, Send, Undo2, Files, FileText, UserCircle,
@@ -88,6 +89,7 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
         ay: issueForm.ay,
         yil: issueForm.yil,
         tamBaslik,
+        menuEtiket: issueForm.menuEtiket ?? null,
         kapakGorseli: issueForm.kapakGorseli,
         pdfUrl: issueForm.pdfUrl,
         kunye: issueForm.kunye,
@@ -145,6 +147,9 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
           kapakGorseli: arsivForm.kapakGorseli || '/images/default-kapak.jpg',
           pdfUrl: arsivForm.pdfUrl || '',
           yayinTarihi: arsivForm.yayinTarihi || new Date().toISOString().split('T')[0],
+          menuEtiket: arsivForm.menuEtiket ?? null,
+          menuGoster: arsivForm.menuGoster ?? true,
+          anasayfaGoster: arsivForm.anasayfaGoster ?? false,
         });
       }
       setShowArsivDialog(false);
@@ -152,6 +157,15 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
       setArsivForm({});
     } catch (error) {
       alert((error as Error).message || 'Kaydetme sırasında hata oluştu');
+    }
+  };
+
+  // Arşiv sayısının menü/ana sayfa bayrağını tek tıkla değiştir (tabloda hızlı ayar).
+  const handleArsivToggle = async (sayi: ArsivSayi, field: 'menuGoster' | 'anasayfaGoster', value: boolean) => {
+    try {
+      await updateArsivSayi(sayi.id, { [field]: value });
+    } catch (error) {
+      alert((error as Error).message || 'Güncellenemedi');
     }
   };
 
@@ -370,8 +384,10 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
                   <TableRow>
                     <TableHead>Kapak</TableHead>
                     <TableHead>Numara</TableHead>
+                    <TableHead>Menüde adı</TableHead>
                     <TableHead>Dönem</TableHead>
-                    <TableHead>Yayın Tarihi</TableHead>
+                    <TableHead className="text-center">Menüde</TableHead>
+                    <TableHead className="text-center">Ana sayfada</TableHead>
                     <TableHead className="text-right">İşlemler</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -391,8 +407,24 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">{sayi.numara}</TableCell>
+                      <TableCell>
+                        {sayi.menuEtiket?.trim()
+                          ? <span>{sayi.menuEtiket}</span>
+                          : <span className="text-gray-400">Sayı {sayi.numara}</span>}
+                      </TableCell>
                       <TableCell>{sayi.ay} {sayi.yil}</TableCell>
-                      <TableCell>{new Date(sayi.yayinTarihi).toLocaleDateString('tr-TR')}</TableCell>
+                      <TableCell className="text-center">
+                        <Switch
+                          checked={sayi.menuGoster !== false}
+                          onCheckedChange={(v) => handleArsivToggle(sayi, 'menuGoster', v)}
+                        />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Switch
+                          checked={sayi.anasayfaGoster === true}
+                          onCheckedChange={(v) => handleArsivToggle(sayi, 'anasayfaGoster', v)}
+                        />
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button variant="ghost" size="sm" onClick={() => openEditArsiv(sayi)}>
@@ -428,7 +460,7 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
                   ))}
                   {arsivSayilari.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                         Henüz arşiv sayısı yok.
                       </TableCell>
                     </TableRow>
@@ -528,6 +560,18 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
               />
             </div>
             <div>
+              <Label htmlFor="i-menu-etiket">"Sayılar" menüsündeki adı</Label>
+              <Input
+                id="i-menu-etiket"
+                value={issueForm.menuEtiket || ''}
+                onChange={(e) => setIssueForm({ ...issueForm, menuEtiket: e.target.value })}
+                placeholder='Boş: "Son Sayı" görünür (ör. Lynch Sayısı)'
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Bu sayı yayındayken üst menüde "Son Sayı" yerine bu ad görünür. Boş bırakılabilir.
+              </p>
+            </div>
+            <div>
               <Label htmlFor="i-kunye">Künye</Label>
               <Textarea
                 id="i-kunye"
@@ -616,6 +660,43 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
                 value={arsivForm.yayinTarihi || ''}
                 onChange={(e) => setArsivForm({ ...arsivForm, yayinTarihi: e.target.value })}
               />
+            </div>
+
+            {/* Üst menü / ana sayfa ayarları */}
+            <div className="border-t pt-4 space-y-4">
+              <p className="font-medium text-sm text-gray-700">Üst Menü / Ana Sayfa</p>
+              <div>
+                <Label htmlFor="arsiv-menu-etiket">"Sayılar" menüsündeki adı</Label>
+                <Input
+                  id="arsiv-menu-etiket"
+                  value={arsivForm.menuEtiket || ''}
+                  onChange={(e) => setArsivForm({ ...arsivForm, menuEtiket: e.target.value })}
+                  placeholder={`Boş: "Sayı ${arsivForm.numara || 'e00'}" görünür (ör. Lynch Sayısı)`}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Menüde bu sayının nasıl görüneceğini belirler. Boş bırakılırsa "Sayı {arsivForm.numara || 'e00'}" yazar.
+                </p>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <Label className="text-sm">"Sayılar" menüsünde göster</Label>
+                  <p className="text-xs text-gray-500">Kapalıysa üst menüdeki listede görünmez.</p>
+                </div>
+                <Switch
+                  checked={arsivForm.menuGoster ?? true}
+                  onCheckedChange={(v) => setArsivForm({ ...arsivForm, menuGoster: v })}
+                />
+              </div>
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <Label className="text-sm">Ana sayfada göster</Label>
+                  <p className="text-xs text-gray-500">Açıksa ana sayfada, yayındaki sayının altında bu sayı da listelenir.</p>
+                </div>
+                <Switch
+                  checked={arsivForm.anasayfaGoster ?? false}
+                  onCheckedChange={(v) => setArsivForm({ ...arsivForm, anasayfaGoster: v })}
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>

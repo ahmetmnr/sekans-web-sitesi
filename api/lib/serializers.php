@@ -68,6 +68,10 @@ function sayi_out(array $r, array $yazilar): array
         'ay'           => $r['ay'],
         'yil'          => (int)$r['yil'],
         'tamBaslik'    => $r['tam_baslik'] ?? '',
+        // Menü/ana sayfa alanları: kolonlar migration öncesi yoksa güvenli varsayılanlar.
+        'menuEtiket'      => $r['menu_etiket'] ?? null,
+        'menuGoster'      => isset($r['menu_goster']) ? (bool)(int)$r['menu_goster'] : true,
+        'anasayfaGoster'  => isset($r['anasayfa_goster']) ? (bool)(int)$r['anasayfa_goster'] : false,
         'kapakGorseli' => $r['kapak_gorseli'] ?? '',
         'pdfUrl'       => $r['pdf_url'] ?? '',
         'kunye'        => $r['kunye'] ?? null,
@@ -80,7 +84,7 @@ function sayi_out(array $r, array $yazilar): array
     ];
 }
 
-/** ArsivSayi { id, numara, ay, yil, kapakGorseli, pdfUrl, yayinTarihi } */
+/** ArsivSayi { id, numara, ay, yil, kapakGorseli, pdfUrl, yayinTarihi, menuEtiket?, menuGoster?, anasayfaGoster? } */
 function arsiv_out(array $r): array
 {
     return [
@@ -91,6 +95,9 @@ function arsiv_out(array $r): array
         'kapakGorseli' => $r['kapak_gorseli'] ?? '',
         'pdfUrl'       => $r['pdf_url'] ?? '',
         'yayinTarihi'  => $r['yayin_tarihi'] ?? '',
+        'menuEtiket'     => $r['menu_etiket'] ?? null,
+        'menuGoster'     => isset($r['menu_goster']) ? (bool)(int)$r['menu_goster'] : true,
+        'anasayfaGoster' => isset($r['anasayfa_goster']) ? (bool)(int)$r['anasayfa_goster'] : false,
     ];
 }
 

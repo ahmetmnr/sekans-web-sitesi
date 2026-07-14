@@ -13,6 +13,8 @@ import YazarDetaySayfasi from '@/pages/YazarDetay';
 import HakkimizdaSayfasi from '@/pages/HakkimizdaSayfasi';
 import IletisimSayfasi from '@/pages/IletisimSayfasi';
 import YarismaSayfasi from '@/pages/YarismaSayfasi';
+import SekansIndeksSayfasi from '@/pages/SekansIndeksSayfasi';
+import StatikSayfa from '@/pages/StatikSayfa';
 import { CMS } from '@/cms';
 import { CMSProvider, useCMS } from '@/context/CMSContext';
 import { AuthProvider } from '@/context/AuthContext';
@@ -20,7 +22,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 
-import type { Yazi, AraYazi, Yazar } from '@/types';
+import type { Yazi, AraYazi, Yazar, Sayi, AramaYaziSonuc } from '@/types';
 
 type PageType =
   | 'anasayfa'
@@ -38,22 +40,36 @@ type PageType =
   | 'sinemakitapligi'
   | 'basilisayilar'
   | 'duyurular'
+  | 'textsinenglish'
+  | 'indeks'
+  | 'yazistandartlari'
   | 'cms';
 
-// Canlı siteden taşınan bölümler: ara_yazilar.kategori değerine göre ayrışır.
-const BOLUM_KATEGORILERI: Record<string, string> = {
-  yazarlarimizdan: 'Yazarlarımızdan',
-  sinemakitapligi: 'Sinema Kitaplığı',
-  basilisayilar: 'Basılı Sayılar',
-  duyurular: 'Duyuru',
+// Özel bölüm sayfaları: ara_yazilar.kategori değerine göre ayrışır.
+// Eski adlar da (migration öncesi veriyle uyum için) kabul edilir.
+const BOLUM_KATEGORILERI: Record<string, string[]> = {
+  yazarlarimizdan: ['Yazarlarımızdan'],
+  sinemakitapligi: ['Sinema Kitaplığı'],
+  basilisayilar: ['Basılı Sayılar'],
+  duyurular: ['Duyurular', 'Sekans Sinema Grubu', 'Duyuru'],
+  textsinenglish: ['Texts in English', 'Arşiv Yazıları'],
 };
-const OZEL_BOLUMLER = new Set(Object.values(BOLUM_KATEGORILERI));
+// Blog listesinin DIŞINDA tutulan kategoriler. Duyurular blog akışında KALIR
+// (müşteri isteği: eski "Sekans Sinema Grubu" kategorisi blogda "Duyurular" adıyla görünsün).
+const OZEL_BOLUMLER = new Set([
+  ...BOLUM_KATEGORILERI.yazarlarimizdan,
+  ...BOLUM_KATEGORILERI.sinemakitapligi,
+  ...BOLUM_KATEGORILERI.basilisayilar,
+  ...BOLUM_KATEGORILERI.textsinenglish,
+]);
 
 interface PageState {
   page: PageType;
   selectedYazi?: Yazi;
   selectedAraYazi?: AraYazi;
   selectedYazar?: Yazar;
+  selectedSayi?: Sayi;      // yazidetay/sonsayi için sayı bağlamı (çoklu sayı desteği)
+  blogKategori?: string;    // Blog sayfası ön-seçili kategori filtresi
 }
 
 function AppContent() {
@@ -86,16 +102,19 @@ function AppContent() {
   }, []);
 
   // CMS'den verileri al
-  const { sonSayi, arsivSayilari, araYazilar, yazarlar, hakkimizdaIcerik, yarismasiBilgi, isLoading, error, refresh } = useCMS();
+  const { sonSayi, anasayfaSayilari, arsivSayilari, araYazilar, yazarlar, hakkimizdaIcerik, yarismasiBilgi, isLoading, error, refresh } = useCMS();
 
-  // "Ara Yazılar" sayfası: özel bölümlere (Yazarlarımızdan vb.) ait OLMAYAN yazılar.
+  // "Blog" sayfası: özel bölümlere (Sinema Kitaplığı vb.) ait OLMAYAN yazılar.
   const araYazilarListesi = araYazilar.filter((y) => !OZEL_BOLUMLER.has(y.kategori));
-  // Bir bölüm sayfasının yazı listesi.
-  const bolumListesi = (kategori: string) => araYazilar.filter((y) => y.kategori === kategori);
+  // Bir bölüm sayfasının yazı listesi (eski + yeni kategori adları birlikte).
+  const bolumListesi = (kategoriler: string[]) =>
+    araYazilar.filter((y) => kategoriler.includes(y.kategori));
   // Bir yazının ait olduğu listeyi bul (önceki/sonraki gezinme bu liste içinde kalır).
   const getSectionList = useCallback((araYazi: AraYazi): AraYazi[] => {
-    if (OZEL_BOLUMLER.has(araYazi.kategori)) {
-      return araYazilar.filter((y) => y.kategori === araYazi.kategori);
+    for (const kategoriler of Object.values(BOLUM_KATEGORILERI)) {
+      if (kategoriler.includes(araYazi.kategori) && OZEL_BOLUMLER.has(araYazi.kategori)) {
+        return araYazilar.filter((y) => kategoriler.includes(y.kategori));
+      }
     }
     return araYazilar.filter((y) => !OZEL_BOLUMLER.has(y.kategori));
   }, [araYazilar]);
@@ -118,57 +137,40 @@ function AppContent() {
   const handleNavigate = useCallback((pageId: string) => {
     switch (pageId) {
       case 'anasayfa':
-        navigateTo('anasayfa');
-        break;
       case 'sonsayi':
-        navigateTo('sonsayi');
-        break;
       case 'arsiv':
-        navigateTo('arsiv');
-        break;
       case 'arayazilar':
-        navigateTo('arayazilar');
-        break;
       case 'hakkimizda':
-        navigateTo('hakkimizda');
-        break;
       case 'iletisim':
-        navigateTo('iletisim');
-        break;
       case 'yarisma':
-        navigateTo('yarisma');
-        break;
       case 'yazarlar':
-        navigateTo('yazarlar');
-        break;
       case 'yazarlarimizdan':
-        navigateTo('yazarlarimizdan');
-        break;
       case 'sinemakitapligi':
-        navigateTo('sinemakitapligi');
-        break;
       case 'basilisayilar':
-        navigateTo('basilisayilar');
-        break;
       case 'duyurular':
-        navigateTo('duyurular');
-        break;
+      case 'textsinenglish':
+      case 'indeks':
+      case 'yazistandartlari':
       case 'cms':
-        navigateTo('cms');
+        navigateTo(pageId);
+        break;
+      case 'arayazilar-arayazi':
+        // Üst menü "Yazılar > Ara Yazılar": Blog'u "Ara Yazı" filtresiyle aç.
+        navigateTo('arayazilar', { blogKategori: 'Ara Yazı' });
         break;
       default:
         navigateTo('anasayfa');
     }
   }, [navigateTo]);
 
-  // Yazı tıklama handler'ı
-  const handleYaziClick = useCallback((yazi: Yazi) => {
-    navigateTo('yazidetay', { selectedYazi: yazi });
+  // Yazı tıklama handler'ı — sayı bağlamıyla (çoklu sayı: ana sayfada 2 sayı olabilir)
+  const handleYaziClick = useCallback((yazi: Yazi, sayi?: Sayi) => {
+    navigateTo('yazidetay', { selectedYazi: yazi, selectedSayi: sayi });
   }, [navigateTo]);
 
-  // Son sayı tıklama handler'ı
-  const handleSayiClick = useCallback(() => {
-    navigateTo('sonsayi');
+  // Sayı tıklama handler'ı (kapağa tıklanınca sayı detayına git)
+  const handleSayiClick = useCallback((sayi?: Sayi) => {
+    navigateTo('sonsayi', { selectedSayi: sayi });
   }, [navigateTo]);
 
   // Ara yazı tıklama handler'ı — bootstrap listesi icerik içermez; tam içeriği API'den çek.
@@ -207,6 +209,35 @@ function AppContent() {
     navigateTo('anasayfa');
   }, [navigateTo]);
 
+  // Arama / indeks sonucundan dergi yazısı aç (yazı başka bir sayıda olabilir).
+  const handleAramaYaziAc = useCallback((sonuc: AramaYaziSonuc) => {
+    api.yazi.get(sonuc.id)
+      .then((full) => {
+        const bilinen = [sonSayi, ...anasayfaSayilari].find((s) => s && s.id === full.sayiId);
+        const sayi: Sayi = bilinen ?? {
+          id: sonuc.sayiId,
+          numara: sonuc.sayiNumara,
+          ay: sonuc.sayiAy,
+          yil: sonuc.sayiYil,
+          tamBaslik: `${sonuc.sayiAy} ${sonuc.sayiYil} | Sayı ${sonuc.sayiNumara}`,
+          kapakGorseli: '',
+          pdfUrl: '',
+          yazilar: [full],
+          yayinTarihi: '',
+        };
+        navigateTo('yazidetay', { selectedYazi: full, selectedSayi: sayi });
+      })
+      .catch(() => { /* yazı yüklenemedi — sessiz geç */ });
+  }, [navigateTo, sonSayi, anasayfaSayilari]);
+
+  // Aramadan yazar aç
+  const handleAramaYazarAc = useCallback((yazarId: string) => {
+    const yazar = yazarlar.find((y) => y.id === yazarId);
+    if (yazar) {
+      navigateTo('yazardetay', { selectedYazar: yazar });
+    }
+  }, [navigateTo, yazarlar]);
+
   // Önceki/Sonraki Ara Yazı handler'ları — gezinme, yazının ait olduğu bölüm içinde kalır.
   const getOncekiAraYazi = useCallback((currentAraYazi: AraYazi): AraYazi | undefined => {
     const liste = getSectionList(currentAraYazi);
@@ -220,18 +251,20 @@ function AppContent() {
     return currentIndex >= 0 && currentIndex < liste.length - 1 ? liste[currentIndex + 1] : undefined;
   }, [getSectionList]);
 
-  // Önceki/Sonraki Yazı handler'ları (sayı içi)
+  // Önceki/Sonraki Yazı handler'ları (yazının ait olduğu sayı içinde)
+  const yaziSayisiBaglami = currentPage.selectedSayi ?? sonSayi;
+
   const getOncekiYazi = useCallback((currentYazi: Yazi): Yazi | undefined => {
-    const yazilar = sonSayi.yazilar;
+    const yazilar = yaziSayisiBaglami.yazilar;
     const currentIndex = yazilar.findIndex(y => y.id === currentYazi.id);
     return currentIndex > 0 ? yazilar[currentIndex - 1] : undefined;
-  }, [sonSayi]);
+  }, [yaziSayisiBaglami]);
 
   const getSonrakiYazi = useCallback((currentYazi: Yazi): Yazi | undefined => {
-    const yazilar = sonSayi.yazilar;
+    const yazilar = yaziSayisiBaglami.yazilar;
     const currentIndex = yazilar.findIndex(y => y.id === currentYazi.id);
-    return currentIndex < yazilar.length - 1 ? yazilar[currentIndex + 1] : undefined;
-  }, [sonSayi]);
+    return currentIndex >= 0 && currentIndex < yazilar.length - 1 ? yazilar[currentIndex + 1] : undefined;
+  }, [yaziSayisiBaglami]);
 
   // CMS sayfasını render et (CMS kendi yükleme/oturum durumunu yönetir)
   if (currentPage.page === 'cms') {
@@ -272,7 +305,7 @@ function AppContent() {
       case 'anasayfa':
         return (
           <AnaSayfa
-            sonSayi={sonSayi}
+            sayilar={anasayfaSayilari.length > 0 ? anasayfaSayilari : [sonSayi]}
             araYazilar={araYazilarListesi}
             onYaziClick={handleYaziClick}
             onSayiClick={handleSayiClick}
@@ -281,14 +314,16 @@ function AppContent() {
           />
         );
 
-      case 'sonsayi':
+      case 'sonsayi': {
+        const gosterilenSayi = currentPage.selectedSayi ?? sonSayi;
         return (
           <SonSayiDetay
-            sayi={sonSayi}
-            onYaziClick={handleYaziClick}
+            sayi={gosterilenSayi}
+            onYaziClick={(y) => handleYaziClick(y, gosterilenSayi)}
             onBackClick={handleBackClick}
           />
         );
+      }
 
       case 'yazidetay':
         if (currentPage.selectedYazi) {
@@ -298,15 +333,15 @@ function AppContent() {
           return (
             <YaziDetay
               yazi={currentPage.selectedYazi}
-              sayi={sonSayi}
+              sayi={yaziSayisiBaglami}
               oncekiYazi={oncekiYazi}
               sonrakiYazi={sonrakiYazi}
               onBackClick={handleBackClick}
-              onSayiClick={handleSayiClick}
-              onOncekiYazi={oncekiYazi ? () => handleYaziClick(oncekiYazi) : undefined}
-              onSonrakiYazi={sonrakiYazi ? () => handleYaziClick(sonrakiYazi) : undefined}
+              onSayiClick={() => handleSayiClick(yaziSayisiBaglami)}
+              onOncekiYazi={oncekiYazi ? () => handleYaziClick(oncekiYazi, yaziSayisiBaglami) : undefined}
+              onSonrakiYazi={sonrakiYazi ? () => handleYaziClick(sonrakiYazi, yaziSayisiBaglami) : undefined}
               onYazarClick={handleYazarClick}
-              onYaziClick={handleYaziClick}
+              onYaziClick={(y) => handleYaziClick(y, yaziSayisiBaglami)}
             />
           );
         }
@@ -322,16 +357,18 @@ function AppContent() {
       case 'arayazilar':
         return (
           <AraYazilarSayfasi
+            key={currentPage.blogKategori ?? 'tumu'}
             araYazilar={araYazilarListesi}
             onAraYaziClick={handleAraYaziClick}
             onBackClick={handleBackClick}
+            initialKategori={currentPage.blogKategori}
           />
         );
 
       case 'yazarlarimizdan':
         return (
           <AraYazilarSayfasi
-            araYazilar={bolumListesi('Yazarlarımızdan')}
+            araYazilar={bolumListesi(BOLUM_KATEGORILERI.yazarlarimizdan)}
             onAraYaziClick={handleAraYaziClick}
             onBackClick={handleBackClick}
             baslik="Yazarlarımızdan"
@@ -342,7 +379,7 @@ function AppContent() {
       case 'sinemakitapligi':
         return (
           <AraYazilarSayfasi
-            araYazilar={bolumListesi('Sinema Kitaplığı')}
+            araYazilar={bolumListesi(BOLUM_KATEGORILERI.sinemakitapligi)}
             onAraYaziClick={handleAraYaziClick}
             onBackClick={handleBackClick}
             baslik="Sinema Kitaplığı"
@@ -353,7 +390,7 @@ function AppContent() {
       case 'basilisayilar':
         return (
           <AraYazilarSayfasi
-            araYazilar={bolumListesi('Basılı Sayılar')}
+            araYazilar={bolumListesi(BOLUM_KATEGORILERI.basilisayilar)}
             onAraYaziClick={handleAraYaziClick}
             onBackClick={handleBackClick}
             baslik="Basılı Sayılar"
@@ -364,11 +401,49 @@ function AppContent() {
       case 'duyurular':
         return (
           <AraYazilarSayfasi
-            araYazilar={bolumListesi('Duyuru')}
+            araYazilar={bolumListesi(BOLUM_KATEGORILERI.duyurular)}
             onAraYaziClick={handleAraYaziClick}
             onBackClick={handleBackClick}
             baslik="Duyurular"
             aciklama="Yarışma duyuruları, sonuçlar ve Sekans'tan haberler."
+          />
+        );
+
+      case 'textsinenglish':
+        return (
+          <AraYazilarSayfasi
+            araYazilar={bolumListesi(BOLUM_KATEGORILERI.textsinenglish)}
+            onAraYaziClick={handleAraYaziClick}
+            onBackClick={handleBackClick}
+            baslik="Texts in English"
+            aciklama="English translations of selected Sekans texts."
+          />
+        );
+
+      case 'indeks':
+        return (
+          <SekansIndeksSayfasi
+            onDergiYaziClick={handleAramaYaziAc}
+            onBlogYaziClick={(id) => {
+              const mevcut = araYazilar.find((a) => a.id === id);
+              if (mevcut) {
+                handleAraYaziClick(mevcut);
+              } else {
+                api.araYazi.get(id)
+                  .then((full) => navigateTo('arayazidetay', { selectedAraYazi: full }))
+                  .catch(() => { /* sessiz geç */ });
+              }
+            }}
+            onBackClick={handleBackClick}
+          />
+        );
+
+      case 'yazistandartlari':
+        return (
+          <StatikSayfa
+            slug="yazi-standartlari"
+            varsayilanBaslik="Sekans Yazı Standartları"
+            onBackClick={handleBackClick}
           />
         );
 
@@ -405,6 +480,7 @@ function AppContent() {
         return (
           <IletisimSayfasi
             onBackClick={handleBackClick}
+            onYaziStandartlariClick={() => navigateTo('yazistandartlari')}
           />
         );
 
@@ -452,6 +528,9 @@ function AppContent() {
       <Header
         onNavigate={handleNavigate}
         currentPage={currentPage.page === 'anasayfa' ? 'anasayfa' : currentPage.page}
+        onYaziAc={handleAramaYaziAc}
+        onAraYaziAc={handleAraYaziClick}
+        onYazarAc={handleAramaYazarAc}
       />
 
       <main className="flex-1">

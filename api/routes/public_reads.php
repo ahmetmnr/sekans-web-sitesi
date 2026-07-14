@@ -179,18 +179,167 @@ function handle_get_kategoriler(): void
     respond(array_map('kategori_out', $rows));
 }
 
-/** GET /api/yarisma */
-function handle_get_yarisma(): void
+/** Yarışma bilgisi + kazananlar (tek şekil; GET/PUT yanıtı ve bootstrap paylaşır). */
+function yarisma_payload(): array
 {
     $bilgi = db()->query("SELECT * FROM yarisma_bilgi WHERE id = 1 LIMIT 1")->fetch() ?: [];
     $kaz = db()->query("SELECT yil, birinci, ikinci FROM yarisma_kazananlar ORDER BY yil DESC")->fetchAll();
-    respond([
+    return [
         'baslik'   => $bilgi['baslik'] ?? '',
         'aciklama' => $bilgi['aciklama'] ?? '',
+        // Bilgi kartları + başvuru CTA (migration öncesi kolon yoksa boş döner)
+        'basvuruTarihleri' => $bilgi['basvuru_tarihleri'] ?? '',
+        'kategoriMetni'    => $bilgi['kategori_metni'] ?? '',
+        'odulMetni'        => $bilgi['odul_metni'] ?? '',
+        'basvuruEmail'     => $bilgi['basvuru_email'] ?? '',
         'gecmisKazananlar' => array_map(fn($k) => [
             'yil' => (int)$k['yil'], 'birinci' => $k['birinci'], 'ikinci' => $k['ikinci'],
         ], $kaz),
-    ]);
+    ];
+}
+
+/** GET /api/yarisma */
+function handle_get_yarisma(): void
+{
+    respond(yarisma_payload());
+}
+
+/** GET /api/sayfa/{slug} — statik sayfa (ör. yazi-standartlari). */
+function handle_get_sayfa(string $slug): void
+{
+    $r = null;
+    try {
+        $st = db()->prepare("SELECT slug, baslik, icerik FROM sayfalar WHERE slug = ? LIMIT 1");
+        $st->execute([$slug]);
+        $r = $st->fetch();
+    } catch (PDOException $e) {
+        // sayfalar tablosu henüz yok (migration bekleniyor) -> 404'e düş
+    }
+    if (!$r) fail('NOT_FOUND', 'Sayfa bulunamadı.', 404);
+    respond(['slug' => $r['slug'], 'baslik' => $r['baslik'], 'icerik' => $r['icerik'] ?? '']);
+}
+
+/** GET /api/arama?q= — site içi arama: dergi yazıları + blog yazıları + yazarlar. */
+function handle_search(): void
+{
+    $q = trim((string)($_GET['q'] ?? ''));
+    if (mb_strlen($q) < 2) {
+        respond(['yazilar' => [], 'araYazilar' => [], 'yazarlar' => []]);
+    }
+    $like = '%' . $q . '%';
+
+    // Dergi yazıları (taslak sayılardakiler siteye çıkmaz)
+    $st = db()->prepare(
+        "SELECT y.code, y.baslik, y.spot, y.pdf_url,
+                s.code AS sayi_code, s.numara AS sayi_numara, s.ay AS sayi_ay, s.yil AS sayi_yil,
+                yz.tam_ad AS yazar_ad, k.ad AS kategori_ad
+         FROM yazilar y
+         JOIN sayilar s ON s.id = y.sayi_id AND s.durum <> 'taslak'
+         LEFT JOIN yazarlar yz ON yz.id = y.yazar_id
+         LEFT JOIN kategoriler k ON k.id = y.kategori_id
+         WHERE y.baslik LIKE ? OR y.spot LIKE ? OR yz.tam_ad LIKE ? OR y.icerik LIKE ?
+         ORDER BY s.yayin_tarihi DESC, y.sira_no ASC
+         LIMIT 30"
+    );
+    $st->execute([$like, $like, $like, $like]);
+    $yazilar = array_map(fn($r) => [
+        'id'         => (string)$r['code'],
+        'baslik'     => $r['baslik'],
+        'spot'       => $r['spot'] ?? null,
+        'yazarAd'    => $r['yazar_ad'] ?? '',
+        'kategoriAd' => $r['kategori_ad'] ?? '',
+        'sayiId'     => (string)$r['sayi_code'],
+        'sayiNumara' => $r['sayi_numara'],
+        'sayiAy'     => $r['sayi_ay'],
+        'sayiYil'    => (int)$r['sayi_yil'],
+        'pdfUrl'     => $r['pdf_url'] ?? null,
+    ], $st->fetchAll());
+
+    // Blog (ara yazılar) — liste şekli, icerik gövdesi olmadan
+    $st2 = db()->prepare(
+        "SELECT a.*, yz.code AS y_code, yz.ad AS y_ad, yz.soyad AS y_soyad, yz.tam_ad AS y_tam_ad,
+                yz.fotograf AS y_fotograf, yz.biyografi AS y_biyografi
+         FROM ara_yazilar a
+         LEFT JOIN yazarlar yz ON yz.id = a.yazar_id
+         WHERE a.baslik LIKE ? OR a.spot LIKE ? OR yz.tam_ad LIKE ? OR a.icerik LIKE ?
+         ORDER BY a.yayin_tarihi DESC, a.id DESC
+         LIMIT 30"
+    );
+    $st2->execute([$like, $like, $like, $like]);
+    $araYazilar = array_map(function ($r) {
+        $yazar = $r['y_code'] !== null ? [
+            'id' => (string)$r['y_code'], 'ad' => $r['y_ad'], 'soyad' => $r['y_soyad'],
+            'tamAd' => $r['y_tam_ad'], 'fotograf' => $r['y_fotograf'], 'biyografi' => $r['y_biyografi'],
+        ] : null;
+        return ara_yazi_out($r, $yazar, false);
+    }, $st2->fetchAll());
+
+    // Yazarlar
+    $st3 = db()->prepare("SELECT * FROM yazarlar WHERE tam_ad LIKE ? ORDER BY tam_ad ASC LIMIT 10");
+    $st3->execute([$like]);
+    $yazarlar = array_map('yazar_out', $st3->fetchAll());
+
+    respond(['yazilar' => $yazilar, 'araYazilar' => $araYazilar, 'yazarlar' => $yazarlar]);
+}
+
+/**
+ * GET /api/indeks — Sekans İndeks: yayımlanmış TÜM içeriğin kategorili dökümü.
+ * Dergi yazıları (taslak sayılar hariç) + blog yazıları; gövde (icerik) taşınmaz.
+ */
+function handle_get_indeks(): void
+{
+    $entries = [];
+
+    $rows = db()->query(
+        "SELECT y.code, y.baslik, y.pdf_url, y.yayin_tarihi, y.sira_no,
+                s.code AS sayi_code, s.numara AS sayi_numara, s.ay AS sayi_ay, s.yil AS sayi_yil, s.yayin_tarihi AS sayi_tarihi,
+                yz.code AS yazar_code, yz.tam_ad AS yazar_ad, k.ad AS kategori_ad
+         FROM yazilar y
+         JOIN sayilar s ON s.id = y.sayi_id AND s.durum <> 'taslak'
+         LEFT JOIN yazarlar yz ON yz.id = y.yazar_id
+         LEFT JOIN kategoriler k ON k.id = y.kategori_id
+         ORDER BY s.yayin_tarihi DESC, y.sira_no ASC, y.id ASC"
+    )->fetchAll();
+    foreach ($rows as $r) {
+        $entries[] = [
+            'tip'         => 'dergi',
+            'id'          => (string)$r['code'],
+            'baslik'      => $r['baslik'],
+            'yazarAd'     => $r['yazar_ad'] ?? '',
+            'kategoriAd'  => $r['kategori_ad'] ?? '',
+            'sayiId'      => (string)$r['sayi_code'],
+            'sayiNumara'  => $r['sayi_numara'],
+            'sayiAy'      => $r['sayi_ay'],
+            'sayiYil'     => (int)$r['sayi_yil'],
+            'yayinTarihi' => $r['yayin_tarihi'] ?? ($r['sayi_tarihi'] ?? ''),
+            'pdfUrl'      => $r['pdf_url'] ?? null,
+        ];
+    }
+
+    $rows2 = db()->query(
+        "SELECT a.code, a.baslik, a.kategori_ad, a.yayin_tarihi,
+                yz.code AS yazar_code, yz.tam_ad AS yazar_ad
+         FROM ara_yazilar a
+         LEFT JOIN yazarlar yz ON yz.id = a.yazar_id
+         ORDER BY a.yayin_tarihi DESC, a.id DESC"
+    )->fetchAll();
+    foreach ($rows2 as $r) {
+        $entries[] = [
+            'tip'         => 'blog',
+            'id'          => (string)$r['code'],
+            'baslik'      => $r['baslik'],
+            'yazarAd'     => $r['yazar_ad'] ?? '',
+            'kategoriAd'  => $r['kategori_ad'] ?? '',
+            'sayiId'      => null,
+            'sayiNumara'  => null,
+            'sayiAy'      => null,
+            'sayiYil'     => null,
+            'yayinTarihi' => $r['yayin_tarihi'] ?? '',
+            'pdfUrl'      => null,
+        ];
+    }
+
+    respond(['girisler' => $entries]);
 }
 
 /** GET /api/hakkimizda */
@@ -218,6 +367,22 @@ function handle_bootstrap(): void
     $current = db()->query("SELECT * FROM sayilar WHERE durum = 'yayinda' ORDER BY id DESC LIMIT 1")->fetch();
     $sonSayi = $current ? build_sayi_payload($current) : null;
 
+    // Ana sayfada gösterilecek sayılar: yayındaki + admin'in işaretledikleri (arşivden).
+    // Yayındaki her zaman ilk sırada; kolon migration öncesi yoksa yalnızca yayındaki.
+    $anasayfaSayilari = $sonSayi ? [$sonSayi] : [];
+    try {
+        $extraRows = db()->query(
+            "SELECT * FROM sayilar
+             WHERE anasayfa_goster = 1 AND durum = 'arsiv'
+             ORDER BY yayin_tarihi DESC, id DESC"
+        )->fetchAll();
+        foreach ($extraRows as $r) {
+            $anasayfaSayilari[] = build_sayi_payload($r);
+        }
+    } catch (PDOException $e) {
+        // anasayfa_goster kolonu henüz yok (migration bekleniyor) — yalnızca yayındaki sayı.
+    }
+
     // Yalnızca ARŞİV siteye çıkar; taslak (hazırlanan) sayılar herkese açık bootstrap'ta YER ALMAZ.
     $arsivRows = db()->query("SELECT * FROM sayilar WHERE durum = 'arsiv' ORDER BY yayin_tarihi DESC, id DESC")->fetchAll();
 
@@ -228,18 +393,29 @@ function handle_bootstrap(): void
         return ara_yazi_out($r, yazar_out($yazarMap[(int)$r['yazar_id']] ?? null), false);
     }, $araRows);
 
-    $yazarlar = array_map('yazar_out', db()->query("SELECT * FROM yazarlar ORDER BY id ASC")->fetchAll());
+    // Yazar başına toplam yazı sayısı (dergi yazıları [taslak hariç] + blog) — Yazarlar sayfası için.
+    $yaziSayilari = [];
+    $cnt = db()->query(
+        "SELECT yazar_id, SUM(c) AS toplam FROM (
+            SELECT y.yazar_id, COUNT(*) AS c
+            FROM yazilar y JOIN sayilar s ON s.id = y.sayi_id AND s.durum <> 'taslak'
+            GROUP BY y.yazar_id
+            UNION ALL
+            SELECT a.yazar_id, COUNT(*) AS c FROM ara_yazilar a GROUP BY a.yazar_id
+        ) t GROUP BY yazar_id"
+    )->fetchAll();
+    foreach ($cnt as $c) {
+        $yaziSayilari[(int)$c['yazar_id']] = (int)$c['toplam'];
+    }
+    $yazarlar = array_map(function ($r) use ($yaziSayilari) {
+        $out = yazar_out($r);
+        $out['yaziSayisi'] = $yaziSayilari[(int)$r['id']] ?? 0;
+        return $out;
+    }, db()->query("SELECT * FROM yazarlar ORDER BY id ASC")->fetchAll());
+
     $kategoriler = array_map('kategori_out', db()->query("SELECT * FROM kategoriler ORDER BY sira_no ASC, id ASC")->fetchAll());
 
-    $bilgi = db()->query("SELECT * FROM yarisma_bilgi WHERE id = 1 LIMIT 1")->fetch() ?: [];
-    $kaz = db()->query("SELECT yil, birinci, ikinci FROM yarisma_kazananlar ORDER BY yil DESC")->fetchAll();
-    $yarismasiBilgi = [
-        'baslik' => $bilgi['baslik'] ?? '',
-        'aciklama' => $bilgi['aciklama'] ?? '',
-        'gecmisKazananlar' => array_map(fn($k) => [
-            'yil' => (int)$k['yil'], 'birinci' => $k['birinci'], 'ikinci' => $k['ikinci'],
-        ], $kaz),
-    ];
+    $yarismasiBilgi = yarisma_payload();
 
     $h = db()->query("SELECT * FROM hakkimizda WHERE id = 1 LIMIT 1")->fetch() ?: [];
     $hakkimizdaIcerik = [
@@ -258,6 +434,7 @@ function handle_bootstrap(): void
 
     respond([
         'sonSayi'          => $sonSayi,
+        'anasayfaSayilari' => $anasayfaSayilari,
         'arsivSayilari'    => array_map('arsiv_out', $arsivRows),
         'araYazilar'       => $araYazilar,
         'yazarlar'         => $yazarlar,
