@@ -24,23 +24,38 @@ rm -rf "$APP"/api
 cp -r "$REPO"/api "$APP"/api
 rm -f "$APP"/api/seed_admin.php
 
-echo ">>> 3/5 DB migration: sayilar.durum + editor_id (yalnızca yoksa uygulanır)..."
-HAS_DURUM=$($DC exec -T db mariadb -uroot -p"${DB_PASS}" -N -e \
-  "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='sekans' AND TABLE_NAME='sayilar' AND COLUMN_NAME='durum';" 2>/dev/null || echo "0")
-if [ "${HAS_DURUM}" = "0" ]; then
+# Bir kolonun varlığını döndüren yardımcı (migration guard'ları için).
+col_exists() { # $1=tablo $2=kolon
+  $DC exec -T db mariadb -uroot -p"${DB_PASS}" -N -e \
+    "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='sekans' AND TABLE_NAME='$1' AND COLUMN_NAME='$2';" 2>/dev/null || echo "0"
+}
+
+echo ">>> 3/6 DB migration: sayilar.durum + editor_id (yalnızca yoksa uygulanır)..."
+if [ "$(col_exists sayilar durum)" = "0" ]; then
   echo "    -> uygulanıyor: 2026-07-06_sayi_durum_editor.sql"
   $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-06_sayi_durum_editor.sql
   echo "    -> tamam."
 else
-  echo "    -> 'durum' kolonu zaten var, migration atlanıyor."
+  echo "    -> 'durum' kolonu zaten var, atlanıyor."
 fi
 
-echo ">>> 4/5 API konteyneri yeniden başlatılıyor..."
+echo ">>> 4/6 DB migration: menü/anasayfa + sayfalar + yarışma alanları (yalnızca yoksa)..."
+if [ "$(col_exists sayilar menu_etiket)" = "0" ]; then
+  echo "    -> uygulanıyor: 2026-07-14_menu_anasayfa_sayfalar.sql"
+  $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-14_menu_anasayfa_sayfalar.sql
+  echo "    -> tamam."
+else
+  echo "    -> 'menu_etiket' kolonu zaten var, atlanıyor."
+fi
+
+echo ">>> 5/6 API konteyneri yeniden başlatılıyor..."
 $DC restart api
 
-echo ">>> 5/5 Kontrol — sayı durum dağılımı:"
+echo ">>> 6/6 Kontrol — sayı durumları + kategori adları:"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT durum, COUNT(*) FROM sayilar GROUP BY durum;" 2>/dev/null || echo "    (DB kontrolü atlandı)"
+$DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
+  "SELECT ad FROM kategoriler WHERE ad IN ('Duyurular','Texts in English');" 2>/dev/null || true
 
 echo ""
 echo "==================== GÜNCELLEME TAMAM ===================="
