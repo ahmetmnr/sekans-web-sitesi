@@ -82,6 +82,27 @@ function sayfa_out(array $r): array
     ];
 }
 
+/**
+ * Filtre sayfası { id, slug, baslik, aciklama, kategori, siralama, sayfaBasina,
+ *                 kapakGoster, yazarTarihGoster, aktif, sira }.
+ */
+function filtre_sayfa_out(array $r): array
+{
+    return [
+        'id'               => (string)$r['id'],
+        'slug'             => $r['slug'],
+        'baslik'           => $r['baslik'],
+        'aciklama'         => $r['aciklama'] ?? '',
+        'kategori'         => $r['kategori'] ?? '',
+        'siralama'         => $r['siralama'] ?? 'yeni',
+        'sayfaBasina'      => isset($r['sayfa_basina']) ? (int)$r['sayfa_basina'] : 12,
+        'kapakGoster'      => isset($r['kapak_goster']) ? (bool)(int)$r['kapak_goster'] : true,
+        'yazarTarihGoster' => isset($r['yazar_tarih_goster']) ? (bool)(int)$r['yazar_tarih_goster'] : true,
+        'aktif'            => isset($r['aktif']) ? (bool)(int)$r['aktif'] : true,
+        'sira'             => isset($r['sira']) ? (int)$r['sira'] : 0,
+    ];
+}
+
 /** Kategori { id, ad, slug } */
 function kategori_out(?array $r): ?array
 {

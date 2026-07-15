@@ -277,6 +277,29 @@ CREATE TABLE anasayfa_bloklar (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
+-- filtre_sayfalar (filtered listing pages) — admin panelden oluşturulan,
+-- belirli bir kategoriye bağlı içerik listeleme sayfaları. Ayarlar: başlık,
+-- açıklama, kategori, sıralama, sayfa başına içerik, kapak/yazar-tarih gösterimi.
+-- -----------------------------------------------------------------------------
+CREATE TABLE filtre_sayfalar (
+  id                 BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  slug               VARCHAR(160)    NOT NULL,
+  baslik             VARCHAR(255)    NOT NULL,
+  aciklama           VARCHAR(500)    NULL,
+  kategori           VARCHAR(160)    NULL,
+  siralama           ENUM('yeni','eski','alfabetik') NOT NULL DEFAULT 'yeni',
+  sayfa_basina       INT             NOT NULL DEFAULT 12,
+  kapak_goster       TINYINT(1)      NOT NULL DEFAULT 1,
+  yazar_tarih_goster TINYINT(1)      NOT NULL DEFAULT 1,
+  aktif              TINYINT(1)      NOT NULL DEFAULT 1,
+  sira               INT             NOT NULL DEFAULT 0,
+  created_at         TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at         TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_filtre_sayfalar_slug (slug)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
 -- ayarlar (key/value settings) — generic store for misc global toggles.
 -- NOTE: The OpenAI API key is NOT stored here. Per the migration design the key
 -- lives ONLY in the above-webroot config.php (never in the DB, never returned by
@@ -386,3 +409,11 @@ SET @seedb := (SELECT COUNT(*) FROM anasayfa_bloklar);
 INSERT INTO anasayfa_bloklar (tip, baslik, sira, aktif, ayar)
 SELECT 'sayilar', NULL, 0, 1, NULL FROM DUAL WHERE @seedb = 0
 UNION ALL SELECT 'blog', 'Blog', 1, 1, '{"adet":6}' FROM DUAL WHERE @seedb = 0;
+
+-- Varsayılan filtre sayfaları (Ara Yazı / Sinema Kitaplığı / Texts in English / Duyurular).
+SET @seedf := (SELECT COUNT(*) FROM filtre_sayfalar);
+INSERT INTO filtre_sayfalar (slug, baslik, aciklama, kategori, siralama, sayfa_basina, sira)
+SELECT 'ara-yazi', 'Ara Yazılar', 'Sekans dergisinin rutin sayılarından ayrı yayınlanan güncel sinema yazıları.', 'Ara Yazı', 'yeni', 12, 0 FROM DUAL WHERE @seedf = 0
+UNION ALL SELECT 'sinema-kitapligi', 'Sinema Kitaplığı', 'Sinema üzerine kitap tanıtımları ve değerlendirmeleri.', 'Sinema Kitaplığı', 'yeni', 12, 1 FROM DUAL WHERE @seedf = 0
+UNION ALL SELECT 'texts-in-english', 'Texts in English', 'English translations of selected Sekans texts.', 'Texts in English', 'yeni', 12, 2 FROM DUAL WHERE @seedf = 0
+UNION ALL SELECT 'duyurular', 'Duyurular', 'Yarışma duyuruları, sonuçlar ve Sekans''tan haberler.', 'Duyurular', 'yeni', 12, 3 FROM DUAL WHERE @seedf = 0;

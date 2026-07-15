@@ -4,7 +4,7 @@
 
 import type {
   Sayi, ArsivSayi, AraYazi, Yazar, Kategori, Yazi, SayiDurum, Kullanici, EditorOzet,
-  AramaSonuclari, IndeksGiris, StatikSayfaIcerik, MenuOgesi, AnasayfaBlok,
+  AramaSonuclari, IndeksGiris, StatikSayfaIcerik, MenuOgesi, AnasayfaBlok, FiltreSayfa,
 } from '@/types';
 
 export const API_BASE: string =
@@ -283,6 +283,15 @@ export const api = {
     remove: (id: string) => del<{ deleted: string }>(`/menu/${encodeURIComponent(id)}`),
     reorder: (siralar: { id: string; sira: number }[]) =>
       put<{ menu: MenuOgesi[] }>('/menu-sirala', { siralar }).then((r) => r.menu),
+  },
+
+  // Filtre listeleme sayfaları
+  filtre: {
+    get: (slug: string) => get<FiltreSayfa>(`/filtre/${encodeURIComponent(slug)}`),
+    listCms: () => get<{ filtreler: FiltreSayfa[] }>('/cms/filtreler').then((r) => r.filtreler),
+    create: (f: Partial<FiltreSayfa>) => post<FiltreSayfa>('/filtre', f),
+    update: (id: string, patch: Partial<FiltreSayfa>) => put<FiltreSayfa>(`/filtre/${encodeURIComponent(id)}`, patch),
+    remove: (id: string) => del<{ deleted: string }>(`/filtre/${encodeURIComponent(id)}`),
   },
 
   // Ana sayfa blokları (paneller)

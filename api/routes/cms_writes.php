@@ -629,6 +629,93 @@ function handle_delete_sayfa(string $slug): void
     respond(['deleted' => $slug]);
 }
 
+/* ============================ FİLTRE SAYFALARI ============================= */
+
+/** Tek filtre sayfasını serileştirip döndür. */
+function filtre_row_out(int $id): array
+{
+    $st = db()->prepare("SELECT * FROM filtre_sayfalar WHERE id = ? LIMIT 1");
+    $st->execute([$id]);
+    $r = $st->fetch();
+    if (!$r) fail('NOT_FOUND', 'Filtre sayfası bulunamadı.', 404);
+    return filtre_sayfa_out($r);
+}
+
+/** GET /api/cms/filtreler — tüm filtre sayfaları (pasifler dahil). editör+ */
+function handle_cms_list_filtreler(): void
+{
+    $rows = db()->query("SELECT * FROM filtre_sayfalar ORDER BY sira ASC, baslik ASC")->fetchAll();
+    respond(['filtreler' => array_map('filtre_sayfa_out', $rows)]);
+}
+
+/** POST /api/filtre — yeni filtre sayfası. editör+ */
+function handle_create_filtre(array $b): void
+{
+    $baslik = trim((string)($b['baslik'] ?? ''));
+    if ($baslik === '') fail('VALIDATION', 'Başlık gerekli.', 400, ['baslik' => 'zorunlu']);
+    $base = slugify((string)($b['slug'] ?? '') ?: $baslik);
+    $slug = unique_slug($base !== '' ? $base : 'filtre', 'filtre_sayfalar', 'slug');
+
+    // Booleans için create varsayılanları (gönderilmezse kapak+yazar/tarih görünür).
+    $kapak = array_key_exists('kapakGoster', $b) ? (!empty($b['kapakGoster']) ? 1 : 0) : 1;
+    $yazarTarih = array_key_exists('yazarTarihGoster', $b) ? (!empty($b['yazarTarihGoster']) ? 1 : 0) : 1;
+    $aktif = array_key_exists('aktif', $b) ? (!empty($b['aktif']) ? 1 : 0) : 1;
+    $siralama = (string)($b['siralama'] ?? 'yeni');
+    if (!in_array($siralama, ['yeni','eski','alfabetik'], true)) $siralama = 'yeni';
+
+    db()->prepare(
+        "INSERT INTO filtre_sayfalar (slug, baslik, aciklama, kategori, siralama, sayfa_basina, kapak_goster, yazar_tarih_goster, aktif, sira)
+         VALUES (?,?,?,?,?,?,?,?,?,?)"
+    )->execute([
+        $slug, $baslik, (string)($b['aciklama'] ?? ''),
+        ($b['kategori'] ?? '') !== '' ? (string)$b['kategori'] : null,
+        $siralama, max(1, min(96, (int)($b['sayfaBasina'] ?? 12))),
+        $kapak, $yazarTarih, $aktif, (int)($b['sira'] ?? 0),
+    ]);
+    respond(filtre_row_out((int)db()->lastInsertId()));
+}
+
+/** PUT /api/filtre/{id} — filtre sayfasını güncelle. editör+ */
+function handle_update_filtre(string $idStr, array $b): void
+{
+    $id = (int)$idStr;
+    $st = db()->prepare("SELECT id FROM filtre_sayfalar WHERE id = ? LIMIT 1");
+    $st->execute([$id]);
+    if ($st->fetchColumn() === false) fail('NOT_FOUND', 'Filtre sayfası bulunamadı.', 404);
+
+    $set = [];
+    $params = [];
+    if (array_key_exists('baslik', $b)) {
+        $bs = trim((string)$b['baslik']);
+        if ($bs === '') fail('VALIDATION', 'Başlık boş olamaz.', 400);
+        $set[] = 'baslik = ?'; $params[] = $bs;
+    }
+    if (array_key_exists('aciklama', $b)) { $set[] = 'aciklama = ?'; $params[] = (string)($b['aciklama'] ?? ''); }
+    if (array_key_exists('kategori', $b)) { $set[] = 'kategori = ?'; $params[] = ($b['kategori'] ?? '') !== '' ? (string)$b['kategori'] : null; }
+    if (array_key_exists('siralama', $b)) {
+        $s = (string)$b['siralama']; $set[] = 'siralama = ?'; $params[] = in_array($s, ['yeni','eski','alfabetik'], true) ? $s : 'yeni';
+    }
+    if (array_key_exists('sayfaBasina', $b))      { $set[] = 'sayfa_basina = ?';       $params[] = max(1, min(96, (int)$b['sayfaBasina'])); }
+    if (array_key_exists('kapakGoster', $b))      { $set[] = 'kapak_goster = ?';       $params[] = !empty($b['kapakGoster']) ? 1 : 0; }
+    if (array_key_exists('yazarTarihGoster', $b)) { $set[] = 'yazar_tarih_goster = ?'; $params[] = !empty($b['yazarTarihGoster']) ? 1 : 0; }
+    if (array_key_exists('aktif', $b))            { $set[] = 'aktif = ?';              $params[] = !empty($b['aktif']) ? 1 : 0; }
+    if (array_key_exists('sira', $b))             { $set[] = 'sira = ?';               $params[] = (int)$b['sira']; }
+
+    if ($set) {
+        $params[] = $id;
+        db()->prepare("UPDATE filtre_sayfalar SET " . implode(', ', $set) . " WHERE id = ?")->execute($params);
+    }
+    respond(filtre_row_out($id));
+}
+
+/** DELETE /api/filtre/{id} — filtre sayfasını sil. editör+ */
+function handle_delete_filtre(string $idStr): void
+{
+    $id = (int)$idStr;
+    db()->prepare("DELETE FROM filtre_sayfalar WHERE id = ?")->execute([$id]);
+    respond(['deleted' => (string)$id]);
+}
+
 function handle_update_hakkimizda(array $b): void
 {
     $il = $b['iletisim'] ?? [];

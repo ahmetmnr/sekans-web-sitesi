@@ -63,6 +63,7 @@ $routes = [
     ['GET',  '#^/arama$#',               null, fn($m) => handle_search()],
     ['GET',  '#^/indeks$#',              null, fn($m) => handle_get_indeks()],
     ['GET',  '#^/menu$#',                null, fn($m) => handle_get_menu()],
+    ['GET',  '#^/filtre/([^/]+)$#',      null, fn($m) => handle_get_filtre($m[1])],
 
     // ---- Auth ----
     ['POST', '#^/auth/login$#',          null,   fn($m) => handle_login()],
@@ -134,6 +135,12 @@ $routes = [
     ['POST',   '#^/sayfa$#',             'editor', fn($m) => handle_create_sayfa(read_json_body())],
     ['PUT',    '#^/sayfa/([^/]+)$#',     'editor', fn($m) => handle_update_sayfa($m[1], read_json_body())],
     ['DELETE', '#^/sayfa/([^/]+)$#',     'editor', fn($m) => handle_delete_sayfa($m[1])],
+
+    // ---- CMS writes: filtre listeleme sayfaları ----
+    ['GET',    '#^/cms/filtreler$#',     'editor', fn($m) => handle_cms_list_filtreler()],
+    ['POST',   '#^/filtre$#',            'editor', fn($m) => handle_create_filtre(read_json_body())],
+    ['PUT',    '#^/filtre/([^/]+)$#',    'editor', fn($m) => handle_update_filtre($m[1], read_json_body())],
+    ['DELETE', '#^/filtre/([^/]+)$#',    'editor', fn($m) => handle_delete_filtre($m[1])],
 
     // ---- Admin: export / import / reset ----
     ['GET',    '#^/export$#',            'admin', fn($m) => handle_export()],

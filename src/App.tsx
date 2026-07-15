@@ -15,6 +15,7 @@ import IletisimSayfasi from '@/pages/IletisimSayfasi';
 import YarismaSayfasi from '@/pages/YarismaSayfasi';
 import SekansIndeksSayfasi from '@/pages/SekansIndeksSayfasi';
 import StatikSayfa from '@/pages/StatikSayfa';
+import FiltreListeSayfasi from '@/pages/FiltreListeSayfasi';
 import { CMS } from '@/cms';
 import { CMSProvider, useCMS } from '@/context/CMSContext';
 import { AuthProvider } from '@/context/AuthContext';
@@ -44,6 +45,7 @@ type PageType =
   | 'indeks'
   | 'yazistandartlari'
   | 'statik'
+  | 'filtre'
   | 'cms';
 
 // Özel bölüm sayfaları: ara_yazilar.kategori değerine göre ayrışır.
@@ -73,6 +75,7 @@ interface PageState {
   blogKategori?: string;    // Blog sayfası ön-seçili kategori filtresi
   statikSlug?: string;      // 'statik' sayfası için slug (dinamik menü: sabit_sayfa hedefi)
   statikBaslik?: string;    // içerik yüklenene kadar gösterilecek başlık
+  filtreSlug?: string;      // 'filtre' sayfası için slug (dinamik menü: filtre_liste hedefi)
 }
 
 function AppContent() {
@@ -149,8 +152,7 @@ function AppContent() {
       return;
     }
     if (pageId.startsWith('filtre:')) {
-      // Faz 4'e kadar geçici: özel filtre sayfası henüz yok -> blog listesine düş.
-      navigateTo('arayazilar');
+      navigateTo('filtre', { filtreSlug: pageId.slice('filtre:'.length) });
       return;
     }
     switch (pageId) {
@@ -475,6 +477,18 @@ function AppContent() {
             key={currentPage.statikSlug}
             slug={currentPage.statikSlug ?? ''}
             varsayilanBaslik={currentPage.statikBaslik ?? ''}
+            onBackClick={handleBackClick}
+          />
+        );
+
+      case 'filtre':
+        // Dinamik menüden (filtre_liste) açılan admin tanımlı filtre sayfası.
+        return (
+          <FiltreListeSayfasi
+            key={currentPage.filtreSlug}
+            slug={currentPage.filtreSlug ?? ''}
+            araYazilar={araYazilar}
+            onAraYaziClick={handleAraYaziClick}
             onBackClick={handleBackClick}
           />
         );

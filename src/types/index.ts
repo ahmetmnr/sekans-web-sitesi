@@ -193,6 +193,23 @@ export interface AnasayfaBlok {
   ayar: { kategori?: string; adet?: number };
 }
 
+// Admin panelden oluşturulan filtre listeleme sayfası (belirli kategoriye bağlı).
+export type FiltreSiralama = 'yeni' | 'eski' | 'alfabetik';
+
+export interface FiltreSayfa {
+  id: string;
+  slug: string;
+  baslik: string;
+  aciklama: string;
+  kategori: string;           // gösterilecek kategori adı
+  siralama: FiltreSiralama;
+  sayfaBasina: number;        // sayfalama: sayfa başına içerik
+  kapakGoster: boolean;       // kapak görseli gösterimi
+  yazarTarihGoster: boolean;  // yazar ve tarih gösterimi
+  aktif: boolean;
+  sira: number;
+}
+
 // CMS kullanıcı hesabı (panelde yönetilir). Parola asla taşınmaz.
 export interface Kullanici {
   id: string;

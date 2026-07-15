@@ -397,6 +397,22 @@ function anasayfa_bloklar_list(bool $onlyActive = true): array
     return array_map('anasayfa_blok_out', $rows);
 }
 
+/** GET /api/filtre/{slug} — filtre listeleme sayfası ayarları (aktif olanlar). */
+function handle_get_filtre(string $slug): void
+{
+    $r = null;
+    try {
+        $st = db()->prepare("SELECT * FROM filtre_sayfalar WHERE slug = ? LIMIT 1");
+        $st->execute([$slug]);
+        $r = $st->fetch();
+    } catch (PDOException $e) {
+        // filtre_sayfalar tablosu henüz yok (migration bekleniyor) -> 404
+    }
+    if (!$r) fail('NOT_FOUND', 'Filtre sayfası bulunamadı.', 404);
+    if (isset($r['aktif']) && !(int)$r['aktif']) fail('NOT_FOUND', 'Filtre sayfası bulunamadı.', 404);
+    respond(filtre_sayfa_out($r));
+}
+
 /** GET /api/hakkimizda */
 function handle_get_hakkimizda(): void
 {
