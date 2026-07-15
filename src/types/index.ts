@@ -173,6 +173,21 @@ export interface MenuOgesi {
   children: MenuOgesi[];
 }
 
+// Ana sayfa paneli — admin panelden yönetilir (hangi paneller, sıra, başlık).
+//  sayilar  : ana sayfada gösterilecek dergi sayısı bölüm(ler)i
+//  blog     : "Blog" (ara yazılar) paneli
+//  kategori : belirli bir kategorinin yazılarını gösteren panel
+export type AnasayfaBlokTip = 'sayilar' | 'blog' | 'kategori';
+
+export interface AnasayfaBlok {
+  id: string;
+  tip: AnasayfaBlokTip;
+  baslik: string;             // panel başlığı (düzenlenebilir; boş olabilir)
+  sira: number;
+  aktif: boolean;
+  ayar: { kategori?: string; adet?: number };
+}
+
 // CMS kullanıcı hesabı (panelde yönetilir). Parola asla taşınmaz.
 export interface Kullanici {
   id: string;

@@ -105,7 +105,7 @@ function AppContent() {
   }, []);
 
   // CMS'den verileri al
-  const { sonSayi, anasayfaSayilari, arsivSayilari, araYazilar, yazarlar, hakkimizdaIcerik, yarismasiBilgi, isLoading, error, refresh } = useCMS();
+  const { sonSayi, anasayfaSayilari, arsivSayilari, araYazilar, yazarlar, hakkimizdaIcerik, yarismasiBilgi, anasayfaBloklar, isLoading, error, refresh } = useCMS();
 
   // "Blog" sayfası: özel bölümlere (Sinema Kitaplığı vb.) ait OLMAYAN yazılar.
   const araYazilarListesi = araYazilar.filter((y) => !OZEL_BOLUMLER.has(y.kategori));
@@ -324,11 +324,14 @@ function AppContent() {
         return (
           <AnaSayfa
             sayilar={anasayfaSayilari.length > 0 ? anasayfaSayilari : [sonSayi]}
-            araYazilar={araYazilarListesi}
+            blogAraYazilar={araYazilarListesi}
+            tumAraYazilar={araYazilar}
+            bloklar={anasayfaBloklar}
             onYaziClick={handleYaziClick}
             onSayiClick={handleSayiClick}
             onAraYaziClick={handleAraYaziClick}
             onTumAraYazilarClick={handleTumAraYazilarClick}
+            onKategoriTumClick={(kategori) => handleNavigate(`kategori:${kategori}`)}
           />
         );
 

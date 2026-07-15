@@ -48,7 +48,7 @@ else
   echo "    -> 'menu_etiket' kolonu zaten var, atlanıyor."
 fi
 
-echo ">>> 5/7 DB migration: dinamik üst menü (menuler tablosu) (yalnızca yoksa)..."
+echo ">>> 5/8 DB migration: dinamik üst menü (menuler tablosu) (yalnızca yoksa)..."
 if [ "$(col_exists menuler id)" = "0" ]; then
   echo "    -> uygulanıyor: 2026-07-15_menuler.sql"
   $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-15_menuler.sql
@@ -57,16 +57,27 @@ else
   echo "    -> 'menuler' tablosu zaten var, atlanıyor."
 fi
 
-echo ">>> 6/7 API konteyneri yeniden başlatılıyor..."
+echo ">>> 6/8 DB migration: ana sayfa blokları (anasayfa_bloklar tablosu) (yalnızca yoksa)..."
+if [ "$(col_exists anasayfa_bloklar id)" = "0" ]; then
+  echo "    -> uygulanıyor: 2026-07-16_anasayfa_bloklar.sql"
+  $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-16_anasayfa_bloklar.sql
+  echo "    -> tamam."
+else
+  echo "    -> 'anasayfa_bloklar' tablosu zaten var, atlanıyor."
+fi
+
+echo ">>> 7/8 API konteyneri yeniden başlatılıyor..."
 $DC restart api
 
-echo ">>> 7/7 Kontrol — sayı durumları + kategori adları + menü:"
+echo ">>> 8/8 Kontrol — sayı durumları + kategori adları + menü:"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT durum, COUNT(*) FROM sayilar GROUP BY durum;" 2>/dev/null || echo "    (DB kontrolü atlandı)"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT ad FROM kategoriler WHERE ad IN ('Duyurular','Texts in English');" 2>/dev/null || true
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT CONCAT('menü öğesi: ', COUNT(*)) FROM menuler;" 2>/dev/null || true
+$DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
+  "SELECT CONCAT('ana sayfa paneli: ', COUNT(*)) FROM anasayfa_bloklar;" 2>/dev/null || true
 
 echo ""
 echo "==================== GÜNCELLEME TAMAM ===================="

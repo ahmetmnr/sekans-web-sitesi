@@ -13,6 +13,7 @@ import { CMSAraYaziEditor } from './CMSAraYaziEditor';
 import { CMSYazarYonetimi } from './CMSYazarYonetimi';
 import { CMSKategoriYonetimi } from './CMSKategoriYonetimi';
 import { CMSMenuYonetimi } from './CMSMenuYonetimi';
+import { CMSAnasayfaYonetimi } from './CMSAnasayfaYonetimi';
 import { CMSKullaniciYonetimi } from './CMSKullaniciYonetimi';
 import { CMSYarismaYonetimi } from './CMSYarismaYonetimi';
 import { CMSHakkimizdaYonetimi } from './CMSHakkimizdaYonetimi';
@@ -99,6 +100,8 @@ export function CMS({ onExitCMS }: CMSProps) {
     switch (currentPage) {
       case 'dashboard':
         return <CMSDashboard onNavigate={setCurrentPage} />;
+      case 'anasayfa':
+        return <CMSAnasayfaYonetimi />;
       case 'sayilar':
         return (
           <CMSSayiYonetimi

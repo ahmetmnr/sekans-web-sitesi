@@ -3,6 +3,7 @@ import React from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
   LayoutDashboard,
+  Home,
   FileText,
   BookOpen,
   Users,
@@ -21,6 +22,7 @@ import { Button } from '@/components/ui/button';
 
 export type CMSPage =
   | 'dashboard'
+  | 'anasayfa'
   | 'sayilar'
   | 'yazilar'
   | 'ara-yazilar'
@@ -41,6 +43,7 @@ interface CMSLayoutProps {
 
 const menuItems: { id: CMSPage; label: string; icon: React.ReactNode; adminOnly?: boolean }[] = [
   { id: 'dashboard', label: 'Kontrol Paneli', icon: <LayoutDashboard className="h-5 w-5" /> },
+  { id: 'anasayfa', label: 'Ana Sayfa', icon: <Home className="h-5 w-5" /> },
   { id: 'sayilar', label: 'Sayı Yönetimi', icon: <BookOpen className="h-5 w-5" /> },
   { id: 'yazilar', label: 'Yazı Yönetimi', icon: <FileText className="h-5 w-5" /> },
   { id: 'ara-yazilar', label: 'Ara Yazılar', icon: <FileText className="h-5 w-5" /> },

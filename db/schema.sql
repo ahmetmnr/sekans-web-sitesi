@@ -254,6 +254,24 @@ CREATE TABLE menuler (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
+-- anasayfa_bloklar (homepage blocks) — ana sayfa panelleri admin panelden
+-- yönetilir: hangi paneller, sıraları, başlıkları. tip: sayilar|blog|kategori.
+-- ayar (JSON): {kategori, adet}. Varsayılan blok seed'i dosya sonundadır.
+-- -----------------------------------------------------------------------------
+CREATE TABLE anasayfa_bloklar (
+  id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  tip         ENUM('sayilar','blog','kategori') NOT NULL DEFAULT 'blog',
+  baslik      VARCHAR(200)    NULL,
+  sira        INT             NOT NULL DEFAULT 0,
+  aktif       TINYINT(1)      NOT NULL DEFAULT 1,
+  ayar        LONGTEXT        NULL,                 -- JSON: {kategori, adet}
+  created_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_anasayfa_bloklar_sira (sira)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
 -- ayarlar (key/value settings) — generic store for misc global toggles.
 -- NOTE: The OpenAI API key is NOT stored here. Per the migration design the key
 -- lives ONLY in the above-webroot config.php (never in the DB, never returned by
@@ -357,3 +375,9 @@ SELECT @m_arsiv,'e-Sayılar','dahili','arsiv',0,1 FROM DUAL WHERE @seed = 0
 UNION ALL SELECT @m_arsiv,'Basılı Sayılar','dahili','basilisayilar',1,1 FROM DUAL WHERE @seed = 0;
 INSERT INTO menuler (gorunen_baslik, tur, hedef, sira, aktif)
 SELECT 'İletişim','dahili','iletisim',7,1 FROM DUAL WHERE @seed = 0;
+
+-- Varsayılan ana sayfa panelleri (mevcut yapı: sayılar + Blog).
+SET @seedb := (SELECT COUNT(*) FROM anasayfa_bloklar);
+INSERT INTO anasayfa_bloklar (tip, baslik, sira, aktif, ayar)
+SELECT 'sayilar', NULL, 0, 1, NULL FROM DUAL WHERE @seedb = 0
+UNION ALL SELECT 'blog', 'Blog', 1, 1, '{"adet":6}' FROM DUAL WHERE @seedb = 0;

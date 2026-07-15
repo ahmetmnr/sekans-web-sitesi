@@ -42,6 +42,27 @@ function menu_out(array $r): array
     ];
 }
 
+/**
+ * Ana sayfa bloğu { id, tip, baslik, sira, aktif, ayar }.
+ * ayar DB'de JSON metnidir; çözülüp obje olarak döndürülür (bozuksa {}).
+ */
+function anasayfa_blok_out(array $r): array
+{
+    $ayar = [];
+    if (!empty($r['ayar'])) {
+        $d = json_decode((string)$r['ayar'], true);
+        if (is_array($d)) $ayar = $d;
+    }
+    return [
+        'id'     => (string)$r['id'],
+        'tip'    => $r['tip'],
+        'baslik' => $r['baslik'] ?? '',
+        'sira'   => (int)$r['sira'],
+        'aktif'  => (bool)(int)$r['aktif'],
+        'ayar'   => (object)$ayar,
+    ];
+}
+
 /** Kategori { id, ad, slug } */
 function kategori_out(?array $r): ?array
 {

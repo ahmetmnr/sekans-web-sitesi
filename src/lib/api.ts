@@ -4,7 +4,7 @@
 
 import type {
   Sayi, ArsivSayi, AraYazi, Yazar, Kategori, Yazi, SayiDurum, Kullanici, EditorOzet,
-  AramaSonuclari, IndeksGiris, StatikSayfaIcerik, MenuOgesi,
+  AramaSonuclari, IndeksGiris, StatikSayfaIcerik, MenuOgesi, AnasayfaBlok,
 } from '@/types';
 
 export const API_BASE: string =
@@ -140,7 +140,8 @@ export interface BootstrapData {
   araYazilar: AraYazi[];
   yazarlar: Yazar[];
   kategoriler: Kategori[];
-  menu?: MenuOgesi[];        // dinamik üst menü (boş/eksikse Header sabit menüye düşer)
+  menu?: MenuOgesi[];             // dinamik üst menü (boş/eksikse Header sabit menüye düşer)
+  anasayfaBloklar?: AnasayfaBlok[]; // ana sayfa panelleri (boş/eksikse AnaSayfa sabit düzene düşer)
   yarismasiBilgi: YarismaBilgi;
   hakkimizdaIcerik: HakkimizdaIcerik;
 }
@@ -279,6 +280,16 @@ export const api = {
     remove: (id: string) => del<{ deleted: string }>(`/menu/${encodeURIComponent(id)}`),
     reorder: (siralar: { id: string; sira: number }[]) =>
       put<{ menu: MenuOgesi[] }>('/menu-sirala', { siralar }).then((r) => r.menu),
+  },
+
+  // Ana sayfa blokları (paneller)
+  anasayfaBlok: {
+    listCms: () => get<{ bloklar: AnasayfaBlok[] }>('/cms/anasayfa-bloklar').then((r) => r.bloklar),
+    create: (b: Partial<AnasayfaBlok>) => post<AnasayfaBlok>('/anasayfa-blok', b),
+    update: (id: string, patch: Partial<AnasayfaBlok>) => put<AnasayfaBlok>(`/anasayfa-blok/${encodeURIComponent(id)}`, patch),
+    remove: (id: string) => del<{ deleted: string }>(`/anasayfa-blok/${encodeURIComponent(id)}`),
+    reorder: (siralar: { id: string; sira: number }[]) =>
+      put<{ bloklar: AnasayfaBlok[] }>('/anasayfa-blok-sirala', { siralar }).then((r) => r.bloklar),
   },
 
   // Site içi arama

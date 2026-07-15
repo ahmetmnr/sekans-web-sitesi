@@ -120,6 +120,13 @@ $routes = [
     ['PUT',    '#^/menu/([^/]+)$#',      'editor', fn($m) => handle_update_menu($m[1], read_json_body())],
     ['DELETE', '#^/menu/([^/]+)$#',      'editor', fn($m) => handle_delete_menu($m[1])],
 
+    // ---- CMS writes: ana sayfa blokları (paneller) ----
+    ['GET',    '#^/cms/anasayfa-bloklar$#',   'editor', fn($m) => handle_cms_list_bloklar()],
+    ['POST',   '#^/anasayfa-blok$#',          'editor', fn($m) => handle_create_blok(read_json_body())],
+    ['PUT',    '#^/anasayfa-blok-sirala$#',   'editor', fn($m) => handle_reorder_blok(read_json_body())],
+    ['PUT',    '#^/anasayfa-blok/([^/]+)$#',  'editor', fn($m) => handle_update_blok($m[1], read_json_body())],
+    ['DELETE', '#^/anasayfa-blok/([^/]+)$#',  'editor', fn($m) => handle_delete_blok($m[1])],
+
     // ---- Yarışma / Hakkımızda / Statik sayfalar ----
     ['PUT',    '#^/yarisma$#',           'editor', fn($m) => handle_update_yarisma(read_json_body())],
     ['PUT',    '#^/hakkimizda$#',        'editor', fn($m) => handle_update_hakkimizda(read_json_body())],

@@ -4,30 +4,36 @@ import type { AraYazi } from '@/types';
 interface AraYazilarSectionProps {
   araYazilar: AraYazi[];
   onAraYaziClick: (araYazi: AraYazi) => void;
-  onTumunuGorClick: () => void;
+  onTumunuGorClick?: () => void;   // verilmezse "Tümünü Gör" gizlenir
+  baslik?: string;                 // panel başlığı (varsayılan "Blog")
+  adet?: number;                   // gösterilecek yazı sayısı (varsayılan 6)
 }
 
-export default function AraYazilarSection({ 
-  araYazilar, 
-  onAraYaziClick, 
-  onTumunuGorClick 
+export default function AraYazilarSection({
+  araYazilar,
+  onAraYaziClick,
+  onTumunuGorClick,
+  baslik = 'Blog',
+  adet = 6,
 }: AraYazilarSectionProps) {
-  // Son 6 ara yazıyı göster
-  const sonAraYazilar = araYazilar.slice(0, 6);
+  // İlk `adet` ara yazıyı göster
+  const sonAraYazilar = araYazilar.slice(0, Math.max(1, adet));
 
   return (
     <section className="py-12 md:py-16 bg-background">
       <div className="container mx-auto px-4 md:px-6">
         {/* Başlık ve "Tümünü Gör" Linki */}
         <div className="flex items-center justify-between mb-8 md:mb-10 border-b border-border pb-4">
-          <h2 className="section-title">Blog</h2>
-          <button
-            onClick={onTumunuGorClick}
-            className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors group"
-          >
-            <span>Tümünü Gör</span>
-            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-          </button>
+          <h2 className="section-title">{baslik}</h2>
+          {onTumunuGorClick && (
+            <button
+              onClick={onTumunuGorClick}
+              className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors group"
+            >
+              <span>Tümünü Gör</span>
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+            </button>
+          )}
         </div>
 
         {/* Grid */}

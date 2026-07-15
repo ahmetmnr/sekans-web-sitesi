@@ -1,7 +1,7 @@
 // CMS Context — API tabanlı veri yönetimi (localStorage YOK).
 // useCMS() veri şekli aynı kalır; bileşenler değişmez. Mutator'lar artık async.
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import type { Sayi, AraYazi, Yazar, Kategori, ArsivSayi, Yazi, SayiDurum, EditorOzet, MenuOgesi } from '@/types';
+import type { Sayi, AraYazi, Yazar, Kategori, ArsivSayi, Yazi, SayiDurum, EditorOzet, MenuOgesi, AnasayfaBlok } from '@/types';
 import { api, type YarismaBilgi, type HakkimizdaIcerik } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 
@@ -41,6 +41,7 @@ interface CMSContextType {
   yazarlar: Yazar[];
   kategoriler: Kategori[];
   menu: MenuOgesi[];          // dinamik üst menü (boşsa Header sabit menüye düşer)
+  anasayfaBloklar: AnasayfaBlok[]; // ana sayfa panelleri (boşsa AnaSayfa sabit düzene düşer)
   yarismasiBilgi: YarismaBilgi;
   hakkimizdaIcerik: HakkimizdaIcerik;
 
@@ -107,6 +108,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   const [yazarlar, setYazarlar] = useState<Yazar[]>([]);
   const [kategoriler, setKategoriler] = useState<Kategori[]>([]);
   const [menu, setMenu] = useState<MenuOgesi[]>([]);
+  const [anasayfaBloklar, setAnasayfaBloklar] = useState<AnasayfaBlok[]>([]);
   const [yarismasiBilgi, setYarismasiBilgi] = useState<YarismaBilgi>(EMPTY_YARISMA);
   const [hakkimizdaIcerik, setHakkimizdaIcerik] = useState<HakkimizdaIcerik>(EMPTY_HAKKIMIZDA);
 
@@ -129,6 +131,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       setYazarlar(d.yazarlar ?? []);
       setKategoriler(d.kategoriler ?? []);
       setMenu(d.menu ?? []);
+      setAnasayfaBloklar(d.anasayfaBloklar ?? []);
       setYarismasiBilgi(d.yarismasiBilgi ?? EMPTY_YARISMA);
       setHakkimizdaIcerik(d.hakkimizdaIcerik ?? EMPTY_HAKKIMIZDA);
     } catch (e) {
@@ -334,7 +337,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const value: CMSContextType = {
-    sonSayi, anasayfaSayilari, sayilar, editorler, arsivSayilari, araYazilar, yazarlar, kategoriler, menu, yarismasiBilgi, hakkimizdaIcerik,
+    sonSayi, anasayfaSayilari, sayilar, editorler, arsivSayilari, araYazilar, yazarlar, kategoriler, menu, anasayfaBloklar, yarismasiBilgi, hakkimizdaIcerik,
     isLoading, error, refresh, refreshSayilar,
     setSonSayi, addSayi, updateSayi, setSayiDurum, deleteSayi,
     addArsivSayi, updateArsivSayi, deleteArsivSayi, publishSonSayi,

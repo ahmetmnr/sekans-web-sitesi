@@ -380,6 +380,21 @@ function handle_get_menu(): void
     respond(['menu' => menu_tree(true)]);
 }
 
+/**
+ * Ana sayfa bloklarını (panelleri) sıraya göre getir. $onlyActive=true => site;
+ * false => CMS düzenleme (pasifler dahil). Tablo yoksa [] döner (Faz 2 öncesi uyum).
+ */
+function anasayfa_bloklar_list(bool $onlyActive = true): array
+{
+    try {
+        $where = $onlyActive ? 'WHERE aktif = 1' : '';
+        $rows = db()->query("SELECT * FROM anasayfa_bloklar $where ORDER BY sira ASC, id ASC")->fetchAll();
+    } catch (PDOException $e) {
+        return []; // anasayfa_bloklar tablosu henüz yok — AnaSayfa sabit düzene düşer.
+    }
+    return array_map('anasayfa_blok_out', $rows);
+}
+
 /** GET /api/hakkimizda */
 function handle_get_hakkimizda(): void
 {
@@ -477,7 +492,8 @@ function handle_bootstrap(): void
         'araYazilar'       => $araYazilar,
         'yazarlar'         => $yazarlar,
         'kategoriler'      => $kategoriler,
-        'menu'             => menu_tree(true),   // dinamik üst menü (tablo yoksa [] -> Header sabit menüye düşer)
+        'menu'             => menu_tree(true),           // dinamik üst menü (tablo yoksa [] -> Header sabit menüye düşer)
+        'anasayfaBloklar'  => anasayfa_bloklar_list(true), // ana sayfa panelleri (tablo yoksa [] -> sabit düzen)
         'yarismasiBilgi'   => $yarismasiBilgi,
         'hakkimizdaIcerik' => $hakkimizdaIcerik,
     ]);

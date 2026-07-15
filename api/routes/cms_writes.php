@@ -736,3 +736,114 @@ function handle_reorder_menu(array $b): void
     }
     respond(['menu' => menu_tree(false)]);
 }
+
+/* ============================ ANA SAYFA BLOKLARI ========================== */
+
+const ANASAYFA_BLOK_TIPLERI = ['sayilar', 'blog', 'kategori'];
+
+/** Geçerli blok tipini döndür (geçersizse 'blog'). */
+function blok_norm_tip($tip): string
+{
+    $tip = (string)$tip;
+    return in_array($tip, ANASAYFA_BLOK_TIPLERI, true) ? $tip : 'blog';
+}
+
+/** Body'deki ayar (obje) -> güvenli JSON metni (yalnızca kategori/adet). */
+function blok_ayar_json($ayar): ?string
+{
+    if (!is_array($ayar)) return null;
+    $out = [];
+    if (isset($ayar['kategori']) && $ayar['kategori'] !== '') $out['kategori'] = (string)$ayar['kategori'];
+    if (isset($ayar['adet']))     $out['adet'] = max(1, min(48, (int)$ayar['adet']));
+    return $out ? json_encode($out, JSON_UNESCAPED_UNICODE) : null;
+}
+
+/** Aynı seviyedeki bir sonraki sıra numarası (bloklar tek seviyeli). */
+function blok_next_sira(): int
+{
+    return (int)db()->query("SELECT COALESCE(MAX(sira), -1) + 1 FROM anasayfa_bloklar")->fetchColumn();
+}
+
+/** Tek blok satırını serileştirip döndür. */
+function blok_row_out(int $id): array
+{
+    $st = db()->prepare("SELECT * FROM anasayfa_bloklar WHERE id = ? LIMIT 1");
+    $st->execute([$id]);
+    $r = $st->fetch();
+    if (!$r) fail('NOT_FOUND', 'Blok bulunamadı.', 404);
+    return anasayfa_blok_out($r);
+}
+
+/** GET /api/cms/anasayfa-bloklar — TÜM bloklar (pasifler dahil). editör+ */
+function handle_cms_list_bloklar(): void
+{
+    respond(['bloklar' => anasayfa_bloklar_list(false)]);
+}
+
+/** POST /api/anasayfa-blok — yeni panel. editör+ */
+function handle_create_blok(array $b): void
+{
+    $tip    = blok_norm_tip($b['tip'] ?? 'blog');
+    $baslik = trim((string)($b['baslik'] ?? ''));
+    $sira   = isset($b['sira']) ? (int)$b['sira'] : blok_next_sira();
+    $aktif  = array_key_exists('aktif', $b) ? (!empty($b['aktif']) ? 1 : 0) : 1;
+    $ayar   = blok_ayar_json($b['ayar'] ?? null);
+
+    db()->prepare(
+        "INSERT INTO anasayfa_bloklar (tip, baslik, sira, aktif, ayar) VALUES (?,?,?,?,?)"
+    )->execute([$tip, $baslik !== '' ? $baslik : null, $sira, $aktif, $ayar]);
+
+    respond(blok_row_out((int)db()->lastInsertId()));
+}
+
+/** PUT /api/anasayfa-blok/{id} — paneli güncelle (yalnızca gönderilen alanlar). editör+ */
+function handle_update_blok(string $idStr, array $b): void
+{
+    $id = (int)$idStr;
+    $st = db()->prepare("SELECT id FROM anasayfa_bloklar WHERE id = ? LIMIT 1");
+    $st->execute([$id]);
+    if ($st->fetchColumn() === false) fail('NOT_FOUND', 'Blok bulunamadı.', 404);
+
+    $set = [];
+    $params = [];
+    if (array_key_exists('tip', $b))    { $set[] = 'tip = ?';    $params[] = blok_norm_tip($b['tip']); }
+    if (array_key_exists('baslik', $b)) { $bs = trim((string)($b['baslik'] ?? '')); $set[] = 'baslik = ?'; $params[] = $bs !== '' ? $bs : null; }
+    if (array_key_exists('sira', $b))   { $set[] = 'sira = ?';   $params[] = (int)$b['sira']; }
+    if (array_key_exists('aktif', $b))  { $set[] = 'aktif = ?';  $params[] = !empty($b['aktif']) ? 1 : 0; }
+    if (array_key_exists('ayar', $b))   { $set[] = 'ayar = ?';   $params[] = blok_ayar_json($b['ayar']); }
+
+    if ($set) {
+        $params[] = $id;
+        db()->prepare("UPDATE anasayfa_bloklar SET " . implode(', ', $set) . " WHERE id = ?")->execute($params);
+    }
+    respond(blok_row_out($id));
+}
+
+/** DELETE /api/anasayfa-blok/{id} — paneli sil. editör+ */
+function handle_delete_blok(string $idStr): void
+{
+    $id = (int)$idStr;
+    db()->prepare("DELETE FROM anasayfa_bloklar WHERE id = ?")->execute([$id]);
+    respond(['deleted' => (string)$id]);
+}
+
+/** PUT /api/anasayfa-blok-sirala — panellerin sırasını topluca kaydet. body {siralar:[{id,sira}]}. editör+ */
+function handle_reorder_blok(array $b): void
+{
+    $siralar = $b['siralar'] ?? [];
+    if (!is_array($siralar)) fail('VALIDATION', 'siralar dizisi gerekli.', 400);
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $up = $pdo->prepare("UPDATE anasayfa_bloklar SET sira = ? WHERE id = ?");
+        foreach ($siralar as $s) {
+            if (!isset($s['id'])) continue;
+            $up->execute([(int)($s['sira'] ?? 0), (int)$s['id']]);
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+    respond(['bloklar' => anasayfa_bloklar_list(false)]);
+}
