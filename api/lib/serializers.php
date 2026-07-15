@@ -21,6 +21,27 @@ function yazar_out(?array $r): ?array
     ];
 }
 
+/**
+ * Menü öğesi { id, parentId, gorunenBaslik, sistemBaslik, tur, hedef, sira,
+ *              aktif, otomatik, yeniSekme }. children ağaç kurucuda eklenir.
+ * id/parentId frontend'de string (menuler.id numeric AUTO_INCREMENT).
+ */
+function menu_out(array $r): array
+{
+    return [
+        'id'            => (string)$r['id'],
+        'parentId'      => $r['parent_id'] !== null ? (string)$r['parent_id'] : null,
+        'gorunenBaslik' => $r['gorunen_baslik'],
+        'sistemBaslik'  => $r['sistem_baslik'] ?? null,
+        'tur'           => $r['tur'],
+        'hedef'         => $r['hedef'] ?? null,
+        'sira'          => (int)$r['sira'],
+        'aktif'         => (bool)(int)$r['aktif'],
+        'otomatik'      => (bool)(int)$r['otomatik'],
+        'yeniSekme'     => (bool)(int)$r['yeni_sekme'],
+    ];
+}
+
 /** Kategori { id, ad, slug } */
 function kategori_out(?array $r): ?array
 {

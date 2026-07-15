@@ -30,7 +30,7 @@ col_exists() { # $1=tablo $2=kolon
     "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='sekans' AND TABLE_NAME='$1' AND COLUMN_NAME='$2';" 2>/dev/null || echo "0"
 }
 
-echo ">>> 3/6 DB migration: sayilar.durum + editor_id (yalnızca yoksa uygulanır)..."
+echo ">>> 3/7 DB migration: sayilar.durum + editor_id (yalnızca yoksa uygulanır)..."
 if [ "$(col_exists sayilar durum)" = "0" ]; then
   echo "    -> uygulanıyor: 2026-07-06_sayi_durum_editor.sql"
   $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-06_sayi_durum_editor.sql
@@ -39,7 +39,7 @@ else
   echo "    -> 'durum' kolonu zaten var, atlanıyor."
 fi
 
-echo ">>> 4/6 DB migration: menü/anasayfa + sayfalar + yarışma alanları (yalnızca yoksa)..."
+echo ">>> 4/7 DB migration: menü/anasayfa + sayfalar + yarışma alanları (yalnızca yoksa)..."
 if [ "$(col_exists sayilar menu_etiket)" = "0" ]; then
   echo "    -> uygulanıyor: 2026-07-14_menu_anasayfa_sayfalar.sql"
   $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-14_menu_anasayfa_sayfalar.sql
@@ -48,14 +48,25 @@ else
   echo "    -> 'menu_etiket' kolonu zaten var, atlanıyor."
 fi
 
-echo ">>> 5/6 API konteyneri yeniden başlatılıyor..."
+echo ">>> 5/7 DB migration: dinamik üst menü (menuler tablosu) (yalnızca yoksa)..."
+if [ "$(col_exists menuler id)" = "0" ]; then
+  echo "    -> uygulanıyor: 2026-07-15_menuler.sql"
+  $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-15_menuler.sql
+  echo "    -> tamam."
+else
+  echo "    -> 'menuler' tablosu zaten var, atlanıyor."
+fi
+
+echo ">>> 6/7 API konteyneri yeniden başlatılıyor..."
 $DC restart api
 
-echo ">>> 6/6 Kontrol — sayı durumları + kategori adları:"
+echo ">>> 7/7 Kontrol — sayı durumları + kategori adları + menü:"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT durum, COUNT(*) FROM sayilar GROUP BY durum;" 2>/dev/null || echo "    (DB kontrolü atlandı)"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT ad FROM kategoriler WHERE ad IN ('Duyurular','Texts in English');" 2>/dev/null || true
+$DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
+  "SELECT CONCAT('menü öğesi: ', COUNT(*)) FROM menuler;" 2>/dev/null || true
 
 echo ""
 echo "==================== GÜNCELLEME TAMAM ===================="

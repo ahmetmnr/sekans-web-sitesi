@@ -12,6 +12,7 @@ import { CMSAraYaziListesi } from './CMSAraYaziListesi';
 import { CMSAraYaziEditor } from './CMSAraYaziEditor';
 import { CMSYazarYonetimi } from './CMSYazarYonetimi';
 import { CMSKategoriYonetimi } from './CMSKategoriYonetimi';
+import { CMSMenuYonetimi } from './CMSMenuYonetimi';
 import { CMSKullaniciYonetimi } from './CMSKullaniciYonetimi';
 import { CMSYarismaYonetimi } from './CMSYarismaYonetimi';
 import { CMSHakkimizdaYonetimi } from './CMSHakkimizdaYonetimi';
@@ -116,6 +117,8 @@ export function CMS({ onExitCMS }: CMSProps) {
         return <CMSYazarYonetimi />;
       case 'kategoriler':
         return <CMSKategoriYonetimi />;
+      case 'menu':
+        return <CMSMenuYonetimi />;
       case 'kullanicilar':
         return <CMSKullaniciYonetimi />;
       case 'yarismasi':

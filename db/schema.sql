@@ -227,6 +227,33 @@ CREATE TABLE sayfalar (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
+-- menuler (dynamic top navigation) — admin panelden yönetilen hiyerarşik menü.
+-- Sabit kod yerine bu tablodan kurulur; öğeler eklenir/silinir/yeniden
+-- adlandırılır/sıralanır/aktif-pasif yapılır ve başka bir üst menünün altına
+-- taşınabilir. tur: bağlantı türü, hedef: pageId|slug|kategori|URL|sayı code.
+-- Varsayılan menü seed'i dosyanın sonundaki seed bölümündedir.
+-- -----------------------------------------------------------------------------
+CREATE TABLE menuler (
+  id             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  parent_id      BIGINT UNSIGNED NULL,                 -- üst menü (NULL = en üst düzey)
+  gorunen_baslik VARCHAR(160)    NOT NULL,             -- kullanıcıya görünen ad ("Lynch Sayısı")
+  sistem_baslik  VARCHAR(160)    NULL,                 -- sistemin ürettiği ad ("Sayı özel")
+  tur            ENUM('dahili','grup','sabit_sayfa','kategori','filtre_liste','dergi_sayisi','dergi_sayilari','harici_link')
+                 NOT NULL DEFAULT 'dahili',
+  hedef          VARCHAR(255)    NULL,                 -- pageId | slug | kategori adı | URL | sayı code
+  sira           INT             NOT NULL DEFAULT 0,
+  aktif          TINYINT(1)      NOT NULL DEFAULT 1,
+  otomatik       TINYINT(1)      NOT NULL DEFAULT 0,
+  yeni_sekme     TINYINT(1)      NOT NULL DEFAULT 0,
+  created_at     TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at     TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_menuler_parent (parent_id),
+  KEY idx_menuler_sira (parent_id, sira),
+  CONSTRAINT fk_menuler_parent FOREIGN KEY (parent_id) REFERENCES menuler (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
 -- ayarlar (key/value settings) — generic store for misc global toggles.
 -- NOTE: The OpenAI API key is NOT stored here. Per the migration design the key
 -- lives ONLY in the above-webroot config.php (never in the DB, never returned by
@@ -296,3 +323,37 @@ INSERT INTO hakkimizda (id, baslik) VALUES (1, '')
 INSERT INTO sayfalar (slug, baslik, icerik) VALUES
   ('yazi-standartlari', 'Sekans Yazı Standartları', NULL)
   ON DUPLICATE KEY UPDATE slug = slug;
+
+-- Varsayılan üst menü (mevcut yapı birebir). Yalnızca tablo boşsa kurulur.
+SET @seed := (SELECT COUNT(*) FROM menuler);
+INSERT INTO menuler (gorunen_baslik, tur, hedef, sira, aktif)
+SELECT 'Ana Sayfa','dahili','anasayfa',0,1 FROM DUAL WHERE @seed = 0;
+INSERT INTO menuler (gorunen_baslik, tur, sira, aktif)
+SELECT 'Hakkımızda','grup',1,1 FROM DUAL WHERE @seed = 0;
+SET @m_hakkimizda := LAST_INSERT_ID();
+INSERT INTO menuler (parent_id, gorunen_baslik, tur, hedef, sira, aktif)
+SELECT @m_hakkimizda,'Sekans Sinema Grubu','dahili','hakkimizda',0,1 FROM DUAL WHERE @seed = 0
+UNION ALL SELECT @m_hakkimizda,'Sekans Yazı Standartları','sabit_sayfa','yazi-standartlari',1,1 FROM DUAL WHERE @seed = 0
+UNION ALL SELECT @m_hakkimizda,'Duyurular','dahili','duyurular',2,1 FROM DUAL WHERE @seed = 0;
+INSERT INTO menuler (gorunen_baslik, tur, sira, aktif)
+SELECT 'Sayılar','dergi_sayilari',2,1 FROM DUAL WHERE @seed = 0;
+INSERT INTO menuler (gorunen_baslik, tur, hedef, sira, aktif)
+SELECT 'Yarışma','dahili','yarisma',3,1 FROM DUAL WHERE @seed = 0;
+INSERT INTO menuler (gorunen_baslik, tur, sira, aktif)
+SELECT 'Yazılar','grup',4,1 FROM DUAL WHERE @seed = 0;
+SET @m_yazilar := LAST_INSERT_ID();
+INSERT INTO menuler (parent_id, gorunen_baslik, tur, hedef, sira, aktif)
+SELECT @m_yazilar,'Sekans İndeks','dahili','indeks',0,1 FROM DUAL WHERE @seed = 0
+UNION ALL SELECT @m_yazilar,'Ara Yazılar','dahili','arayazilar-arayazi',1,1 FROM DUAL WHERE @seed = 0
+UNION ALL SELECT @m_yazilar,'Sinema Kitaplığı','dahili','sinemakitapligi',2,1 FROM DUAL WHERE @seed = 0
+UNION ALL SELECT @m_yazilar,'Texts in English','dahili','textsinenglish',3,1 FROM DUAL WHERE @seed = 0;
+INSERT INTO menuler (gorunen_baslik, tur, hedef, sira, aktif)
+SELECT 'Yazarlar','dahili','yazarlar',5,1 FROM DUAL WHERE @seed = 0;
+INSERT INTO menuler (gorunen_baslik, tur, sira, aktif)
+SELECT 'Arşiv','grup',6,1 FROM DUAL WHERE @seed = 0;
+SET @m_arsiv := LAST_INSERT_ID();
+INSERT INTO menuler (parent_id, gorunen_baslik, tur, hedef, sira, aktif)
+SELECT @m_arsiv,'e-Sayılar','dahili','arsiv',0,1 FROM DUAL WHERE @seed = 0
+UNION ALL SELECT @m_arsiv,'Basılı Sayılar','dahili','basilisayilar',1,1 FROM DUAL WHERE @seed = 0;
+INSERT INTO menuler (gorunen_baslik, tur, hedef, sira, aktif)
+SELECT 'İletişim','dahili','iletisim',7,1 FROM DUAL WHERE @seed = 0;

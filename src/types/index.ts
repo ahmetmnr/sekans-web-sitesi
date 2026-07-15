@@ -140,6 +140,39 @@ export interface StatikSayfaIcerik {
   icerik: string;
 }
 
+// Dinamik üst menü — admin panelden yönetilir (bağlantı türü + hedef).
+//  dahili         : yerleşik site sayfası (hedef = pageId: anasayfa, yazarlar, ...)
+//  grup           : yalnızca açılır menü başlığı (hedef yok; alt öğeleri açar)
+//  sabit_sayfa    : statik sayfa (hedef = slug)
+//  kategori       : kategori adına göre filtrelenmiş liste (hedef = kategori adı)
+//  filtre_liste   : admin tanımlı filtre sayfası (hedef = slug — Faz 4)
+//  dergi_sayisi   : belirli bir dergi sayısı (hedef = sayı code)
+//  dergi_sayilari : "Sayılar" özel dinamik düğümü (sayıları otomatik listeler)
+//  harici_link    : haricî bağlantı (hedef = URL)
+export type MenuTur =
+  | 'dahili'
+  | 'grup'
+  | 'sabit_sayfa'
+  | 'kategori'
+  | 'filtre_liste'
+  | 'dergi_sayisi'
+  | 'dergi_sayilari'
+  | 'harici_link';
+
+export interface MenuOgesi {
+  id: string;
+  parentId: string | null;
+  gorunenBaslik: string;       // kullanıcıya görünen ad
+  sistemBaslik: string | null; // sistemin ürettiği ad ("Sayı özel")
+  tur: MenuTur;
+  hedef: string | null;        // pageId | slug | kategori adı | URL | sayı code
+  sira: number;
+  aktif: boolean;
+  otomatik: boolean;           // sistem tarafından otomatik eklendi mi
+  yeniSekme: boolean;          // haricî bağlantı yeni sekmede açılsın mı
+  children: MenuOgesi[];
+}
+
 // CMS kullanıcı hesabı (panelde yönetilir). Parola asla taşınmaz.
 export interface Kullanici {
   id: string;

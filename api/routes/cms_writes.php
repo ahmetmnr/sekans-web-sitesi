@@ -594,3 +594,145 @@ function handle_update_hakkimizda(array $b): void
     ]);
     handle_get_hakkimizda();
 }
+
+/* ================================ MENÜ ==================================== */
+
+const MENU_TURLER = ['dahili','grup','sabit_sayfa','kategori','filtre_liste','dergi_sayisi','dergi_sayilari','harici_link'];
+
+/** Geçerli menü türünü döndür (geçersizse 'dahili'). */
+function menu_norm_tur($tur): string
+{
+    $tur = (string)$tur;
+    return in_array($tur, MENU_TURLER, true) ? $tur : 'dahili';
+}
+
+/** parentId (string) -> geçerli menuler.id (int) ya da null. Yoksa null'a düşer. */
+function menu_norm_parent($parentId): ?int
+{
+    if ($parentId === null || $parentId === '' || $parentId === '0') return null;
+    $id = (int)$parentId;
+    $st = db()->prepare("SELECT id FROM menuler WHERE id = ? LIMIT 1");
+    $st->execute([$id]);
+    return $st->fetchColumn() !== false ? $id : null;
+}
+
+/** Aynı seviyedeki (parent) bir sonraki sıra numarası. */
+function menu_next_sira(?int $parentId): int
+{
+    if ($parentId === null) {
+        $st = db()->query("SELECT COALESCE(MAX(sira), -1) + 1 FROM menuler WHERE parent_id IS NULL");
+        return (int)$st->fetchColumn();
+    }
+    $st = db()->prepare("SELECT COALESCE(MAX(sira), -1) + 1 FROM menuler WHERE parent_id = ?");
+    $st->execute([$parentId]);
+    return (int)$st->fetchColumn();
+}
+
+/** Tek menü satırını (children olmadan) serileştirip döndür. */
+function menu_row_out(int $id): array
+{
+    $st = db()->prepare("SELECT * FROM menuler WHERE id = ? LIMIT 1");
+    $st->execute([$id]);
+    $r = $st->fetch();
+    if (!$r) fail('NOT_FOUND', 'Menü öğesi bulunamadı.', 404);
+    $out = menu_out($r);
+    $out['children'] = [];
+    return $out;
+}
+
+/** GET /api/cms/menu — düzenleme için TÜM menü ağacı (pasifler dahil). editör+ */
+function handle_cms_list_menu(): void
+{
+    respond(['menu' => menu_tree(false)]);
+}
+
+/** POST /api/menu — yeni menü öğesi. editör+ */
+function handle_create_menu(array $b): void
+{
+    $gorunen = trim((string)($b['gorunenBaslik'] ?? ''));
+    if ($gorunen === '') fail('VALIDATION', 'Menü başlığı gerekli.', 400, ['gorunenBaslik' => 'zorunlu']);
+
+    $tur      = menu_norm_tur($b['tur'] ?? 'dahili');
+    $parentId = menu_norm_parent($b['parentId'] ?? null);
+    $hedef    = ($b['hedef'] ?? null) !== null ? trim((string)$b['hedef']) : null;
+    if ($hedef === '') $hedef = null;
+    $sira     = isset($b['sira']) ? (int)$b['sira'] : menu_next_sira($parentId);
+    $aktif    = array_key_exists('aktif', $b) ? (!empty($b['aktif']) ? 1 : 0) : 1;
+    $yeniSekme = !empty($b['yeniSekme']) ? 1 : 0;
+    $sistem   = ($b['sistemBaslik'] ?? null) !== null ? trim((string)$b['sistemBaslik']) : null;
+
+    db()->prepare(
+        "INSERT INTO menuler (parent_id, gorunen_baslik, sistem_baslik, tur, hedef, sira, aktif, yeni_sekme, otomatik)
+         VALUES (?,?,?,?,?,?,?,?,0)"
+    )->execute([$parentId, $gorunen, $sistem ?: null, $tur, $hedef, $sira, $aktif, $yeniSekme]);
+
+    respond(menu_row_out((int)db()->lastInsertId()));
+}
+
+/** PUT /api/menu/{id} — menü öğesini güncelle (yalnızca gönderilen alanlar). editör+ */
+function handle_update_menu(string $idStr, array $b): void
+{
+    $id = (int)$idStr;
+    $st = db()->prepare("SELECT id FROM menuler WHERE id = ? LIMIT 1");
+    $st->execute([$id]);
+    if ($st->fetchColumn() === false) fail('NOT_FOUND', 'Menü öğesi bulunamadı.', 404);
+
+    $set = [];
+    $params = [];
+    if (array_key_exists('gorunenBaslik', $b)) {
+        $g = trim((string)$b['gorunenBaslik']);
+        if ($g === '') fail('VALIDATION', 'Menü başlığı boş olamaz.', 400, ['gorunenBaslik' => 'zorunlu']);
+        $set[] = 'gorunen_baslik = ?'; $params[] = $g;
+    }
+    if (array_key_exists('sistemBaslik', $b)) {
+        $s = trim((string)($b['sistemBaslik'] ?? '')); $set[] = 'sistem_baslik = ?'; $params[] = $s !== '' ? $s : null;
+    }
+    if (array_key_exists('tur', $b)) { $set[] = 'tur = ?'; $params[] = menu_norm_tur($b['tur']); }
+    if (array_key_exists('hedef', $b)) {
+        $h = trim((string)($b['hedef'] ?? '')); $set[] = 'hedef = ?'; $params[] = $h !== '' ? $h : null;
+    }
+    if (array_key_exists('parentId', $b)) {
+        $pid = menu_norm_parent($b['parentId']);
+        // Kendini üst yapamaz (basit döngü koruması; menü 2 seviyeli).
+        if ($pid === $id) fail('VALIDATION', 'Öğe kendi altına taşınamaz.', 400);
+        $set[] = 'parent_id = ?'; $params[] = $pid;
+    }
+    if (array_key_exists('sira', $b))      { $set[] = 'sira = ?';       $params[] = (int)$b['sira']; }
+    if (array_key_exists('aktif', $b))     { $set[] = 'aktif = ?';      $params[] = !empty($b['aktif']) ? 1 : 0; }
+    if (array_key_exists('yeniSekme', $b)) { $set[] = 'yeni_sekme = ?'; $params[] = !empty($b['yeniSekme']) ? 1 : 0; }
+
+    if ($set) {
+        $params[] = $id;
+        db()->prepare("UPDATE menuler SET " . implode(', ', $set) . " WHERE id = ?")->execute($params);
+    }
+    respond(menu_row_out($id));
+}
+
+/** DELETE /api/menu/{id} — menü öğesini (ve alt öğelerini CASCADE) sil. editör+ */
+function handle_delete_menu(string $idStr): void
+{
+    $id = (int)$idStr;
+    db()->prepare("DELETE FROM menuler WHERE id = ?")->execute([$id]);
+    respond(['deleted' => (string)$id]);
+}
+
+/** PUT /api/menu-sirala — bir seviyedeki sıralamayı topluca kaydet. body {siralar:[{id,sira}]}. editör+ */
+function handle_reorder_menu(array $b): void
+{
+    $siralar = $b['siralar'] ?? [];
+    if (!is_array($siralar)) fail('VALIDATION', 'siralar dizisi gerekli.', 400);
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $up = $pdo->prepare("UPDATE menuler SET sira = ? WHERE id = ?");
+        foreach ($siralar as $s) {
+            if (!isset($s['id'])) continue;
+            $up->execute([(int)($s['sira'] ?? 0), (int)$s['id']]);
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+    respond(['menu' => menu_tree(false)]);
+}

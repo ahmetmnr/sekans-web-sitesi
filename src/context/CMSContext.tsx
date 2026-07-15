@@ -1,7 +1,7 @@
 // CMS Context — API tabanlı veri yönetimi (localStorage YOK).
 // useCMS() veri şekli aynı kalır; bileşenler değişmez. Mutator'lar artık async.
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import type { Sayi, AraYazi, Yazar, Kategori, ArsivSayi, Yazi, SayiDurum, EditorOzet } from '@/types';
+import type { Sayi, AraYazi, Yazar, Kategori, ArsivSayi, Yazi, SayiDurum, EditorOzet, MenuOgesi } from '@/types';
 import { api, type YarismaBilgi, type HakkimizdaIcerik } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 
@@ -40,6 +40,7 @@ interface CMSContextType {
   araYazilar: AraYazi[];
   yazarlar: Yazar[];
   kategoriler: Kategori[];
+  menu: MenuOgesi[];          // dinamik üst menü (boşsa Header sabit menüye düşer)
   yarismasiBilgi: YarismaBilgi;
   hakkimizdaIcerik: HakkimizdaIcerik;
 
@@ -105,6 +106,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   const [araYazilar, setAraYazilar] = useState<AraYazi[]>([]);
   const [yazarlar, setYazarlar] = useState<Yazar[]>([]);
   const [kategoriler, setKategoriler] = useState<Kategori[]>([]);
+  const [menu, setMenu] = useState<MenuOgesi[]>([]);
   const [yarismasiBilgi, setYarismasiBilgi] = useState<YarismaBilgi>(EMPTY_YARISMA);
   const [hakkimizdaIcerik, setHakkimizdaIcerik] = useState<HakkimizdaIcerik>(EMPTY_HAKKIMIZDA);
 
@@ -126,6 +128,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       setAraYazilar(d.araYazilar ?? []);
       setYazarlar(d.yazarlar ?? []);
       setKategoriler(d.kategoriler ?? []);
+      setMenu(d.menu ?? []);
       setYarismasiBilgi(d.yarismasiBilgi ?? EMPTY_YARISMA);
       setHakkimizdaIcerik(d.hakkimizdaIcerik ?? EMPTY_HAKKIMIZDA);
     } catch (e) {
@@ -331,7 +334,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const value: CMSContextType = {
-    sonSayi, anasayfaSayilari, sayilar, editorler, arsivSayilari, araYazilar, yazarlar, kategoriler, yarismasiBilgi, hakkimizdaIcerik,
+    sonSayi, anasayfaSayilari, sayilar, editorler, arsivSayilari, araYazilar, yazarlar, kategoriler, menu, yarismasiBilgi, hakkimizdaIcerik,
     isLoading, error, refresh, refreshSayilar,
     setSonSayi, addSayi, updateSayi, setSayiDurum, deleteSayi,
     addArsivSayi, updateArsivSayi, deleteArsivSayi, publishSonSayi,

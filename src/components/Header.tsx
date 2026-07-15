@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useCMS } from '@/context/CMSContext';
 import { api } from '@/lib/api';
-import type { AraYazi, AramaSonuclari, AramaYaziSonuc } from '@/types';
+import type { AraYazi, AramaSonuclari, AramaYaziSonuc, MenuOgesi } from '@/types';
 
 interface HeaderProps {
   onNavigate: (page: string) => void;
@@ -36,7 +36,8 @@ interface NavItem {
   children?: NavChild[];
 }
 
-// Menü yapısı: children olanlar açılır menüdür. "Sayılar" dinamik (CMS verisinden) kurulur.
+// FALLBACK menü: menuler tablosu (dinamik menü) henüz yoksa / boşsa kullanılır.
+// Dinamik menü geldiğinde bu yapı yerine CMS'ten yönetilen ağaç render edilir.
 const navItems: NavItem[] = [
   { id: 'anasayfa', label: 'Ana Sayfa' },
   {
@@ -69,6 +70,13 @@ const navItems: NavItem[] = [
 // Menüde en fazla bu kadar arşiv sayısı listelenir (admin panelden aç/kapat).
 const MENU_SAYI_LIMIT = 8;
 
+// Birleşik render modeli — hem dinamik menüden hem sabit fallback'ten üretilir.
+type NavChildR = { key: string; label: string; onClick: () => void; activePage?: string };
+type NavEntry =
+  | { kind: 'leaf'; key: string; label: string; onClick: () => void; activePage?: string }
+  | { kind: 'group'; key: string; label: string; activePages: string[]; children: NavChildR[] }
+  | { kind: 'sayilar'; key: string; label: string };
+
 export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc, onYazarAc }: HeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -76,7 +84,7 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
   const [searching, setSearching] = useState(false);
   const searchSeq = useRef(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { sonSayi, arsivSayilari } = useCMS();
+  const { sonSayi, arsivSayilari, menu } = useCMS();
 
   // Menüde görünecek arşiv sayıları (admin panelden aç/kapat + özel etiket).
   const menuSayilari = arsivSayilari
@@ -122,8 +130,91 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const isDropdownActive = (item: NavItem) =>
-    item.children?.some((c) => c.page === currentPage) ?? false;
+  // Belirli bir dergi sayısını aç: PDF varsa yeni sekmede, yoksa arşiv sayfası.
+  const sayiAc = (code: string) => {
+    const s = arsivSayilari.find((x) => x.id === code);
+    if (s?.pdfUrl) window.open(s.pdfUrl, '_blank', 'noopener,noreferrer');
+    else handleNavClick('arsiv');
+  };
+
+  // Dinamik menü öğesini onNavigate hedef koduna çevir (App.handleNavigate çözer).
+  const menuHedefNav = (item: MenuOgesi): string => {
+    switch (item.tur) {
+      case 'sabit_sayfa':  return item.hedef ? `statik:${item.hedef}` : 'anasayfa';
+      case 'kategori':     return item.hedef ? `kategori:${item.hedef}` : 'arayazilar';
+      case 'filtre_liste': return item.hedef ? `filtre:${item.hedef}` : 'arayazilar';
+      case 'dahili':       return item.hedef ?? 'anasayfa';
+      default:             return 'anasayfa';
+    }
+  };
+
+  // Aktiflik vurgusu için sayfa kimliği (dinamik öğeden en iyi tahmin).
+  const menuActivePage = (item: MenuOgesi): string | undefined => {
+    if (item.tur === 'dahili') return item.hedef === 'arayazilar-arayazi' ? 'arayazilar' : (item.hedef ?? undefined);
+    if (item.tur === 'sabit_sayfa') return 'statik';
+    return undefined;
+  };
+
+  // Dinamik menü öğesi tıklama: haricî/dergi_sayisi doğrudan; diğerleri onNavigate.
+  const menuTikla = (item: MenuOgesi) => {
+    if (item.tur === 'harici_link') {
+      if (item.hedef) {
+        if (item.yeniSekme) window.open(item.hedef, '_blank', 'noopener,noreferrer');
+        else window.location.href = item.hedef;
+      }
+      setMobileMenuOpen(false);
+      return;
+    }
+    if (item.tur === 'dergi_sayisi') {
+      if (item.hedef) sayiAc(item.hedef);
+      setMobileMenuOpen(false);
+      return;
+    }
+    handleNavClick(menuHedefNav(item));
+  };
+
+  // Render modelini dinamik menüden kur (yalnızca aktif öğeler).
+  const buildFromMenu = (items: MenuOgesi[]): NavEntry[] =>
+    items.filter((i) => i.aktif).map((item): NavEntry => {
+      if (item.tur === 'dergi_sayilari') {
+        return { kind: 'sayilar', key: item.id, label: item.gorunenBaslik };
+      }
+      const kids = (item.children ?? []).filter((c) => c.aktif);
+      if (item.tur === 'grup' || kids.length > 0) {
+        return {
+          kind: 'group',
+          key: item.id,
+          label: item.gorunenBaslik,
+          activePages: kids.map(menuActivePage).filter((p): p is string => !!p),
+          children: kids.map((c) => ({
+            key: c.id, label: c.gorunenBaslik, onClick: () => menuTikla(c), activePage: menuActivePage(c),
+          })),
+        };
+      }
+      return { kind: 'leaf', key: item.id, label: item.gorunenBaslik, onClick: () => menuTikla(item), activePage: menuActivePage(item) };
+    });
+
+  // Render modelini sabit fallback'ten kur (menuler tablosu yoksa).
+  const buildFromStatic = (): NavEntry[] =>
+    navItems.map((item): NavEntry => {
+      if (item.type === 'sayilar') return { kind: 'sayilar', key: item.id, label: item.label };
+      if (item.children) {
+        return {
+          kind: 'group',
+          key: item.id,
+          label: item.label,
+          activePages: item.children.map((c) => c.page),
+          children: item.children.map((c) => ({
+            key: c.nav, label: c.label, onClick: () => handleNavClick(c.nav), activePage: c.page,
+          })),
+        };
+      }
+      return { kind: 'leaf', key: item.id, label: item.label, onClick: () => handleNavClick(item.id), activePage: item.id };
+    });
+
+  const entries: NavEntry[] = menu.length > 0 ? buildFromMenu(menu) : buildFromStatic();
+
+  const isSayilarActive = currentPage === 'sonsayi' || currentPage === 'sayidetay';
 
   const toplamSonuc = searchResults
     ? searchResults.yazilar.length + searchResults.araYazilar.length + searchResults.yazarlar.length
@@ -145,32 +236,32 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
 
           {/* Desktop Menü */}
           <nav className="hidden lg:flex items-center gap-8">
-            {navItems.map((item) => (
-              item.children ? (
-                <DropdownMenu key={item.id}>
+            {entries.map((entry) => (
+              entry.kind === 'group' ? (
+                <DropdownMenu key={entry.key}>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className={`main-nav-link flex items-center gap-1 ${isDropdownActive(item) ? 'text-foreground after:w-full' : ''}`}
+                      className={`main-nav-link flex items-center gap-1 ${entry.activePages.includes(currentPage) ? 'text-foreground after:w-full' : ''}`}
                     >
-                      {item.label}
+                      {entry.label}
                       <ChevronDown className="w-3 h-3" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="center" className="w-56">
-                    {item.children.map((c) => (
-                      <DropdownMenuItem key={c.nav} onClick={() => handleNavClick(c.nav)}>
+                    {entry.children.map((c) => (
+                      <DropdownMenuItem key={c.key} onClick={c.onClick}>
                         {c.label}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
-              ) : item.type === 'sayilar' ? (
-                <DropdownMenu key={item.id}>
+              ) : entry.kind === 'sayilar' ? (
+                <DropdownMenu key={entry.key}>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className={`main-nav-link flex items-center gap-1 ${currentPage === 'sonsayi' || currentPage === 'sayidetay' ? 'text-foreground after:w-full' : ''}`}
+                      className={`main-nav-link flex items-center gap-1 ${isSayilarActive ? 'text-foreground after:w-full' : ''}`}
                     >
-                      Sayılar
+                      {entry.label}
                       <ChevronDown className="w-3 h-3" />
                     </button>
                   </DropdownMenuTrigger>
@@ -204,11 +295,11 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                 </DropdownMenu>
               ) : (
                 <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.id)}
-                  className={`main-nav-link ${currentPage === item.id ? 'text-foreground after:w-full' : ''}`}
+                  key={entry.key}
+                  onClick={entry.onClick}
+                  className={`main-nav-link ${entry.activePage && currentPage === entry.activePage ? 'text-foreground after:w-full' : ''}`}
                 >
-                  {item.label}
+                  {entry.label}
                 </button>
               )
             ))}
@@ -346,26 +437,26 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
               <SheetContent side="right" className="w-[280px] sm:w-[350px] overflow-y-auto">
                 <div className="flex flex-col gap-6 mt-8">
                   <nav className="flex flex-col gap-4">
-                    {navItems.map((item) => (
-                      item.children ? (
-                        <div key={item.id}>
+                    {entries.map((entry) => (
+                      entry.kind === 'group' ? (
+                        <div key={entry.key}>
                           <span className="text-left text-lg font-medium py-2 border-b border-border/50 text-muted-foreground block">
-                            {item.label}
+                            {entry.label}
                           </span>
                           <div className="pl-4 mt-2 space-y-2">
-                            {item.children.map((c) => (
+                            {entry.children.map((c) => (
                               <button
-                                key={c.nav}
-                                onClick={() => handleNavClick(c.nav)}
-                                className={`text-sm block ${currentPage === c.page ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+                                key={c.key}
+                                onClick={c.onClick}
+                                className={`text-sm block ${c.activePage && currentPage === c.activePage ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
                               >
                                 {c.label}
                               </button>
                             ))}
                           </div>
                         </div>
-                      ) : item.type === 'sayilar' ? (
-                        <div key={item.id}>
+                      ) : entry.kind === 'sayilar' ? (
+                        <div key={entry.key}>
                           <button
                             onClick={() => handleNavClick('sonsayi')}
                             className={`text-left text-lg font-medium py-2 border-b border-border/50 transition-colors w-full ${
@@ -374,7 +465,7 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                                 : 'text-muted-foreground hover:text-foreground'
                             }`}
                           >
-                            Sayılar
+                            {entry.label}
                           </button>
                           <div className="pl-4 mt-2 space-y-2">
                             <button
@@ -409,15 +500,15 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                         </div>
                       ) : (
                         <button
-                          key={item.id}
-                          onClick={() => handleNavClick(item.id)}
+                          key={entry.key}
+                          onClick={entry.onClick}
                           className={`text-left text-lg font-medium py-2 border-b border-border/50 transition-colors ${
-                            currentPage === item.id
+                            entry.activePage && currentPage === entry.activePage
                               ? 'text-foreground'
                               : 'text-muted-foreground hover:text-foreground'
                           }`}
                         >
-                          {item.label}
+                          {entry.label}
                         </button>
                       )
                     ))}

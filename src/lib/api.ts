@@ -4,7 +4,7 @@
 
 import type {
   Sayi, ArsivSayi, AraYazi, Yazar, Kategori, Yazi, SayiDurum, Kullanici, EditorOzet,
-  AramaSonuclari, IndeksGiris, StatikSayfaIcerik,
+  AramaSonuclari, IndeksGiris, StatikSayfaIcerik, MenuOgesi,
 } from '@/types';
 
 export const API_BASE: string =
@@ -140,6 +140,7 @@ export interface BootstrapData {
   araYazilar: AraYazi[];
   yazarlar: Yazar[];
   kategoriler: Kategori[];
+  menu?: MenuOgesi[];        // dinamik üst menü (boş/eksikse Header sabit menüye düşer)
   yarismasiBilgi: YarismaBilgi;
   hakkimizdaIcerik: HakkimizdaIcerik;
 }
@@ -265,6 +266,19 @@ export const api = {
     get: (slug: string) => get<StatikSayfaIcerik>(`/sayfa/${encodeURIComponent(slug)}`),
     update: (slug: string, b: { baslik: string; icerik: string }) =>
       put<StatikSayfaIcerik>(`/sayfa/${encodeURIComponent(slug)}`, b),
+  },
+
+  // Dinamik üst menü
+  menu: {
+    // Herkese açık ağaç (yalnızca aktif öğeler) — Header normalde bootstrap'tan alır.
+    getPublic: () => get<{ menu: MenuOgesi[] }>('/menu').then((r) => r.menu),
+    // CMS düzenleme: tüm öğeler (pasifler dahil).
+    listCms: () => get<{ menu: MenuOgesi[] }>('/cms/menu').then((r) => r.menu),
+    create: (m: Partial<MenuOgesi>) => post<MenuOgesi>('/menu', m),
+    update: (id: string, patch: Partial<MenuOgesi>) => put<MenuOgesi>(`/menu/${encodeURIComponent(id)}`, patch),
+    remove: (id: string) => del<{ deleted: string }>(`/menu/${encodeURIComponent(id)}`),
+    reorder: (siralar: { id: string; sira: number }[]) =>
+      put<{ menu: MenuOgesi[] }>('/menu-sirala', { siralar }).then((r) => r.menu),
   },
 
   // Site içi arama

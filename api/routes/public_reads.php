@@ -342,6 +342,44 @@ function handle_get_indeks(): void
     respond(['girisler' => $entries]);
 }
 
+/**
+ * Menü ağacını (hiyerarşik) kur. $onlyActive=true => yalnızca aktif öğeler (site);
+ * false => tüm öğeler (CMS düzenleme). Tablo yoksa (migration bekleniyor) [] döner.
+ */
+function menu_tree(bool $onlyActive = true): array
+{
+    try {
+        $where = $onlyActive ? 'WHERE aktif = 1' : '';
+        $rows = db()->query(
+            "SELECT * FROM menuler $where ORDER BY COALESCE(parent_id, 0) ASC, sira ASC, id ASC"
+        )->fetchAll();
+    } catch (PDOException $e) {
+        return []; // menuler tablosu henüz yok — Header sabit menüye düşer.
+    }
+
+    $byParent = [];
+    foreach ($rows as $r) {
+        $pid = $r['parent_id'] !== null ? (int)$r['parent_id'] : 0;
+        $byParent[$pid][] = $r;
+    }
+    $build = function (int $pid) use (&$build, $byParent): array {
+        $out = [];
+        foreach ($byParent[$pid] ?? [] as $r) {
+            $node = menu_out($r);
+            $node['children'] = $build((int)$r['id']);
+            $out[] = $node;
+        }
+        return $out;
+    };
+    return $build(0);
+}
+
+/** GET /api/menu — herkese açık üst menü ağacı (yalnızca aktif öğeler). */
+function handle_get_menu(): void
+{
+    respond(['menu' => menu_tree(true)]);
+}
+
 /** GET /api/hakkimizda */
 function handle_get_hakkimizda(): void
 {
@@ -439,6 +477,7 @@ function handle_bootstrap(): void
         'araYazilar'       => $araYazilar,
         'yazarlar'         => $yazarlar,
         'kategoriler'      => $kategoriler,
+        'menu'             => menu_tree(true),   // dinamik üst menü (tablo yoksa [] -> Header sabit menüye düşer)
         'yarismasiBilgi'   => $yarismasiBilgi,
         'hakkimizdaIcerik' => $hakkimizdaIcerik,
     ]);

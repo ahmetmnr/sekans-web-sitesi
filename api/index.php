@@ -62,6 +62,7 @@ $routes = [
     ['GET',  '#^/sayfa/([^/]+)$#',       null, fn($m) => handle_get_sayfa($m[1])],
     ['GET',  '#^/arama$#',               null, fn($m) => handle_search()],
     ['GET',  '#^/indeks$#',              null, fn($m) => handle_get_indeks()],
+    ['GET',  '#^/menu$#',                null, fn($m) => handle_get_menu()],
 
     // ---- Auth ----
     ['POST', '#^/auth/login$#',          null,   fn($m) => handle_login()],
@@ -110,6 +111,14 @@ $routes = [
     ['PUT',    '#^/sayi/([^/]+)/durum$#', 'editor', fn($m) => handle_set_sayi_durum($m[1], read_json_body())],
     ['PUT',    '#^/sayi/([^/]+)$#',       'editor', fn($m) => handle_update_sayi($m[1], read_json_body())],
     ['DELETE', '#^/sayi/([^/]+)$#',       'editor', fn($m) => handle_delete_sayi($m[1])],
+
+    // ---- CMS writes: menü (dinamik üst menü) ----
+    // NOT: '/menu-sirala' ve '/cms/menu', genel '/menu/{id}' rotasından ayrıdır.
+    ['GET',    '#^/cms/menu$#',          'editor', fn($m) => handle_cms_list_menu()],
+    ['POST',   '#^/menu$#',              'editor', fn($m) => handle_create_menu(read_json_body())],
+    ['PUT',    '#^/menu-sirala$#',       'editor', fn($m) => handle_reorder_menu(read_json_body())],
+    ['PUT',    '#^/menu/([^/]+)$#',      'editor', fn($m) => handle_update_menu($m[1], read_json_body())],
+    ['DELETE', '#^/menu/([^/]+)$#',      'editor', fn($m) => handle_delete_menu($m[1])],
 
     // ---- Yarışma / Hakkımızda / Statik sayfalar ----
     ['PUT',    '#^/yarisma$#',           'editor', fn($m) => handle_update_yarisma(read_json_body())],

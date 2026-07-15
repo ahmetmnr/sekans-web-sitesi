@@ -43,6 +43,7 @@ type PageType =
   | 'textsinenglish'
   | 'indeks'
   | 'yazistandartlari'
+  | 'statik'
   | 'cms';
 
 // Özel bölüm sayfaları: ara_yazilar.kategori değerine göre ayrışır.
@@ -70,6 +71,8 @@ interface PageState {
   selectedYazar?: Yazar;
   selectedSayi?: Sayi;      // yazidetay/sonsayi için sayı bağlamı (çoklu sayı desteği)
   blogKategori?: string;    // Blog sayfası ön-seçili kategori filtresi
+  statikSlug?: string;      // 'statik' sayfası için slug (dinamik menü: sabit_sayfa hedefi)
+  statikBaslik?: string;    // içerik yüklenene kadar gösterilecek başlık
 }
 
 function AppContent() {
@@ -135,6 +138,21 @@ function AppContent() {
 
   // Ana sayfa navigasyonu
   const handleNavigate = useCallback((pageId: string) => {
+    // Dinamik menü hedefleri (önekli): sabit_sayfa / kategori / filtre_liste.
+    if (pageId.startsWith('statik:')) {
+      navigateTo('statik', { statikSlug: pageId.slice('statik:'.length) });
+      return;
+    }
+    if (pageId.startsWith('kategori:')) {
+      // Kategori adına göre blog filtresi (özel bölüm değilse "Blog" listesinde açılır).
+      navigateTo('arayazilar', { blogKategori: pageId.slice('kategori:'.length) });
+      return;
+    }
+    if (pageId.startsWith('filtre:')) {
+      // Faz 4'e kadar geçici: özel filtre sayfası henüz yok -> blog listesine düş.
+      navigateTo('arayazilar');
+      return;
+    }
     switch (pageId) {
       case 'anasayfa':
       case 'sonsayi':
@@ -443,6 +461,17 @@ function AppContent() {
           <StatikSayfa
             slug="yazi-standartlari"
             varsayilanBaslik="Sekans Yazı Standartları"
+            onBackClick={handleBackClick}
+          />
+        );
+
+      case 'statik':
+        // Dinamik menüden (sabit_sayfa) açılan herhangi bir statik sayfa.
+        return (
+          <StatikSayfa
+            key={currentPage.statikSlug}
+            slug={currentPage.statikSlug ?? ''}
+            varsayilanBaslik={currentPage.statikBaslik ?? ''}
             onBackClick={handleBackClick}
           />
         );
