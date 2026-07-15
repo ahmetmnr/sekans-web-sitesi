@@ -16,7 +16,8 @@ import {
   LogOut,
   User,
   UserCog,
-  Menu as MenuIcon
+  Menu as MenuIcon,
+  Files
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -29,6 +30,7 @@ export type CMSPage =
   | 'yazarlar'
   | 'kategoriler'
   | 'menu'
+  | 'sayfalar'
   | 'kullanicilar'
   | 'yarismasi'
   | 'hakkimizda'
@@ -50,6 +52,7 @@ const menuItems: { id: CMSPage; label: string; icon: React.ReactNode; adminOnly?
   { id: 'yazarlar', label: 'Yazarlar', icon: <Users className="h-5 w-5" /> },
   { id: 'kategoriler', label: 'Kategoriler', icon: <FolderOpen className="h-5 w-5" /> },
   { id: 'menu', label: 'Menü Yönetimi', icon: <MenuIcon className="h-5 w-5" /> },
+  { id: 'sayfalar', label: 'Sabit Sayfalar', icon: <Files className="h-5 w-5" /> },
   { id: 'kullanicilar', label: 'Kullanıcılar', icon: <UserCog className="h-5 w-5" />, adminOnly: true },
   { id: 'yarismasi', label: 'Yarışma', icon: <Trophy className="h-5 w-5" /> },
   { id: 'hakkimizda', label: 'Hakkımızda', icon: <Info className="h-5 w-5" /> },

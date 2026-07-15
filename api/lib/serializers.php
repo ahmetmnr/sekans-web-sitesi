@@ -63,6 +63,25 @@ function anasayfa_blok_out(array $r): array
     ];
 }
 
+/**
+ * Statik sayfa { slug, baslik, kisaAciklama, icerik, seoBaslik, seoAciklama,
+ *               yayinDurumu, sira }. Yeni kolonlar migration öncesi yoksa
+ * güvenli varsayılanlara düşer (?? ile undefined-key uyarısı da bastırılır).
+ */
+function sayfa_out(array $r): array
+{
+    return [
+        'slug'         => $r['slug'],
+        'baslik'       => $r['baslik'],
+        'kisaAciklama' => $r['kisa_aciklama'] ?? '',
+        'icerik'       => $r['icerik'] ?? '',
+        'seoBaslik'    => $r['seo_baslik'] ?? '',
+        'seoAciklama'  => $r['seo_aciklama'] ?? '',
+        'yayinDurumu'  => $r['yayin_durumu'] ?? 'yayinda',
+        'sira'         => isset($r['sira']) ? (int)$r['sira'] : 0,
+    ];
+}
+
 /** Kategori { id, ad, slug } */
 function kategori_out(?array $r): ?array
 {

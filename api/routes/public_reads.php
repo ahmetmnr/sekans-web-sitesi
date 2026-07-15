@@ -204,19 +204,21 @@ function handle_get_yarisma(): void
     respond(yarisma_payload());
 }
 
-/** GET /api/sayfa/{slug} — statik sayfa (ör. yazi-standartlari). */
+/** GET /api/sayfa/{slug} — statik sayfa (ör. yazi-standartlari). Taslak sayfalar herkese açık değildir. */
 function handle_get_sayfa(string $slug): void
 {
     $r = null;
     try {
-        $st = db()->prepare("SELECT slug, baslik, icerik FROM sayfalar WHERE slug = ? LIMIT 1");
+        $st = db()->prepare("SELECT * FROM sayfalar WHERE slug = ? LIMIT 1");
         $st->execute([$slug]);
         $r = $st->fetch();
     } catch (PDOException $e) {
         // sayfalar tablosu henüz yok (migration bekleniyor) -> 404'e düş
     }
     if (!$r) fail('NOT_FOUND', 'Sayfa bulunamadı.', 404);
-    respond(['slug' => $r['slug'], 'baslik' => $r['baslik'], 'icerik' => $r['icerik'] ?? '']);
+    // Taslak sayfalar siteye çıkmaz (kolon yoksa varsayılan 'yayinda').
+    if (($r['yayin_durumu'] ?? 'yayinda') !== 'yayinda') fail('NOT_FOUND', 'Sayfa bulunamadı.', 404);
+    respond(sayfa_out($r));
 }
 
 /** GET /api/arama?q= — site içi arama: dergi yazıları + blog yazıları + yazarlar. */

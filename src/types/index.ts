@@ -137,7 +137,12 @@ export interface AramaSonuclari {
 export interface StatikSayfaIcerik {
   slug: string;
   baslik: string;
+  kisaAciklama?: string;
   icerik: string;
+  seoBaslik?: string;
+  seoAciklama?: string;
+  yayinDurumu?: 'taslak' | 'yayinda';
+  sira?: number;
 }
 
 // Dinamik üst menü — admin panelden yönetilir (bağlantı türü + hedef).

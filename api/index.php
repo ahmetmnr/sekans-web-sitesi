@@ -130,7 +130,10 @@ $routes = [
     // ---- Yarışma / Hakkımızda / Statik sayfalar ----
     ['PUT',    '#^/yarisma$#',           'editor', fn($m) => handle_update_yarisma(read_json_body())],
     ['PUT',    '#^/hakkimizda$#',        'editor', fn($m) => handle_update_hakkimizda(read_json_body())],
+    ['GET',    '#^/cms/sayfalar$#',      'editor', fn($m) => handle_cms_list_sayfalar()],
+    ['POST',   '#^/sayfa$#',             'editor', fn($m) => handle_create_sayfa(read_json_body())],
     ['PUT',    '#^/sayfa/([^/]+)$#',     'editor', fn($m) => handle_update_sayfa($m[1], read_json_body())],
+    ['DELETE', '#^/sayfa/([^/]+)$#',     'editor', fn($m) => handle_delete_sayfa($m[1])],
 
     // ---- Admin: export / import / reset ----
     ['GET',    '#^/export$#',            'admin', fn($m) => handle_export()],

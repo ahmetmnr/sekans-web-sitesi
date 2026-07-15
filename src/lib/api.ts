@@ -262,11 +262,14 @@ export const api = {
     update: (b: HakkimizdaIcerik) => put<HakkimizdaIcerik>('/hakkimizda', b),
   },
 
-  // Statik sayfalar (ör. yazi-standartlari) — admin panelden düzenlenir
+  // Statik sayfalar (ör. yazi-standartlari) — admin panelden düzenlenir/oluşturulur
   sayfa: {
     get: (slug: string) => get<StatikSayfaIcerik>(`/sayfa/${encodeURIComponent(slug)}`),
-    update: (slug: string, b: { baslik: string; icerik: string }) =>
+    listCms: () => get<{ sayfalar: StatikSayfaIcerik[] }>('/cms/sayfalar').then((r) => r.sayfalar),
+    create: (b: Partial<StatikSayfaIcerik> & { baslik: string }) => post<StatikSayfaIcerik>('/sayfa', b),
+    update: (slug: string, b: Partial<StatikSayfaIcerik> & { baslik: string; icerik: string }) =>
       put<StatikSayfaIcerik>(`/sayfa/${encodeURIComponent(slug)}`, b),
+    remove: (slug: string) => del<{ deleted: string }>(`/sayfa/${encodeURIComponent(slug)}`),
   },
 
   // Dinamik üst menü

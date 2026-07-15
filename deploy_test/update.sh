@@ -57,7 +57,7 @@ else
   echo "    -> 'menuler' tablosu zaten var, atlanıyor."
 fi
 
-echo ">>> 6/8 DB migration: ana sayfa blokları (anasayfa_bloklar tablosu) (yalnızca yoksa)..."
+echo ">>> 6/9 DB migration: ana sayfa blokları (anasayfa_bloklar tablosu) (yalnızca yoksa)..."
 if [ "$(col_exists anasayfa_bloklar id)" = "0" ]; then
   echo "    -> uygulanıyor: 2026-07-16_anasayfa_bloklar.sql"
   $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-16_anasayfa_bloklar.sql
@@ -66,10 +66,19 @@ else
   echo "    -> 'anasayfa_bloklar' tablosu zaten var, atlanıyor."
 fi
 
-echo ">>> 7/8 API konteyneri yeniden başlatılıyor..."
+echo ">>> 7/9 DB migration: sabit sayfa genişletme (sayfalar.yayin_durumu vb.) (yalnızca yoksa)..."
+if [ "$(col_exists sayfalar yayin_durumu)" = "0" ]; then
+  echo "    -> uygulanıyor: 2026-07-17_sayfalar_genisletme.sql"
+  $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-17_sayfalar_genisletme.sql
+  echo "    -> tamam."
+else
+  echo "    -> 'sayfalar.yayin_durumu' kolonu zaten var, atlanıyor."
+fi
+
+echo ">>> 8/9 API konteyneri yeniden başlatılıyor..."
 $DC restart api
 
-echo ">>> 8/8 Kontrol — sayı durumları + kategori adları + menü:"
+echo ">>> 9/9 Kontrol — sayı durumları + kategori adları + menü:"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT durum, COUNT(*) FROM sayilar GROUP BY durum;" 2>/dev/null || echo "    (DB kontrolü atlandı)"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \

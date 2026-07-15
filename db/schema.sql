@@ -217,11 +217,16 @@ CREATE TABLE hakkimizda (
 -- İlk kullanım: 'yazi-standartlari' (Sekans Yazı Standartları).
 -- -----------------------------------------------------------------------------
 CREATE TABLE sayfalar (
-  id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  slug        VARCHAR(160)    NOT NULL,                 -- ör. 'yazi-standartlari'
-  baslik      VARCHAR(255)    NOT NULL,
-  icerik      LONGTEXT        NULL,                     -- markdown-benzeri metin
-  updated_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  slug          VARCHAR(160)    NOT NULL,                 -- URL adresi, ör. 'yazi-standartlari'
+  baslik        VARCHAR(255)    NOT NULL,
+  kisa_aciklama VARCHAR(500)    NULL,                     -- sayfa kısa açıklaması
+  icerik        LONGTEXT        NULL,                     -- markdown-benzeri metin
+  seo_baslik    VARCHAR(255)    NULL,                     -- SEO başlığı
+  seo_aciklama  VARCHAR(500)    NULL,                     -- SEO açıklaması
+  yayin_durumu  ENUM('taslak','yayinda') NOT NULL DEFAULT 'yayinda',
+  sira          INT             NOT NULL DEFAULT 0,
+  updated_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_sayfalar_slug (slug)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

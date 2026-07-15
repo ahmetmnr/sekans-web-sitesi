@@ -25,6 +25,33 @@ export default function StatikSayfa({ slug, varsayilanBaslik = '', onBackClick }
     return () => { iptal = true; };
   }, [slug]);
 
+  // SEO: sayfa yüklenince başlık + meta açıklamasını ayarla, ayrılırken geri al.
+  useEffect(() => {
+    if (!sayfa) return;
+    const oncekiBaslik = document.title;
+    document.title = (sayfa.seoBaslik?.trim() || sayfa.baslik || 'Sekans') + ' — Sekans';
+
+    const aciklama = sayfa.seoAciklama?.trim() || sayfa.kisaAciklama?.trim() || '';
+    let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    const metaVardi = !!meta;
+    const oncekiAciklama = meta?.getAttribute('content') ?? null;
+    if (aciklama) {
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.setAttribute('name', 'description');
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('content', aciklama);
+    }
+    return () => {
+      document.title = oncekiBaslik;
+      if (meta) {
+        if (!metaVardi) meta.remove();
+        else if (oncekiAciklama !== null) meta.setAttribute('content', oncekiAciklama);
+      }
+    };
+  }, [sayfa]);
+
   // Markdown benzeri içeriği HTML'e dönüştür (Hakkımızda sayfasıyla aynı biçim)
   const formatIcerik = (icerik: string) => {
     return icerik
@@ -55,6 +82,9 @@ export default function StatikSayfa({ slug, varsayilanBaslik = '', onBackClick }
             {/* Başlık */}
             <div className="text-center mb-10 md:mb-12">
               <h1 className="page-title mb-4">{sayfa?.baslik || varsayilanBaslik}</h1>
+              {sayfa?.kisaAciklama?.trim() && (
+                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{sayfa.kisaAciklama}</p>
+              )}
             </div>
 
             {/* İçerik */}

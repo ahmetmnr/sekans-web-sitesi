@@ -570,14 +570,63 @@ function handle_update_sayfa(string $slug, array $b): void
     if ($slug === '') fail('VALIDATION', 'Geçersiz sayfa adresi.', 400);
     $baslik = trim((string)($b['baslik'] ?? ''));
     if ($baslik === '') fail('VALIDATION', 'Başlık gerekli.', 400, ['baslik' => 'zorunlu']);
-    db()->prepare(
-        "INSERT INTO sayfalar (slug, baslik, icerik) VALUES (?,?,?)
-         ON DUPLICATE KEY UPDATE baslik = VALUES(baslik), icerik = VALUES(icerik)"
-    )->execute([$slug, $baslik, $b['icerik'] ?? '']);
-    $st = db()->prepare("SELECT slug, baslik, icerik FROM sayfalar WHERE slug = ? LIMIT 1");
+
+    $kisa   = array_key_exists('kisaAciklama', $b) ? (string)$b['kisaAciklama'] : null;
+    $icerik = $b['icerik'] ?? '';
+    $seoB   = array_key_exists('seoBaslik', $b) ? (string)$b['seoBaslik'] : null;
+    $seoA   = array_key_exists('seoAciklama', $b) ? (string)$b['seoAciklama'] : null;
+    $durum  = (($b['yayinDurumu'] ?? 'yayinda') === 'taslak') ? 'taslak' : 'yayinda';
+    $sira   = isset($b['sira']) ? (int)$b['sira'] : 0;
+
+    try {
+        db()->prepare(
+            "INSERT INTO sayfalar (slug, baslik, kisa_aciklama, icerik, seo_baslik, seo_aciklama, yayin_durumu, sira)
+             VALUES (?,?,?,?,?,?,?,?)
+             ON DUPLICATE KEY UPDATE baslik = VALUES(baslik), kisa_aciklama = VALUES(kisa_aciklama),
+               icerik = VALUES(icerik), seo_baslik = VALUES(seo_baslik), seo_aciklama = VALUES(seo_aciklama),
+               yayin_durumu = VALUES(yayin_durumu), sira = VALUES(sira)"
+        )->execute([$slug, $baslik, $kisa, $icerik, $seoB, $seoA, $durum, $sira]);
+    } catch (PDOException $e) {
+        // Yeni kolonlar yoksa (migration bekleniyor) eski şemayla yaz.
+        db()->prepare(
+            "INSERT INTO sayfalar (slug, baslik, icerik) VALUES (?,?,?)
+             ON DUPLICATE KEY UPDATE baslik = VALUES(baslik), icerik = VALUES(icerik)"
+        )->execute([$slug, $baslik, $icerik]);
+    }
+    $st = db()->prepare("SELECT * FROM sayfalar WHERE slug = ? LIMIT 1");
     $st->execute([$slug]);
-    $r = $st->fetch();
-    respond(['slug' => $r['slug'], 'baslik' => $r['baslik'], 'icerik' => $r['icerik'] ?? '']);
+    respond(sayfa_out($st->fetch()));
+}
+
+/** GET /api/cms/sayfalar — tüm statik sayfalar (taslaklar dahil). editör+ */
+function handle_cms_list_sayfalar(): void
+{
+    try {
+        $rows = db()->query("SELECT * FROM sayfalar ORDER BY sira ASC, baslik ASC")->fetchAll();
+    } catch (PDOException $e) {
+        $rows = db()->query("SELECT * FROM sayfalar ORDER BY baslik ASC")->fetchAll();
+    }
+    respond(['sayfalar' => array_map('sayfa_out', $rows)]);
+}
+
+/** POST /api/sayfa — yeni statik sayfa. editör+ */
+function handle_create_sayfa(array $b): void
+{
+    $baslik = trim((string)($b['baslik'] ?? ''));
+    if ($baslik === '') fail('VALIDATION', 'Başlık gerekli.', 400, ['baslik' => 'zorunlu']);
+    $base = slugify((string)($b['slug'] ?? '') ?: $baslik);
+    $slug = unique_slug($base !== '' ? $base : 'sayfa', 'sayfalar', 'slug');
+    $b['baslik'] = $baslik;
+    // Upsert ile oluştur (slug benzersiz üretildi -> INSERT). respond() içeride.
+    handle_update_sayfa($slug, $b);
+}
+
+/** DELETE /api/sayfa/{slug} — statik sayfayı sil. editör+ */
+function handle_delete_sayfa(string $slug): void
+{
+    $slug = slugify($slug);
+    db()->prepare("DELETE FROM sayfalar WHERE slug = ?")->execute([$slug]);
+    respond(['deleted' => $slug]);
 }
 
 function handle_update_hakkimizda(array $b): void
