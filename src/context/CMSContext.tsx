@@ -81,6 +81,7 @@ interface CMSContextType {
   addKategori: (kategori: Partial<Kategori>) => Promise<void>;
   updateKategori: (id: string, kategori: Partial<Kategori>) => Promise<void>;
   deleteKategori: (id: string) => Promise<void>;
+  reorderKategori: (siralar: { id: string; sira: number }[]) => Promise<void>;
 
   // Yarışma işlemleri
   updateYarismasiBilgi: (bilgi: Partial<YarismaBilgi>) => Promise<void>;
@@ -291,6 +292,11 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     setKategoriler((prev) => prev.filter((k) => k.id !== id));
   }, []);
 
+  const reorderKategori = useCallback(async (siralar: { id: string; sira: number }[]) => {
+    const list = await api.kategori.reorder(siralar);
+    setKategoriler(list);
+  }, []);
+
   // --- Yarışma ---
   const updateYarismasiBilgi = useCallback(async (updates: Partial<YarismaBilgi>) => {
     const next: YarismaBilgi = { ...yarismasiBilgi, ...updates };
@@ -344,7 +350,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     addYazi, updateYazi, deleteYazi,
     addAraYazi, updateAraYazi, deleteAraYazi,
     addYazar, updateYazar, deleteYazar,
-    addKategori, updateKategori, deleteKategori,
+    addKategori, updateKategori, deleteKategori, reorderKategori,
     updateYarismasiBilgi, addYarismaKazanan,
     updateHakkimizdaIcerik,
     resetToDefaults, exportData, importData,

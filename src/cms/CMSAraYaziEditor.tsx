@@ -114,7 +114,10 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
   };
 
   // Çoklu kategori: seçili kategoriler (yoksa birincil kategoriye düşer).
-  const seciliKategoriler = formData.kategoriler ?? (formData.kategori ? [formData.kategori] : []);
+  const seciliKategoriler = useMemo(
+    () => formData.kategoriler ?? (formData.kategori ? [formData.kategori] : []),
+    [formData.kategoriler, formData.kategori],
+  );
   // Seçenek listesi: gerçek kategoriler + sık blog kategorileri + hâlihazırda seçili olanlar.
   const kategoriSecenekleri = useMemo(() => {
     const set = new Set<string>();

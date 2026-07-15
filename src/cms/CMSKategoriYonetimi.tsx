@@ -32,12 +32,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Switch } from '@/components/ui/switch';
 import {
   Plus,
   Pencil,
   Trash2,
   FolderOpen,
   FileText,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 import type { Kategori } from '@/types';
 
@@ -47,8 +50,30 @@ export function CMSKategoriYonetimi() {
     sonSayi,
     addKategori,
     updateKategori,
-    deleteKategori
+    deleteKategori,
+    reorderKategori,
   } = useCMS();
+
+  // Sıralama (yukarı/aşağı) — komşu iki kategorinin sırasını değiştirip kaydeder.
+  const moveKategori = async (idx: number, dir: -1 | 1) => {
+    const j = idx + dir;
+    if (j < 0 || j >= kategoriler.length) return;
+    const arr = [...kategoriler];
+    [arr[idx], arr[j]] = [arr[j], arr[idx]];
+    try {
+      await reorderKategori(arr.map((k, i) => ({ id: k.id, sira: i })));
+    } catch (e) {
+      alert('Sıralama kaydedilemedi: ' + (e instanceof Error ? e.message : 'bilinmeyen hata'));
+    }
+  };
+
+  const toggleAktif = async (kategori: Kategori) => {
+    try {
+      await updateKategori(kategori.id, { aktif: !(kategori.aktif ?? true) });
+    } catch (e) {
+      alert('Güncellenemedi: ' + (e instanceof Error ? e.message : 'bilinmeyen hata'));
+    }
+  };
 
   const [showDialog, setShowDialog] = useState(false);
   const [editingKategori, setEditingKategori] = useState<Kategori | null>(null);
@@ -182,17 +207,29 @@ export function CMSKategoriYonetimi() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-14">Sıra</TableHead>
                 <TableHead>Kategori Adı</TableHead>
                 <TableHead>Slug</TableHead>
                 <TableHead className="text-center">Yazı Sayısı</TableHead>
+                <TableHead className="text-center">Durum</TableHead>
                 <TableHead className="text-right">İşlemler</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {kategoriler.map((kategori) => {
+              {kategoriler.map((kategori, idx) => {
                 const yaziSayisi = getKategoriStats(kategori.id);
                 return (
-                  <TableRow key={kategori.id}>
+                  <TableRow key={kategori.id} className={kategori.aktif === false ? 'opacity-50' : ''}>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <button className="text-gray-400 hover:text-gray-700 disabled:opacity-30" disabled={idx <= 0} onClick={() => moveKategori(idx, -1)} title="Yukarı">
+                          <ChevronUp className="h-4 w-4" />
+                        </button>
+                        <button className="text-gray-400 hover:text-gray-700 disabled:opacity-30" disabled={idx >= kategoriler.length - 1} onClick={() => moveKategori(idx, 1)} title="Aşağı">
+                          <ChevronDown className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </TableCell>
                     <TableCell className="font-medium">{kategori.ad}</TableCell>
                     <TableCell>
                       <code className="px-2 py-1 bg-gray-100 rounded text-sm">
@@ -209,6 +246,11 @@ export function CMSKategoriYonetimi() {
                       >
                         {yaziSayisi}
                       </span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center" title={kategori.aktif === false ? 'Pasif' : 'Aktif'}>
+                        <Switch checked={kategori.aktif !== false} onCheckedChange={() => toggleAktif(kategori)} />
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -266,7 +308,7 @@ export function CMSKategoriYonetimi() {
               })}
               {kategoriler.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                     Henüz kategori eklenmemiş.
                   </TableCell>
                 </TableRow>

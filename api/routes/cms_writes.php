@@ -275,6 +275,11 @@ function handle_update_kategori(string $code, array $b): void
     $params = [];
     if (array_key_exists('ad', $b))   { $set[] = 'ad = ?';   $params[] = (string)$b['ad']; }
     if (array_key_exists('slug', $b)) { $set[] = 'slug = ?'; $params[] = unique_slug(slugify((string)$b['slug']), 'kategoriler', 'slug', $id); }
+    if (array_key_exists('sira', $b)) { $set[] = 'sira_no = ?'; $params[] = (int)$b['sira']; }
+    // aktif kolonu yalnızca migration uygulandıysa güncellenir.
+    if (array_key_exists('aktif', $b) && column_exists('kategoriler', 'aktif')) {
+        $set[] = 'aktif = ?'; $params[] = !empty($b['aktif']) ? 1 : 0;
+    }
     if (!$set) fail('VALIDATION', 'Güncellenecek alan yok.', 400);
     $params[] = $id;
     try {
@@ -286,6 +291,28 @@ function handle_update_kategori(string $code, array $b): void
     $r = db()->prepare("SELECT * FROM kategoriler WHERE id = ? LIMIT 1");
     $r->execute([$id]);
     respond(kategori_out($r->fetch()));
+}
+
+/** PUT /api/kategori-sirala — kategori sırasını topluca kaydet. body {siralar:[{id(code),sira}]}. editör+ */
+function handle_reorder_kategori(array $b): void
+{
+    $siralar = $b['siralar'] ?? [];
+    if (!is_array($siralar)) fail('VALIDATION', 'siralar dizisi gerekli.', 400);
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $up = $pdo->prepare("UPDATE kategoriler SET sira_no = ? WHERE code = ?");
+        foreach ($siralar as $s) {
+            if (!isset($s['id'])) continue;
+            $up->execute([(int)($s['sira'] ?? 0), (string)$s['id']]);
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+    $rows = db()->query("SELECT * FROM kategoriler ORDER BY sira_no ASC, id ASC")->fetchAll();
+    respond(['kategoriler' => array_map('kategori_out', $rows)]);
 }
 
 function handle_delete_kategori(string $code): void

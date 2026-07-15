@@ -160,7 +160,7 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
     if (item.tur === 'harici_link') {
       if (item.hedef) {
         if (item.yeniSekme) window.open(item.hedef, '_blank', 'noopener,noreferrer');
-        else window.location.href = item.hedef;
+        else window.location.assign(item.hedef);
       }
       setMobileMenuOpen(false);
       return;

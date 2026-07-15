@@ -14,6 +14,8 @@ export interface Kategori {
   id: string;
   ad: string;
   slug: string;
+  sira?: number;
+  aktif?: boolean;
 }
 
 export interface Yazi {

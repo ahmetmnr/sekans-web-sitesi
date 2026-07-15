@@ -251,6 +251,8 @@ export const api = {
     create: (k: Partial<Kategori>) => post<Kategori>('/kategori', k),
     update: (id: string, patch: Partial<Kategori>) => put<Kategori>(`/kategori/${encodeURIComponent(id)}`, patch),
     remove: (id: string) => del<{ deleted: string }>(`/kategori/${encodeURIComponent(id)}`),
+    reorder: (siralar: { id: string; sira: number }[]) =>
+      put<{ kategoriler: Kategori[] }>('/kategori-sirala', { siralar }).then((r) => r.kategoriler),
   },
 
   // Yarışma / Hakkımızda

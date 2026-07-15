@@ -94,6 +94,7 @@ $routes = [
 
     // ---- CMS writes: kategori ----
     ['POST',   '#^/kategori$#',          'editor', fn($m) => handle_create_kategori(read_json_body())],
+    ['PUT',    '#^/kategori-sirala$#',   'editor', fn($m) => handle_reorder_kategori(read_json_body())],
     ['PUT',    '#^/kategori/([^/]+)$#',  'editor', fn($m) => handle_update_kategori($m[1], read_json_body())],
     ['DELETE', '#^/kategori/([^/]+)$#',  'editor', fn($m) => handle_delete_kategori($m[1])],
 

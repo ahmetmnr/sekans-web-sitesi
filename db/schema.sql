@@ -51,6 +51,7 @@ CREATE TABLE kategoriler (
   ad          VARCHAR(120)    NOT NULL,                 -- display name e.g. 'Kuram / Yorum'
   slug        VARCHAR(160)    NOT NULL,                 -- e.g. 'kuram-yorum'
   sira_no     INT             NOT NULL DEFAULT 0,        -- display order
+  aktif       TINYINT(1)      NOT NULL DEFAULT 1,        -- aktif/pasif (pasif: seçicilerde/menüde gizlenebilir)
   created_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),

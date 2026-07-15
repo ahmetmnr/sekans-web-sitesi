@@ -103,14 +103,16 @@ function filtre_sayfa_out(array $r): array
     ];
 }
 
-/** Kategori { id, ad, slug } */
+/** Kategori { id, ad, slug, sira, aktif } */
 function kategori_out(?array $r): ?array
 {
     if (!$r) return null;
     return [
-        'id'   => (string)$r['code'],
-        'ad'   => $r['ad'],
-        'slug' => $r['slug'],
+        'id'    => (string)$r['code'],
+        'ad'    => $r['ad'],
+        'slug'  => $r['slug'],
+        'sira'  => isset($r['sira_no']) ? (int)$r['sira_no'] : 0,
+        'aktif' => isset($r['aktif']) ? (bool)(int)$r['aktif'] : true,
     ];
 }
 

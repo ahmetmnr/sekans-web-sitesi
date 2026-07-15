@@ -102,6 +102,24 @@ function resolve_kategori_id_by_ad(?string $ad): ?int
     return $id === false ? null : (int)$id;
 }
 
+/** Bir kolonun tabloda var olup olmadığını (önbellekli) döndür — migration guard'ları için. */
+function column_exists(string $table, string $col): bool
+{
+    static $cache = [];
+    $key = "$table.$col";
+    if (array_key_exists($key, $cache)) return $cache[$key];
+    try {
+        $st = db()->prepare(
+            "SELECT 1 FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1"
+        );
+        $st->execute([$table, $col]);
+        return $cache[$key] = (bool)$st->fetchColumn();
+    } catch (PDOException $e) {
+        return $cache[$key] = false;
+    }
+}
+
 /** ISO tarih (YYYY-MM-DD) doğrula/normalize et; geçersizse null. */
 function norm_date(?string $d): ?string
 {
