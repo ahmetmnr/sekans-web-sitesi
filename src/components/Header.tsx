@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search, Menu, ChevronDown, Loader2, FileText, BookOpen, User } from 'lucide-react';
+import { Search, Menu, ChevronDown, Loader2, FileText, BookOpen, User, Folder, Newspaper } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -218,7 +218,11 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
 
   const toplamSonuc = searchResults
     ? searchResults.yazilar.length + searchResults.araYazilar.length + searchResults.yazarlar.length
+      + (searchResults.sayfalar?.length ?? 0) + (searchResults.kategoriler?.length ?? 0) + (searchResults.sayilar?.length ?? 0)
     : 0;
+
+  // Arama sonucundan sayfa/kategori/sayı aç.
+  const aramaNav = (target: string) => { closeSearch(); onNavigate(target); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
   return (
     <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur-sm border-b border-border">
@@ -411,6 +415,72 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                                     onClick={() => { closeSearch(); onYazarAc?.(yz.id); }}
                                   >
                                     <span className="block text-sm font-medium">{yz.tamAd}</span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {(searchResults.sayilar?.length ?? 0) > 0 && (
+                          <div>
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                              <Newspaper className="w-3.5 h-3.5" /> Dergi Sayıları
+                            </h3>
+                            <ul className="divide-y divide-border/60">
+                              {searchResults.sayilar!.map((s) => (
+                                <li key={s.id}>
+                                  <button
+                                    className="w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
+                                    onClick={() => {
+                                      closeSearch();
+                                      if (s.pdfUrl) window.open(s.pdfUrl, '_blank', 'noopener,noreferrer');
+                                      else onNavigate('arsiv');
+                                    }}
+                                  >
+                                    <span className="block text-sm font-medium">{s.menuEtiket?.trim() ? s.menuEtiket : (s.tamBaslik || `Sayı ${s.numara}`)}</span>
+                                    <span className="block text-xs text-muted-foreground mt-0.5">{s.ay} {s.yil}</span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {(searchResults.kategoriler?.length ?? 0) > 0 && (
+                          <div>
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                              <Folder className="w-3.5 h-3.5" /> Kategoriler
+                            </h3>
+                            <ul className="divide-y divide-border/60">
+                              {searchResults.kategoriler!.map((k) => (
+                                <li key={k.slug || k.ad}>
+                                  <button
+                                    className="w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
+                                    onClick={() => aramaNav(`kategori:${k.ad}`)}
+                                  >
+                                    <span className="block text-sm font-medium">{k.ad}</span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {(searchResults.sayfalar?.length ?? 0) > 0 && (
+                          <div>
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                              <FileText className="w-3.5 h-3.5" /> Sayfalar
+                            </h3>
+                            <ul className="divide-y divide-border/60">
+                              {searchResults.sayfalar!.map((sf) => (
+                                <li key={sf.slug}>
+                                  <button
+                                    className="w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
+                                    onClick={() => aramaNav(`statik:${sf.slug}`)}
+                                  >
+                                    <span className="block text-sm font-medium">{sf.baslik}</span>
+                                    {sf.kisaAciklama ? <span className="block text-xs text-muted-foreground mt-0.5 line-clamp-1">{sf.kisaAciklama}</span> : null}
                                   </button>
                                 </li>
                               ))}

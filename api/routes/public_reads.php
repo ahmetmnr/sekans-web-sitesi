@@ -283,7 +283,68 @@ function handle_search(): void
     $st3->execute([$like]);
     $yazarlar = array_map('yazar_out', $st3->fetchAll());
 
-    respond(['yazilar' => $yazilar, 'araYazilar' => $araYazilar, 'yazarlar' => $yazarlar]);
+    // Sabit sayfalar (yalnızca yayında; yeni kolonlar yoksa eski şemayla dene)
+    $sayfalar = [];
+    try {
+        $sp = db()->prepare(
+            "SELECT slug, baslik, kisa_aciklama FROM sayfalar
+             WHERE (baslik LIKE ? OR kisa_aciklama LIKE ? OR icerik LIKE ?)
+               AND (yayin_durumu = 'yayinda' OR yayin_durumu IS NULL)
+             ORDER BY baslik ASC LIMIT 10"
+        );
+        $sp->execute([$like, $like, $like]);
+        $sayfalar = array_map(fn($r) => [
+            'slug' => $r['slug'], 'baslik' => $r['baslik'], 'kisaAciklama' => $r['kisa_aciklama'] ?? '',
+        ], $sp->fetchAll());
+    } catch (PDOException $e) {
+        try {
+            $sp = db()->prepare("SELECT slug, baslik FROM sayfalar WHERE baslik LIKE ? OR icerik LIKE ? ORDER BY baslik ASC LIMIT 10");
+            $sp->execute([$like, $like]);
+            $sayfalar = array_map(fn($r) => ['slug' => $r['slug'], 'baslik' => $r['baslik'], 'kisaAciklama' => ''], $sp->fetchAll());
+        } catch (PDOException $e2) { /* sayfalar tablosu yok */ }
+    }
+
+    // Kategoriler
+    $kategoriSonuc = [];
+    try {
+        $kp = db()->prepare("SELECT ad, slug FROM kategoriler WHERE ad LIKE ? ORDER BY ad ASC LIMIT 10");
+        $kp->execute([$like]);
+        $kategoriSonuc = array_map(fn($r) => ['ad' => $r['ad'], 'slug' => $r['slug']], $kp->fetchAll());
+    } catch (PDOException $e) { /* atla */ }
+
+    // Dergi sayıları (taslak hariç)
+    $sayiSonuc = [];
+    try {
+        $snp = db()->prepare(
+            "SELECT code, numara, ay, yil, tam_baslik, menu_etiket, pdf_url FROM sayilar
+             WHERE durum <> 'taslak' AND (numara LIKE ? OR tam_baslik LIKE ? OR menu_etiket LIKE ?)
+             ORDER BY yayin_tarihi DESC, id DESC LIMIT 10"
+        );
+        $snp->execute([$like, $like, $like]);
+        $sayiSonuc = array_map(fn($r) => [
+            'id' => (string)$r['code'], 'numara' => $r['numara'], 'ay' => $r['ay'], 'yil' => (int)$r['yil'],
+            'tamBaslik' => $r['tam_baslik'] ?? '', 'menuEtiket' => $r['menu_etiket'] ?? null, 'pdfUrl' => $r['pdf_url'] ?? null,
+        ], $snp->fetchAll());
+    } catch (PDOException $e) {
+        // durum/menu_etiket kolonları yoksa sadece numara/tam_baslik ile dene
+        try {
+            $snp = db()->prepare("SELECT code, numara, ay, yil, tam_baslik, pdf_url FROM sayilar WHERE numara LIKE ? OR tam_baslik LIKE ? ORDER BY id DESC LIMIT 10");
+            $snp->execute([$like, $like]);
+            $sayiSonuc = array_map(fn($r) => [
+                'id' => (string)$r['code'], 'numara' => $r['numara'], 'ay' => $r['ay'], 'yil' => (int)$r['yil'],
+                'tamBaslik' => $r['tam_baslik'] ?? '', 'menuEtiket' => null, 'pdfUrl' => $r['pdf_url'] ?? null,
+            ], $snp->fetchAll());
+        } catch (PDOException $e2) { /* atla */ }
+    }
+
+    respond([
+        'yazilar'     => $yazilar,
+        'araYazilar'  => $araYazilar,
+        'yazarlar'    => $yazarlar,
+        'sayfalar'    => $sayfalar,
+        'kategoriler' => $kategoriSonuc,
+        'sayilar'     => $sayiSonuc,
+    ]);
 }
 
 /** İndeks kategori ayarı (admin: sıra + görünürlük) — ayarlar tablosundan. */

@@ -136,10 +136,33 @@ export interface AramaYaziSonuc {
   pdfUrl?: string | null;
 }
 
+// Arama sonucu: sabit sayfa / kategori / dergi sayısı (hafif).
+export interface AramaSayfaSonuc {
+  slug: string;
+  baslik: string;
+  kisaAciklama?: string;
+}
+export interface AramaKategoriSonuc {
+  ad: string;
+  slug: string;
+}
+export interface AramaSayiSonuc {
+  id: string;
+  numara: string;
+  ay: string;
+  yil: number;
+  tamBaslik: string;
+  menuEtiket?: string | null;
+  pdfUrl?: string | null;
+}
+
 export interface AramaSonuclari {
   yazilar: AramaYaziSonuc[];
   araYazilar: AraYazi[];
   yazarlar: Yazar[];
+  sayfalar?: AramaSayfaSonuc[];
+  kategoriler?: AramaKategoriSonuc[];
+  sayilar?: AramaSayiSonuc[];
 }
 
 // Admin panelden düzenlenebilir statik sayfa (ör. Sekans Yazı Standartları).
