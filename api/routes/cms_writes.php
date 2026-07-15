@@ -716,6 +716,70 @@ function handle_delete_filtre(string $idStr): void
     respond(['deleted' => (string)$id]);
 }
 
+/* ========================= SEKANS İNDEKS AYARI =========================== */
+
+/** İçerikte geçen tüm kategori adlarını (dergi + blog) sayılarıyla keşfet. */
+function indeks_kategori_kesfet(): array
+{
+    $sql = "SELECT ad, COUNT(*) AS adet FROM (
+                SELECT k.ad AS ad
+                FROM yazilar y
+                  JOIN sayilar s ON s.id = y.sayi_id AND s.durum <> 'taslak'
+                  JOIN kategoriler k ON k.id = y.kategori_id
+                UNION ALL
+                SELECT a.kategori_ad AS ad
+                FROM ara_yazilar a
+                WHERE a.kategori_ad IS NOT NULL AND a.kategori_ad <> ''
+            ) t
+            GROUP BY ad";
+    return db()->query($sql)->fetchAll();
+}
+
+/** GET /api/cms/indeks-kategoriler — keşfedilen kategoriler + kayıtlı ayar. editör+ */
+function handle_cms_list_indeks_kategoriler(): void
+{
+    $kesif = indeks_kategori_kesfet();       // [{ad, adet}]
+    $ayar  = indeks_kategori_ayar();          // [{ad, goster, sira}]
+    $ayarMap = [];
+    foreach ($ayar as $a) { if ($a['ad'] !== '') $ayarMap[$a['ad']] = $a; }
+
+    $out = [];
+    foreach ($kesif as $k) {
+        $ad  = (string)$k['ad'];
+        $cfg = $ayarMap[$ad] ?? null;
+        $out[] = [
+            'ad'     => $ad,
+            'adet'   => (int)$k['adet'],
+            'goster' => $cfg ? (bool)$cfg['goster'] : true,
+            'sira'   => $cfg ? (int)$cfg['sira'] : 9999,
+        ];
+    }
+    usort($out, fn($a, $b) => ($a['sira'] <=> $b['sira']) ?: strcmp($a['ad'], $b['ad']));
+    respond(['kategoriler' => $out]);
+}
+
+/** PUT /api/indeks-kategoriler — indeks kategori sırası/görünürlüğünü kaydet. editör+ */
+function handle_update_indeks_kategoriler(array $b): void
+{
+    $list = $b['kategoriler'] ?? [];
+    if (!is_array($list)) fail('VALIDATION', 'kategoriler dizisi gerekli.', 400);
+    $norm = [];
+    foreach ($list as $i => $k) {
+        if (!isset($k['ad']) || $k['ad'] === '') continue;
+        $norm[] = [
+            'ad'     => (string)$k['ad'],
+            'goster' => !empty($k['goster']),
+            'sira'   => isset($k['sira']) ? (int)$k['sira'] : $i,
+        ];
+    }
+    $json = json_encode($norm, JSON_UNESCAPED_UNICODE);
+    db()->prepare(
+        "INSERT INTO ayarlar (anahtar, deger) VALUES ('indeks_kategoriler', ?)
+         ON DUPLICATE KEY UPDATE deger = VALUES(deger)"
+    )->execute([$json]);
+    respond(['kategoriler' => $norm]);
+}
+
 function handle_update_hakkimizda(array $b): void
 {
     $il = $b['iletisim'] ?? [];

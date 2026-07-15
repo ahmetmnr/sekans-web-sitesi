@@ -16,6 +16,7 @@ import { CMSMenuYonetimi } from './CMSMenuYonetimi';
 import { CMSAnasayfaYonetimi } from './CMSAnasayfaYonetimi';
 import { CMSSayfaYonetimi } from './CMSSayfaYonetimi';
 import { CMSFiltreYonetimi } from './CMSFiltreYonetimi';
+import { CMSIndeksYonetimi } from './CMSIndeksYonetimi';
 import { CMSKullaniciYonetimi } from './CMSKullaniciYonetimi';
 import { CMSYarismaYonetimi } from './CMSYarismaYonetimi';
 import { CMSHakkimizdaYonetimi } from './CMSHakkimizdaYonetimi';
@@ -128,6 +129,8 @@ export function CMS({ onExitCMS }: CMSProps) {
         return <CMSSayfaYonetimi />;
       case 'filtreler':
         return <CMSFiltreYonetimi />;
+      case 'indeks':
+        return <CMSIndeksYonetimi />;
       case 'kullanicilar':
         return <CMSKullaniciYonetimi />;
       case 'yarismasi':

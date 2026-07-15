@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useCMS } from '@/context/CMSContext';
 import { api } from '@/lib/api';
-import type { AramaYaziSonuc, IndeksGiris } from '@/types';
+import type { AramaYaziSonuc, IndeksGiris, IndeksKategoriAyar } from '@/types';
 
 interface SekansIndeksSayfasiProps {
   onDergiYaziClick: (sonuc: AramaYaziSonuc) => void;
@@ -12,6 +11,38 @@ interface SekansIndeksSayfasiProps {
 }
 
 const TUMU = '__tumu__';
+
+type SiralamaModu = 'yeni' | 'eski' | 'alfabetik' | 'sayi';
+const SIRALAMA_SECENEKLERI: { value: SiralamaModu; label: string }[] = [
+  { value: 'yeni', label: 'En yeni' },
+  { value: 'eski', label: 'En eski' },
+  { value: 'alfabetik', label: 'Alfabetik' },
+  { value: 'sayi', label: 'Dergi sayısına göre' },
+];
+
+// İndeks girişlerini seçilen moda göre sırala.
+function siralaGirisler(liste: IndeksGiris[], mod: SiralamaModu): IndeksGiris[] {
+  const arr = [...liste];
+  if (mod === 'eski') {
+    arr.sort((a, b) => (a.yayinTarihi || '').localeCompare(b.yayinTarihi || ''));
+  } else if (mod === 'alfabetik') {
+    arr.sort((a, b) => a.baslik.localeCompare(b.baslik, 'tr'));
+  } else if (mod === 'sayi') {
+    // Dergi yazıları sayı yılına + numarasına göre (yeni->eski); blog yazıları sona.
+    arr.sort((a, b) => {
+      if (a.tip !== b.tip) return a.tip === 'dergi' ? -1 : 1;
+      if (a.tip === 'dergi') {
+        const yil = (b.sayiYil ?? 0) - (a.sayiYil ?? 0);
+        if (yil !== 0) return yil;
+        return (b.sayiNumara || '').localeCompare(a.sayiNumara || '', 'tr', { numeric: true });
+      }
+      return (b.yayinTarihi || '').localeCompare(a.yayinTarihi || '');
+    });
+  } else {
+    arr.sort((a, b) => (b.yayinTarihi || '').localeCompare(a.yayinTarihi || ''));
+  }
+  return arr;
+}
 
 /**
  * Sekans İndeks — yayımlanmış tüm içeriğin (dergi yazıları + blog) kategorilere
@@ -22,20 +53,22 @@ export default function SekansIndeksSayfasi({
   onBlogYaziClick,
   onBackClick,
 }: SekansIndeksSayfasiProps) {
-  const { kategoriler } = useCMS();
   const [girisler, setGirisler] = useState<IndeksGiris[] | null>(null);
+  const [kategoriAyar, setKategoriAyar] = useState<IndeksKategoriAyar[]>([]);
   const [hata, setHata] = useState(false);
   const [aktifKategori, setAktifKategori] = useState<string>(TUMU);
+  const [siralama, setSiralama] = useState<SiralamaModu>('yeni');
 
   useEffect(() => {
     let iptal = false;
     api.indeks()
-      .then((d) => { if (!iptal) setGirisler(d.girisler ?? []); })
+      .then((d) => { if (!iptal) { setGirisler(d.girisler ?? []); setKategoriAyar(d.kategoriAyar ?? []); } })
       .catch(() => { if (!iptal) setHata(true); });
     return () => { iptal = true; };
   }, []);
 
-  // Kategori listesi: CMS'teki sıra korunur; listede olmayanlar sona alfabetik eklenir.
+  // Kategori listesi: admin ayarındaki sıra + görünürlük uygulanır; ayarda olmayanlar
+  // sona alfabetik eklenir (varsayılan görünür).
   const kategoriListesi = useMemo(() => {
     if (!girisler) return [];
     const sayilar = new Map<string, number>();
@@ -43,21 +76,32 @@ export default function SekansIndeksSayfasi({
       const ad = g.kategoriAd || 'Diğer';
       sayilar.set(ad, (sayilar.get(ad) ?? 0) + 1);
     });
-    const bilinen = kategoriler.map((k) => k.ad).filter((ad) => sayilar.has(ad));
+    const ayarMap = new Map(kategoriAyar.map((a) => [a.ad, a]));
+    // Gizlenmiş kategorileri çıkar
+    const gizli = new Set(kategoriAyar.filter((a) => !a.goster).map((a) => a.ad));
+    // Ayarda olan (görünür) kategoriler sıraya göre
+    const sirali = [...kategoriAyar]
+      .filter((a) => a.goster && sayilar.has(a.ad))
+      .sort((a, b) => a.sira - b.sira)
+      .map((a) => a.ad);
+    // Ayarda olmayanlar sona alfabetik
     const kalan = [...sayilar.keys()]
-      .filter((ad) => !bilinen.includes(ad))
+      .filter((ad) => !ayarMap.has(ad) && !gizli.has(ad))
       .sort((a, b) => a.localeCompare(b, 'tr'));
-    return [...bilinen, ...kalan].map((ad) => ({ ad, adet: sayilar.get(ad) ?? 0 }));
-  }, [girisler, kategoriler]);
+    return [...sirali, ...kalan].map((ad) => ({ ad, adet: sayilar.get(ad) ?? 0 }));
+  }, [girisler, kategoriAyar]);
+
+  // Görünür kategori adları kümesi (gizlenenler "Tümü" dökümünden de çıkar).
+  const gorunurKategoriler = useMemo(() => new Set(kategoriListesi.map((k) => k.ad)), [kategoriListesi]);
+  const gorunurToplam = useMemo(() => kategoriListesi.reduce((s, k) => s + k.adet, 0), [kategoriListesi]);
 
   const seciliGirisler = useMemo(() => {
     if (!girisler) return [];
     const liste = aktifKategori === TUMU
-      ? girisler
+      ? girisler.filter((g) => gorunurKategoriler.has(g.kategoriAd || 'Diğer'))
       : girisler.filter((g) => (g.kategoriAd || 'Diğer') === aktifKategori);
-    // Tarihe göre yeni -> eski (tarihi olmayanlar sona)
-    return [...liste].sort((a, b) => (b.yayinTarihi || '').localeCompare(a.yayinTarihi || ''));
-  }, [girisler, aktifKategori]);
+    return siralaGirisler(liste, siralama);
+  }, [girisler, aktifKategori, siralama, gorunurKategoriler]);
 
   // "Tümü" görünümünde kategori başlıklarıyla gruplu döküm
   const grupluGirisler = useMemo(() => {
@@ -149,16 +193,25 @@ export default function SekansIndeksSayfasi({
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-8 lg:gap-12">
-            {/* Kategori menüsü — mobilde açılır liste */}
-            <div className="lg:hidden">
+            {/* Kategori menüsü — mobilde açılır liste + sıralama */}
+            <div className="lg:hidden space-y-3">
               <select
                 className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
                 value={aktifKategori}
                 onChange={(e) => setAktifKategori(e.target.value)}
               >
-                <option value={TUMU}>Tüm kategoriler ({girisler.length})</option>
+                <option value={TUMU}>Tüm kategoriler</option>
                 {kategoriListesi.map((k) => (
                   <option key={k.ad} value={k.ad}>{k.ad} ({k.adet})</option>
+                ))}
+              </select>
+              <select
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                value={siralama}
+                onChange={(e) => setSiralama(e.target.value as SiralamaModu)}
+              >
+                {SIRALAMA_SECENEKLERI.map((s) => (
+                  <option key={s.value} value={s.value}>Sırala: {s.label}</option>
                 ))}
               </select>
             </div>
@@ -166,6 +219,19 @@ export default function SekansIndeksSayfasi({
             {/* Kategori menüsü — masaüstünde sol sütun */}
             <aside className="hidden lg:block">
               <nav className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
+                {/* Sıralama */}
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">Sıralama</label>
+                  <select
+                    className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+                    value={siralama}
+                    onChange={(e) => setSiralama(e.target.value as SiralamaModu)}
+                  >
+                    {SIRALAMA_SECENEKLERI.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
                 <button
                   onClick={() => setAktifKategori(TUMU)}
                   className={`w-full text-left text-sm py-1.5 px-2 rounded-sm transition-colors flex items-center justify-between gap-2 ${
@@ -175,7 +241,7 @@ export default function SekansIndeksSayfasi({
                   }`}
                 >
                   <span>Tümü</span>
-                  <span className="text-xs opacity-60">{girisler.length}</span>
+                  <span className="text-xs opacity-60">{gorunurToplam}</span>
                 </button>
                 <div className="mt-2 space-y-0.5">
                   {kategoriListesi.map((k) => (

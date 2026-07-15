@@ -5,6 +5,7 @@
 import type {
   Sayi, ArsivSayi, AraYazi, Yazar, Kategori, Yazi, SayiDurum, Kullanici, EditorOzet,
   AramaSonuclari, IndeksGiris, StatikSayfaIcerik, MenuOgesi, AnasayfaBlok, FiltreSayfa,
+  IndeksKategoriAyar,
 } from '@/types';
 
 export const API_BASE: string =
@@ -307,8 +308,15 @@ export const api = {
   // Site içi arama
   arama: (q: string) => get<AramaSonuclari>(`/arama?q=${encodeURIComponent(q)}`),
 
-  // Sekans İndeks (tüm yayımlanmış içerik dökümü)
-  indeks: () => get<{ girisler: IndeksGiris[] }>('/indeks'),
+  // Sekans İndeks (tüm yayımlanmış içerik dökümü + kategori ayarı)
+  indeks: () => get<{ girisler: IndeksGiris[]; kategoriAyar: IndeksKategoriAyar[] }>('/indeks'),
+
+  // Sekans İndeks kategori ayarı (admin: sıra + görünürlük)
+  indeksKategoriler: {
+    listCms: () => get<{ kategoriler: IndeksKategoriAyar[] }>('/cms/indeks-kategoriler').then((r) => r.kategoriler),
+    update: (kategoriler: IndeksKategoriAyar[]) =>
+      put<{ kategoriler: IndeksKategoriAyar[] }>('/indeks-kategoriler', { kategoriler }).then((r) => r.kategoriler),
+  },
 
   // Yükleme
   uploadFile: (file: File, kind: 'image' | 'pdf' | 'foto') => {

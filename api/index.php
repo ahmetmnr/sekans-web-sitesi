@@ -142,6 +142,10 @@ $routes = [
     ['PUT',    '#^/filtre/([^/]+)$#',    'editor', fn($m) => handle_update_filtre($m[1], read_json_body())],
     ['DELETE', '#^/filtre/([^/]+)$#',    'editor', fn($m) => handle_delete_filtre($m[1])],
 
+    // ---- CMS writes: Sekans İndeks kategori ayarı ----
+    ['GET',    '#^/cms/indeks-kategoriler$#', 'editor', fn($m) => handle_cms_list_indeks_kategoriler()],
+    ['PUT',    '#^/indeks-kategoriler$#',     'editor', fn($m) => handle_update_indeks_kategoriler(read_json_body())],
+
     // ---- Admin: export / import / reset ----
     ['GET',    '#^/export$#',            'admin', fn($m) => handle_export()],
     ['POST',   '#^/import$#',            'admin', fn($m) => handle_import(read_json_body())],

@@ -113,6 +113,14 @@ export interface IndeksGiris {
   pdfUrl?: string | null;
 }
 
+// Sekans İndeks kategori ayarı (admin: sıra + görünürlük).
+export interface IndeksKategoriAyar {
+  ad: string;
+  goster: boolean;
+  sira: number;
+  adet?: number; // yalnızca CMS listesinde (içerikteki yazı sayısı)
+}
+
 // Arama sonucu: dergi yazısı satırı (hafif).
 export interface AramaYaziSonuc {
   id: string;

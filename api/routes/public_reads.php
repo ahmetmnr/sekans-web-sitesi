@@ -284,9 +284,33 @@ function handle_search(): void
     respond(['yazilar' => $yazilar, 'araYazilar' => $araYazilar, 'yazarlar' => $yazarlar]);
 }
 
+/** İndeks kategori ayarı (admin: sıra + görünürlük) — ayarlar tablosundan. */
+function indeks_kategori_ayar(): array
+{
+    try {
+        $st = db()->prepare("SELECT deger FROM ayarlar WHERE anahtar = 'indeks_kategoriler' LIMIT 1");
+        $st->execute();
+        $v = $st->fetchColumn();
+        if ($v !== false && $v !== null && $v !== '') {
+            $d = json_decode((string)$v, true);
+            if (is_array($d)) {
+                return array_map(fn($a) => [
+                    'ad'     => (string)($a['ad'] ?? ''),
+                    'goster' => !empty($a['goster']),
+                    'sira'   => (int)($a['sira'] ?? 0),
+                ], $d);
+            }
+        }
+    } catch (PDOException $e) {
+        // ayarlar tablosu yoksa boş ayar (frontend varsayılan sırayı kullanır).
+    }
+    return [];
+}
+
 /**
  * GET /api/indeks — Sekans İndeks: yayımlanmış TÜM içeriğin kategorili dökümü.
  * Dergi yazıları (taslak sayılar hariç) + blog yazıları; gövde (icerik) taşınmaz.
+ * 'kategoriAyar': admin tanımlı kategori sırası/görünürlüğü (frontend uygular).
  */
 function handle_get_indeks(): void
 {
@@ -341,7 +365,7 @@ function handle_get_indeks(): void
         ];
     }
 
-    respond(['girisler' => $entries]);
+    respond(['girisler' => $entries, 'kategoriAyar' => indeks_kategori_ayar()]);
 }
 
 /**
