@@ -1,5 +1,5 @@
 // CMS Ara Yazı Editörü - Tam Sayfa
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useCMS } from '@/context/CMSContext';
 import { api } from '@/lib/api';
 import { useFootnotes } from '@/hooks/useFootnotes';
@@ -28,14 +28,10 @@ import {
 } from 'lucide-react';
 import type { AraYazi } from '@/types';
 
-const araYaziKategorileri = [
-  'Deneme',
-  'Haber',
-  'Duyuru',
-  'İnceleme',
-  'Söyleşi',
-  'Etkinlik',
-  'Yorum',
+// Blog için sık kullanılan kategoriler (gerçek kategorilerle birleştirilir).
+const SABIT_BLOG_KATEGORILERI = [
+  'Ara Yazı', 'Sinema Kitaplığı', 'Texts in English', 'Duyurular',
+  'Eleştiri', 'Çözümleme', 'Deneme', 'Söyleşi', 'Haber', 'İnceleme',
 ];
 
 interface CMSAraYaziEditorProps {
@@ -49,6 +45,7 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
   const {
     araYazilar,
     yazarlar,
+    kategoriler,
     addAraYazi,
     updateAraYazi,
   } = useCMS();
@@ -116,6 +113,25 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
     });
   };
 
+  // Çoklu kategori: seçili kategoriler (yoksa birincil kategoriye düşer).
+  const seciliKategoriler = formData.kategoriler ?? (formData.kategori ? [formData.kategori] : []);
+  // Seçenek listesi: gerçek kategoriler + sık blog kategorileri + hâlihazırda seçili olanlar.
+  const kategoriSecenekleri = useMemo(() => {
+    const set = new Set<string>();
+    kategoriler.forEach((k) => set.add(k.ad));
+    SABIT_BLOG_KATEGORILERI.forEach((k) => set.add(k));
+    seciliKategoriler.forEach((k) => set.add(k));
+    return [...set].sort((a, b) => a.localeCompare(b, 'tr'));
+  }, [kategoriler, seciliKategoriler]);
+
+  const toggleKategori = (ad: string) => {
+    const set = new Set(seciliKategoriler);
+    if (set.has(ad)) set.delete(ad); else set.add(ad);
+    const arr = [...set];
+    // Birincil kategori (kart etiketi) = ilk seçilen.
+    setFormData({ ...formData, kategoriler: arr, kategori: arr[0] ?? '' });
+  };
+
   const handleSave = async () => {
     if (!formData.baslik) {
       alert('Lütfen başlık girin');
@@ -137,13 +153,15 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
     try {
       const slug = formData.slug || generateSlug(formData.baslik);
 
+      const kategoriPayload = seciliKategoriler.length > 0 ? seciliKategoriler : ['Ara Yazı'];
       if (yaziId) {
         await updateAraYazi(yaziId, {
           baslik: formData.baslik,
           spot: formData.spot || '',
           icerik: formData.icerik,
           yazarId: formData.yazar!.id,
-          kategori: formData.kategori || 'Deneme',
+          kategori: kategoriPayload[0],
+          kategoriler: kategoriPayload,
           kapakGorseli: formData.kapakGorseli,
           yayinTarihi: formData.yayinTarihi || new Date().toISOString().split('T')[0],
           slug,
@@ -155,7 +173,8 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
           spot: formData.spot || '',
           icerik: formData.icerik,
           yazarId: formData.yazar!.id,
-          kategori: formData.kategori || 'Deneme',
+          kategori: kategoriPayload[0],
+          kategoriler: kategoriPayload,
           kapakGorseli: formData.kapakGorseli,
           yayinTarihi: formData.yayinTarihi || new Date().toISOString().split('T')[0],
           slug,
@@ -340,26 +359,33 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
               </Select>
             </div>
 
-            {/* Kategori */}
+            {/* Kategoriler (çoklu seçim) */}
             <div>
-              <Label htmlFor="kategori" className="text-sm font-medium">
-                Kategori *
+              <Label className="text-sm font-medium">
+                Kategoriler *
               </Label>
-              <Select
-                value={formData.kategori || ''}
-                onValueChange={(value) => setFormData({ ...formData, kategori: value })}
-              >
-                <SelectTrigger className="mt-1.5">
-                  <SelectValue placeholder="Kategori seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  {araYaziKategorileri.map((kategori) => (
-                    <SelectItem key={kategori} value={kategori}>
-                      {kategori}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <p className="text-xs text-gray-500 mt-0.5 mb-2">
+                Bir veya birden fazla kategori seçebilirsiniz. İlk seçilen, kart etiketi olarak görünür.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {kategoriSecenekleri.map((ad) => {
+                  const secili = seciliKategoriler.includes(ad);
+                  return (
+                    <button
+                      key={ad}
+                      type="button"
+                      onClick={() => toggleKategori(ad)}
+                      className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+                        secili
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                      }`}
+                    >
+                      {ad}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <hr />

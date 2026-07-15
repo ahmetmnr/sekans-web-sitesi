@@ -75,7 +75,7 @@ else
   echo "    -> 'sayfalar.yayin_durumu' kolonu zaten var, atlanıyor."
 fi
 
-echo ">>> 8/10 DB migration: filtre listeleme sayfaları (filtre_sayfalar tablosu) (yalnızca yoksa)..."
+echo ">>> 8/11 DB migration: filtre listeleme sayfaları (filtre_sayfalar tablosu) (yalnızca yoksa)..."
 if [ "$(col_exists filtre_sayfalar id)" = "0" ]; then
   echo "    -> uygulanıyor: 2026-07-18_filtre_sayfalar.sql"
   $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-18_filtre_sayfalar.sql
@@ -84,10 +84,19 @@ else
   echo "    -> 'filtre_sayfalar' tablosu zaten var, atlanıyor."
 fi
 
-echo ">>> 9/10 API konteyneri yeniden başlatılıyor..."
+echo ">>> 9/11 DB migration: blog çoklu kategori (arayazi_kategorileri tablosu) (yalnızca yoksa)..."
+if [ "$(col_exists arayazi_kategorileri id)" = "0" ]; then
+  echo "    -> uygulanıyor: 2026-07-19_arayazi_cok_kategori.sql"
+  $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-19_arayazi_cok_kategori.sql
+  echo "    -> tamam."
+else
+  echo "    -> 'arayazi_kategorileri' tablosu zaten var, atlanıyor."
+fi
+
+echo ">>> 10/11 API konteyneri yeniden başlatılıyor..."
 $DC restart api
 
-echo ">>> 10/10 Kontrol — sayı durumları + kategori adları + menü:"
+echo ">>> 11/11 Kontrol — sayı durumları + kategori adları + menü:"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT durum, COUNT(*) FROM sayilar GROUP BY durum;" 2>/dev/null || echo "    (DB kontrolü atlandı)"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \

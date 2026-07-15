@@ -3,6 +3,7 @@ import { ArrowLeft, User, Calendar, Loader2, ChevronLeft, ChevronRight } from 'l
 import type { AraYazi, FiltreSayfa } from '@/types';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
+import { araYaziKategorileri } from '@/lib/utils';
 
 interface FiltreListeSayfasiProps {
   slug: string;
@@ -37,7 +38,7 @@ export default function FiltreListeSayfasi({ slug, araYazilar, onAraYaziClick, o
   const tumFiltreli = useMemo(() => {
     if (!config) return [];
     const list = config.kategori
-      ? araYazilar.filter((y) => y.kategori === config.kategori)
+      ? araYazilar.filter((y) => araYaziKategorileri(y).includes(config.kategori))
       : araYazilar;
     const sorted = [...list];
     if (config.siralama === 'eski') {

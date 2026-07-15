@@ -114,8 +114,11 @@ function handle_create_arayazi(array $b): void
     if ($yazarCode === '') fail('VALIDATION', 'Yazar gerekli.', 400, ['yazar' => 'zorunlu']);
     $yazarId = require_id_by_code('yazarlar', $yazarCode, 'Yazar');
 
-    $kategoriAd = (string)($b['kategori'] ?? '');
+    // Çoklu kategori: 'kategoriler' (dizi) varsa birincil = ilki; yoksa tekil 'kategori'.
+    $katListe = arayazi_kategori_input($b);
+    $kategoriAd = $katListe ? $katListe[0] : (string)($b['kategori'] ?? '');
     $kategoriId = resolve_kategori_id_by_ad($kategoriAd);
+    $syncListe = $katListe ?: ($kategoriAd !== '' ? [$kategoriAd] : []);
 
     $slugIn = trim((string)($b['slug'] ?? '')) ?: slugify($baslik);
     $slug = unique_slug($slugIn, 'ara_yazilar', 'slug');
@@ -131,8 +134,21 @@ function handle_create_arayazi(array $b): void
         $yazarId, $kategoriId, $kategoriAd !== '' ? $kategoriAd : null,
         $b['kapakGorseli'] ?? null, norm_date($b['yayinTarihi'] ?? null),
     ]);
+    sync_arayazi_kategoriler((int)db()->lastInsertId(), $syncListe);
     $out = fetch_arayazi_full('code', $code);
     respond($out, null, 201);
+}
+
+/** Body'den ara yazı kategori adları dizisini çıkar (yoksa null). */
+function arayazi_kategori_input(array $b): ?array
+{
+    if (!array_key_exists('kategoriler', $b) || !is_array($b['kategoriler'])) return null;
+    $out = [];
+    foreach ($b['kategoriler'] as $ad) {
+        $ad = trim((string)$ad);
+        if ($ad !== '' && !in_array($ad, $out, true)) $out[] = $ad;
+    }
+    return $out;
 }
 
 function handle_update_arayazi(string $code, array $b): void
@@ -148,10 +164,17 @@ function handle_update_arayazi(string $code, array $b): void
     if (isset($b['yazarId']) || isset($b['yazar']['id'])) {
         $set[] = 'yazar_id = ?'; $params[] = require_id_by_code('yazarlar', (string)($b['yazarId'] ?? $b['yazar']['id']), 'Yazar');
     }
-    if (array_key_exists('kategori', $b)) {
+    // Kategori: çoklu ('kategoriler' dizisi) veya tekil ('kategori') — birincil = ilki.
+    $katListe = arayazi_kategori_input($b);   // null: kategoriler alanı gönderilmedi
+    if ($katListe !== null) {
+        $birincil = $katListe[0] ?? '';
+        $set[] = 'kategori_ad = ?'; $params[] = $birincil !== '' ? $birincil : null;
+        $set[] = 'kategori_id = ?'; $params[] = resolve_kategori_id_by_ad($birincil);
+    } elseif (array_key_exists('kategori', $b)) {
         $ad = (string)$b['kategori'];
         $set[] = 'kategori_ad = ?'; $params[] = $ad !== '' ? $ad : null;
         $set[] = 'kategori_id = ?'; $params[] = resolve_kategori_id_by_ad($ad);
+        $katListe = $ad !== '' ? [$ad] : [];   // tekil kategori -> join tabloyu da güncelle
     }
     if (array_key_exists('slug', $b) && trim((string)$b['slug']) !== '') {
         $set[] = 'slug = ?'; $params[] = unique_slug(slugify((string)$b['slug']), 'ara_yazilar', 'slug', $id);
@@ -159,6 +182,7 @@ function handle_update_arayazi(string $code, array $b): void
     if (!$set) fail('VALIDATION', 'Güncellenecek alan yok.', 400);
     $params[] = $id;
     db()->prepare("UPDATE ara_yazilar SET " . implode(', ', $set) . " WHERE id = ?")->execute($params);
+    if ($katListe !== null) sync_arayazi_kategoriler($id, $katListe);
     respond(fetch_arayazi_full('code', $code));
 }
 

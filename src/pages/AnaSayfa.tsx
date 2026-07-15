@@ -1,6 +1,7 @@
 import SonSayiSection from '@/sections/SonSayiSection';
 import AraYazilarSection from '@/sections/AraYazilarSection';
 import type { Sayi, Yazi, AraYazi, AnasayfaBlok } from '@/types';
+import { araYaziKategorileri } from '@/lib/utils';
 
 interface AnaSayfaProps {
   // Ana sayfada gösterilecek sayılar (normalde 1; admin panelden ek sayı işaretlenebilir).
@@ -82,7 +83,7 @@ export default function AnaSayfa({
         }
         // tip === 'kategori'
         const kategori = blok.ayar?.kategori ?? '';
-        const liste = kategori ? tumAraYazilar.filter((y) => y.kategori === kategori) : [];
+        const liste = kategori ? tumAraYazilar.filter((y) => araYaziKategorileri(y).includes(kategori)) : [];
         return (
           <AraYazilarSection
             key={blok.id}

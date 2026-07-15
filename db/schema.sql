@@ -277,6 +277,21 @@ CREATE TABLE anasayfa_bloklar (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
+-- arayazi_kategorileri (blog post ↔ category, çoklu) — bir ara yazı birden
+-- fazla kategoriyle ilişkilendirilebilir. Blog kategorileri serbest metin
+-- olduğundan ADı tutulur. Birincil kategori ara_yazilar.kategori_ad'de kalır.
+-- -----------------------------------------------------------------------------
+CREATE TABLE arayazi_kategorileri (
+  id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  arayazi_id  BIGINT UNSIGNED NOT NULL,
+  kategori_ad VARCHAR(160)    NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_arayazi_kat (arayazi_id, kategori_ad),
+  KEY idx_arayazi_kat_ad (kategori_ad),
+  CONSTRAINT fk_arayazi_kat_yazi FOREIGN KEY (arayazi_id) REFERENCES ara_yazilar (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
 -- filtre_sayfalar (filtered listing pages) — admin panelden oluşturulan,
 -- belirli bir kategoriye bağlı içerik listeleme sayfaları. Ayarlar: başlık,
 -- açıklama, kategori, sıralama, sayfa başına içerik, kapak/yazar-tarih gösterimi.

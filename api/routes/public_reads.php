@@ -108,13 +108,14 @@ function handle_list_arayazi(): void
     $st = db()->prepare($sql);
     $st->execute($params);
 
+    $araKatMap = load_arayazi_kategori_map();
     $items = [];
     foreach ($st->fetchAll() as $r) {
         $yazar = $r['y_code'] !== null ? [
             'id' => (string)$r['y_code'], 'ad' => $r['y_ad'], 'soyad' => $r['y_soyad'],
             'tamAd' => $r['y_tam_ad'], 'fotograf' => $r['y_fotograf'], 'biyografi' => $r['y_biyografi'],
         ] : null;
-        $items[] = ara_yazi_out($r, $yazar, false);
+        $items[] = ara_yazi_out($r, $yazar, false, $araKatMap[(int)$r['id']] ?? null);
     }
 
     $totalPages = (int)ceil($total / $limit);
@@ -136,7 +137,7 @@ function fetch_arayazi_full(string $by, string $value): ?array
     if (!$r) return null;
     $yazarMap = load_yazar_map();
     $yazar = yazar_out($yazarMap[(int)$r['yazar_id']] ?? null);
-    return ara_yazi_out($r, $yazar, true);
+    return ara_yazi_out($r, $yazar, true, arayazi_kategori_list((int)$r['id']));
 }
 
 /** GET /api/arayazi/slug/{slug} */
@@ -268,12 +269,13 @@ function handle_search(): void
          LIMIT 30"
     );
     $st2->execute([$like, $like, $like, $like]);
-    $araYazilar = array_map(function ($r) {
+    $araKatMap = load_arayazi_kategori_map();
+    $araYazilar = array_map(function ($r) use ($araKatMap) {
         $yazar = $r['y_code'] !== null ? [
             'id' => (string)$r['y_code'], 'ad' => $r['y_ad'], 'soyad' => $r['y_soyad'],
             'tamAd' => $r['y_tam_ad'], 'fotograf' => $r['y_fotograf'], 'biyografi' => $r['y_biyografi'],
         ] : null;
-        return ara_yazi_out($r, $yazar, false);
+        return ara_yazi_out($r, $yazar, false, $araKatMap[(int)$r['id']] ?? null);
     }, $st2->fetchAll());
 
     // Yazarlar
@@ -343,26 +345,32 @@ function handle_get_indeks(): void
     }
 
     $rows2 = db()->query(
-        "SELECT a.code, a.baslik, a.kategori_ad, a.yayin_tarihi,
+        "SELECT a.id, a.code, a.baslik, a.kategori_ad, a.yayin_tarihi,
                 yz.code AS yazar_code, yz.tam_ad AS yazar_ad
          FROM ara_yazilar a
          LEFT JOIN yazarlar yz ON yz.id = a.yazar_id
          ORDER BY a.yayin_tarihi DESC, a.id DESC"
     )->fetchAll();
+    // Çoklu kategori: her blog yazısı ait olduğu HER kategoride listelenir.
+    $araKatMap = load_arayazi_kategori_map();
     foreach ($rows2 as $r) {
-        $entries[] = [
-            'tip'         => 'blog',
-            'id'          => (string)$r['code'],
-            'baslik'      => $r['baslik'],
-            'yazarAd'     => $r['yazar_ad'] ?? '',
-            'kategoriAd'  => $r['kategori_ad'] ?? '',
-            'sayiId'      => null,
-            'sayiNumara'  => null,
-            'sayiAy'      => null,
-            'sayiYil'     => null,
-            'yayinTarihi' => $r['yayin_tarihi'] ?? '',
-            'pdfUrl'      => null,
-        ];
+        $katListe = $araKatMap[(int)$r['id']] ?? [];
+        if (!$katListe) $katListe = [$r['kategori_ad'] ?? ''];
+        foreach ($katListe as $kat) {
+            $entries[] = [
+                'tip'         => 'blog',
+                'id'          => (string)$r['code'],
+                'baslik'      => $r['baslik'],
+                'yazarAd'     => $r['yazar_ad'] ?? '',
+                'kategoriAd'  => $kat ?? '',
+                'sayiId'      => null,
+                'sayiNumara'  => null,
+                'sayiAy'      => null,
+                'sayiYil'     => null,
+                'yayinTarihi' => $r['yayin_tarihi'] ?? '',
+                'pdfUrl'      => null,
+            ];
+        }
     }
 
     respond(['girisler' => $entries, 'kategoriAyar' => indeks_kategori_ayar()]);
@@ -483,9 +491,10 @@ function handle_bootstrap(): void
 
     // Tüm ara yazılar (icerik HARİÇ — bootstrap hafif kalsın; detay ayrı çekilir).
     $yazarMap = load_yazar_map();
+    $araKatMap = load_arayazi_kategori_map();
     $araRows = db()->query("SELECT * FROM ara_yazilar ORDER BY yayin_tarihi DESC, id DESC")->fetchAll();
-    $araYazilar = array_map(function ($r) use ($yazarMap) {
-        return ara_yazi_out($r, yazar_out($yazarMap[(int)$r['yazar_id']] ?? null), false);
+    $araYazilar = array_map(function ($r) use ($yazarMap, $araKatMap) {
+        return ara_yazi_out($r, yazar_out($yazarMap[(int)$r['yazar_id']] ?? null), false, $araKatMap[(int)$r['id']] ?? null);
     }, $araRows);
 
     // Yazar başına toplam yazı sayısı (dergi yazıları [taslak hariç] + blog) — Yazarlar sayfası için.

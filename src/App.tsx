@@ -22,6 +22,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { araYaziKategorileri } from '@/lib/utils';
 
 import type { Yazi, AraYazi, Yazar, Sayi, AramaYaziSonuc } from '@/types';
 
@@ -111,18 +112,21 @@ function AppContent() {
   const { sonSayi, anasayfaSayilari, arsivSayilari, araYazilar, yazarlar, hakkimizdaIcerik, yarismasiBilgi, anasayfaBloklar, isLoading, error, refresh } = useCMS();
 
   // "Blog" sayfası: özel bölümlere (Sinema Kitaplığı vb.) ait OLMAYAN yazılar.
-  const araYazilarListesi = araYazilar.filter((y) => !OZEL_BOLUMLER.has(y.kategori));
-  // Bir bölüm sayfasının yazı listesi (eski + yeni kategori adları birlikte).
+  // Çoklu kategori: bir yazı, kategorilerinden HİÇBİRİ özel bölüm değilse blogda kalır.
+  const araYazilarListesi = araYazilar.filter((y) => !araYaziKategorileri(y).some((k) => OZEL_BOLUMLER.has(k)));
+  // Bir bölüm sayfasının yazı listesi (eski + yeni kategori adları birlikte, çoklu kategori).
   const bolumListesi = (kategoriler: string[]) =>
-    araYazilar.filter((y) => kategoriler.includes(y.kategori));
+    araYazilar.filter((y) => araYaziKategorileri(y).some((k) => kategoriler.includes(k)));
   // Bir yazının ait olduğu listeyi bul (önceki/sonraki gezinme bu liste içinde kalır).
   const getSectionList = useCallback((araYazi: AraYazi): AraYazi[] => {
+    const katlari = araYaziKategorileri(araYazi);
     for (const kategoriler of Object.values(BOLUM_KATEGORILERI)) {
-      if (kategoriler.includes(araYazi.kategori) && OZEL_BOLUMLER.has(araYazi.kategori)) {
-        return araYazilar.filter((y) => kategoriler.includes(y.kategori));
+      const ozelBolum = kategoriler.some((k) => OZEL_BOLUMLER.has(k));
+      if (ozelBolum && katlari.some((k) => kategoriler.includes(k))) {
+        return araYazilar.filter((y) => araYaziKategorileri(y).some((k) => kategoriler.includes(k)));
       }
     }
-    return araYazilar.filter((y) => !OZEL_BOLUMLER.has(y.kategori));
+    return araYazilar.filter((y) => !araYaziKategorileri(y).some((k) => OZEL_BOLUMLER.has(k)));
   }, [araYazilar]);
 
   // Navigasyon handler'ları

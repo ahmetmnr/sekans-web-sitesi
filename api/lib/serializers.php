@@ -184,19 +184,25 @@ function arsiv_out(array $r): array
 }
 
 /**
- * AraYazi { id, baslik, spot, icerik, yazar, kategori(STRING), kapakGorseli?, yayinTarihi, slug }
- * kategori TS'te düz string'tir => kategori_ad (ham ad) veya çözülen kategori adını döndürürüz.
+ * AraYazi { id, baslik, spot, icerik, yazar, kategori(STRING), kategoriler(STRING[]),
+ *           kapakGorseli?, yayinTarihi, slug }
+ * kategori (birincil, kart etiketi) = kategori_ad. kategoriler = tüm kategoriler
+ * (çoklu kategori; $kategoriler null ise birincil kategoriye düşer).
  * $includeIcerik=false ise liste görünümünde ağır HTML gövdesi atlanır.
  */
-function ara_yazi_out(array $r, ?array $yazar, bool $includeIcerik = true): array
+function ara_yazi_out(array $r, ?array $yazar, bool $includeIcerik = true, ?array $kategoriler = null): array
 {
+    $birincil = $r['kategori_ad'] ?? '';
+    $katListe = $kategoriler !== null && count($kategoriler) > 0
+        ? $kategoriler
+        : ($birincil !== '' ? [$birincil] : []);
     $out = [
         'id'           => (string)$r['code'],
         'baslik'       => $r['baslik'],
         'spot'         => $r['spot'] ?? '',
         'yazar'        => $yazar,
-        // kategori: çözülen kategori adı (varsa) yoksa ham kategori_ad
-        'kategori'     => $r['kategori_ad'] ?? '',
+        'kategori'     => $birincil,   // birincil kategori (kart etiketi)
+        'kategoriler'  => $katListe,   // tüm kategoriler (çoklu)
         'kapakGorseli' => $r['kapak_gorseli'] ?? null,
         'yayinTarihi'  => $r['yayin_tarihi'] ?? '',
         'slug'         => $r['slug'],

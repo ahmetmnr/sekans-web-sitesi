@@ -109,3 +109,56 @@ function norm_date(?string $d): ?string
     $d = substr($d, 0, 10);
     return preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) ? $d : null;
 }
+
+/**
+ * Tüm ara yazıların kategori adlarını [arayazi_id => [ad,...]] map olarak yükle.
+ * arayazi_kategorileri tablosu yoksa (migration öncesi) boş map döner ve
+ * çağıran taraf birincil kategori_ad'e düşer.
+ */
+function load_arayazi_kategori_map(): array
+{
+    $map = [];
+    try {
+        $rows = db()->query("SELECT arayazi_id, kategori_ad FROM arayazi_kategorileri ORDER BY id ASC")->fetchAll();
+        foreach ($rows as $r) {
+            $map[(int)$r['arayazi_id']][] = $r['kategori_ad'];
+        }
+    } catch (PDOException $e) {
+        // tablo yok — boş map (birincil kategoriye düşülür)
+    }
+    return $map;
+}
+
+/** Tek bir ara yazının kategori adları (tablo yoksa []). */
+function arayazi_kategori_list(int $id): array
+{
+    try {
+        $st = db()->prepare("SELECT kategori_ad FROM arayazi_kategorileri WHERE arayazi_id = ? ORDER BY id ASC");
+        $st->execute([$id]);
+        return array_map(fn($r) => $r['kategori_ad'], $st->fetchAll());
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+
+/**
+ * Bir ara yazının kategori adları kümesini join tabloyla senkronla (sil + ekle).
+ * Boş/eşleşmeyen adlar atlanır. Tablo yoksa sessizce geçilir (migration öncesi).
+ */
+function sync_arayazi_kategoriler(int $id, array $adlar): void
+{
+    $temiz = [];
+    foreach ($adlar as $ad) {
+        $ad = trim((string)$ad);
+        if ($ad !== '' && !in_array($ad, $temiz, true)) $temiz[] = $ad;
+    }
+    try {
+        db()->prepare("DELETE FROM arayazi_kategorileri WHERE arayazi_id = ?")->execute([$id]);
+        if ($temiz) {
+            $ins = db()->prepare("INSERT IGNORE INTO arayazi_kategorileri (arayazi_id, kategori_ad) VALUES (?, ?)");
+            foreach ($temiz as $ad) { $ins->execute([$id, $ad]); }
+        }
+    } catch (PDOException $e) {
+        // tablo yok — çoklu kategori pasif (birincil kategori_ad zaten yazıldı)
+    }
+}

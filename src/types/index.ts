@@ -60,7 +60,8 @@ export interface AraYazi {
   spot: string;
   icerik: string;
   yazar: Yazar;
-  kategori: string;
+  kategori: string;        // birincil kategori (kart etiketi)
+  kategoriler?: string[];  // tüm kategoriler (çoklu; yoksa [kategori])
   kapakGorseli?: string;
   yayinTarihi: string;
   slug: string;
