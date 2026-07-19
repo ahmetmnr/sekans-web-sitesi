@@ -37,8 +37,11 @@ export default function FiltreListeSayfasi({ slug, araYazilar, onAraYaziClick, o
   // Filtrele + sırala
   const tumFiltreli = useMemo(() => {
     if (!config) return [];
-    const list = config.kategori
-      ? araYazilar.filter((y) => araYaziKategorileri(y).includes(config.kategori))
+    // Kategori '|' ile ayrılmış birden çok ad tutabilir; VEYA (OR) mantığıyla eşlenir.
+    const secilenKategoriler = (config.kategori ?? '')
+      .split('|').map((s) => s.trim()).filter(Boolean);
+    const list = secilenKategoriler.length
+      ? araYazilar.filter((y) => araYaziKategorileri(y).some((k) => secilenKategoriler.includes(k)))
       : araYazilar;
     const sorted = [...list];
     if (config.siralama === 'eski') {

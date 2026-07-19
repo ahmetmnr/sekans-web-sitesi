@@ -102,14 +102,27 @@ else
   echo "    -> 'kategoriler.aktif' kolonu zaten var, atlanıyor."
 fi
 
-echo ">>> 11/12 API konteyneri yeniden başlatılıyor..."
+echo ">>> 11/13 DB migration: özel bölüm sayfaları -> filtre_sayfalar (Basılı Sayılar, Yazarlarımızdan, Sinema Kitaplığı, Texts in English, Duyurular)..."
+FILTRE_BASILI="$($DC exec -T db mariadb -uroot -p"${DB_PASS}" -N -e \
+  "SELECT COUNT(*) FROM filtre_sayfalar WHERE slug='basili-sayilar';" 2>/dev/null || echo "0")"
+if [ "${FILTRE_BASILI//[!0-9]/}" = "0" ]; then
+  echo "    -> uygulanıyor: 2026-07-21_ozel_bolum_filtre.sql"
+  $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-21_ozel_bolum_filtre.sql
+  echo "    -> tamam."
+else
+  echo "    -> 'basili-sayilar' filtre sayfası zaten var, atlanıyor."
+fi
+
+echo ">>> 12/13 API konteyneri yeniden başlatılıyor..."
 $DC restart api
 
-echo ">>> 12/12 Kontrol — sayı durumları + kategori adları + menü:"
+echo ">>> 13/13 Kontrol — sayı durumları + filtre sayfaları + menü:"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT durum, COUNT(*) FROM sayilar GROUP BY durum;" 2>/dev/null || echo "    (DB kontrolü atlandı)"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
-  "SELECT ad FROM kategoriler WHERE ad IN ('Duyurular','Texts in English');" 2>/dev/null || true
+  "SELECT CONCAT('filtre sayfası: ', slug, ' -> ', kategori) FROM filtre_sayfalar ORDER BY sira;" 2>/dev/null || true
+$DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
+  "SELECT CONCAT('filtre menü bağlantısı: ', COUNT(*)) FROM menuler WHERE tur='filtre_liste';" 2>/dev/null || true
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT CONCAT('menü öğesi: ', COUNT(*)) FROM menuler;" 2>/dev/null || true
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \

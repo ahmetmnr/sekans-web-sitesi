@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -36,6 +37,11 @@ const slugYap = (s: string): string =>
     .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
     .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+// Kategori alanı '|' ile ayrılmış birden çok kategori adı tutar (çoklu seçim).
+const parseKategoriler = (s?: string): string[] =>
+  (s ?? '').split('|').map((x) => x.trim()).filter(Boolean);
+const joinKategoriler = (list: string[]): string => list.join('|');
 
 type FormState = Partial<FiltreSayfa>;
 
@@ -151,7 +157,11 @@ export function CMSFiltreYonetimi() {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2"><Filter className="h-4 w-4 text-gray-400" />{f.baslik}</div>
                     </TableCell>
-                    <TableCell>{f.kategori || <span className="text-gray-400">—</span>}</TableCell>
+                    <TableCell>
+                      {f.kategori
+                        ? parseKategoriler(f.kategori).join(', ')
+                        : <span className="text-gray-400">—</span>}
+                    </TableCell>
                     <TableCell><code className="px-2 py-1 bg-gray-100 rounded text-xs">/{f.slug}</code></TableCell>
                     <TableCell className="text-center">
                       <span className={`px-2 py-1 text-xs font-medium rounded ${f.aktif ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
@@ -217,13 +227,37 @@ export function CMSFiltreYonetimi() {
               <Input id="f-aciklama" value={form.aciklama ?? ''} onChange={(e) => setForm({ ...form, aciklama: e.target.value })} placeholder="Sayfa açıklaması" />
             </div>
             <div>
-              <Label>Kategori</Label>
-              <Select value={form.kategori ?? ''} onValueChange={(v) => setForm({ ...form, kategori: v })}>
-                <SelectTrigger><SelectValue placeholder="Kategori seçin" /></SelectTrigger>
-                <SelectContent>
-                  {kategoriler.map((k) => (<SelectItem key={k.id} value={k.ad}>{k.ad}</SelectItem>))}
-                </SelectContent>
-              </Select>
+              <Label>Kategoriler</Label>
+              <p className="text-xs text-gray-500 mb-2">
+                Bu sayfada listelenecek kategori(ler)i seçin. Birden fazla seçebilirsiniz — seçili
+                kategorilerden herhangi birine ait içerikler listelenir.
+              </p>
+              <div className="max-h-44 overflow-y-auto rounded-md border p-2 space-y-0.5">
+                {kategoriler.map((k) => {
+                  const secili = parseKategoriler(form.kategori).includes(k.ad);
+                  return (
+                    <label
+                      key={k.id}
+                      className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-gray-50 cursor-pointer text-sm"
+                    >
+                      <Checkbox
+                        checked={secili}
+                        onCheckedChange={(v) => {
+                          const mevcut = parseKategoriler(form.kategori);
+                          const yeni = v
+                            ? [...mevcut, k.ad]
+                            : mevcut.filter((x) => x !== k.ad);
+                          setForm({ ...form, kategori: joinKategoriler(yeni) });
+                        }}
+                      />
+                      <span>{k.ad}</span>
+                    </label>
+                  );
+                })}
+                {kategoriler.length === 0 && (
+                  <p className="text-xs text-gray-400 px-1.5 py-2">Kategori bulunamadı.</p>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
