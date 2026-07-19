@@ -125,11 +125,13 @@ export default function AraYaziDetay({
             </button>
             <span className="flex items-center gap-1.5">
               <Calendar className="w-4 h-4" />
-              {new Date(araYazi.yayinTarihi).toLocaleDateString('tr-TR', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
+              {araYazi.tarihEtiketi?.trim()
+                ? araYazi.tarihEtiketi
+                : new Date(araYazi.yayinTarihi).toLocaleDateString('tr-TR', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
             </span>
           </div>
         </header>
@@ -274,11 +276,13 @@ export default function AraYaziDetay({
                 <div className="pt-4 border-t border-border space-y-2 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    {new Date(araYazi.yayinTarihi).toLocaleDateString('tr-TR', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })}
+                    {araYazi.tarihEtiketi?.trim()
+                      ? araYazi.tarihEtiketi
+                      : new Date(araYazi.yayinTarihi).toLocaleDateString('tr-TR', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                        })}
                   </div>
                   <div>
                     <span className="inline-block px-2 py-0.5 bg-muted rounded text-xs font-medium">

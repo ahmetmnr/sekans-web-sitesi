@@ -207,6 +207,7 @@ function ara_yazi_out(array $r, ?array $yazar, bool $includeIcerik = true, ?arra
         'kategoriler'  => $katListe,   // tüm kategoriler (çoklu)
         'kapakGorseli' => $r['kapak_gorseli'] ?? null,
         'yayinTarihi'  => $r['yayin_tarihi'] ?? '',
+        'tarihEtiketi' => $r['tarih_etiketi'] ?? null,   // serbest metin tarih (varsa kartta bu görünür)
         'slug'         => $r['slug'],
     ];
     if ($includeIcerik) {

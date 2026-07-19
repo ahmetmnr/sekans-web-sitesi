@@ -66,6 +66,7 @@ export interface AraYazi {
   kategoriler?: string[];  // tüm kategoriler (çoklu; yoksa [kategori])
   kapakGorseli?: string;
   yayinTarihi: string;
+  tarihEtiketi?: string;   // serbest metin tarih (örn. "Şubat - Mart 2005"); doluysa kartta bu görünür
   slug: string;
 }
 

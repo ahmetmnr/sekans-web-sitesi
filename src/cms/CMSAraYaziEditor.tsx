@@ -62,6 +62,7 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
     icerik: '',
     kategori: 'Deneme',
     yayinTarihi: new Date().toISOString().split('T')[0],
+    tarihEtiketi: '',
     slug: '',
     kapakGorseli: '',
   });
@@ -167,6 +168,7 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
           kategoriler: kategoriPayload,
           kapakGorseli: formData.kapakGorseli,
           yayinTarihi: formData.yayinTarihi || new Date().toISOString().split('T')[0],
+          tarihEtiketi: formData.tarihEtiketi || '',
           slug,
         });
       } else {
@@ -180,6 +182,7 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
           kategoriler: kategoriPayload,
           kapakGorseli: formData.kapakGorseli,
           yayinTarihi: formData.yayinTarihi || new Date().toISOString().split('T')[0],
+          tarihEtiketi: formData.tarihEtiketi || '',
           slug,
         });
       }
@@ -304,7 +307,9 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
                         <span>•</span>
                         <span className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
-                          {formData.yayinTarihi
+                          {formData.tarihEtiketi?.trim()
+                            ? formData.tarihEtiketi
+                            : formData.yayinTarihi
                             ? new Date(formData.yayinTarihi).toLocaleDateString('tr-TR', {
                                 year: 'numeric',
                                 month: 'long',
@@ -405,6 +410,24 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
                 onChange={(e) => setFormData({ ...formData, yayinTarihi: e.target.value })}
                 className="mt-1.5"
               />
+            </div>
+
+            {/* Tarih Etiketi (serbest metin — kartta tarih yerine bu görünür) */}
+            <div>
+              <Label htmlFor="tarihEtiketi" className="text-sm font-medium">
+                Tarih Etiketi
+              </Label>
+              <Input
+                id="tarihEtiketi"
+                value={formData.tarihEtiketi || ''}
+                onChange={(e) => setFormData({ ...formData, tarihEtiketi: e.target.value })}
+                placeholder="örn. Şubat - Mart 2005"
+                className="mt-1.5"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Doldurursanız kartta/detayda tarih yerine bu metin görünür (aralık yazabilirsiniz).
+                Boşsa yukarıdaki Yayın Tarihi biçimlenir. Sıralama her zaman Yayın Tarihi'ne göredir.
+              </p>
             </div>
 
             {/* URL Slug */}

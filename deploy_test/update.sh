@@ -113,10 +113,19 @@ else
   echo "    -> 'basili-sayilar' filtre sayfası zaten var, atlanıyor."
 fi
 
-echo ">>> 12/13 API konteyneri yeniden başlatılıyor..."
+echo ">>> 12/14 DB migration: ara_yazilar.tarih_etiketi (serbest metin tarih) (yalnızca yoksa)..."
+if [ "$(col_exists ara_yazilar tarih_etiketi)" = "0" ]; then
+  echo "    -> uygulanıyor: 2026-07-22_arayazi_tarih_etiketi.sql"
+  $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-22_arayazi_tarih_etiketi.sql
+  echo "    -> tamam."
+else
+  echo "    -> 'ara_yazilar.tarih_etiketi' kolonu zaten var, atlanıyor."
+fi
+
+echo ">>> 13/14 API konteyneri yeniden başlatılıyor..."
 $DC restart api
 
-echo ">>> 13/13 Kontrol — sayı durumları + filtre sayfaları + menü:"
+echo ">>> 14/14 Kontrol — sayı durumları + filtre sayfaları + menü:"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT durum, COUNT(*) FROM sayilar GROUP BY durum;" 2>/dev/null || echo "    (DB kontrolü atlandı)"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \

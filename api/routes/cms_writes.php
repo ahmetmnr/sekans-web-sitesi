@@ -135,6 +135,11 @@ function handle_create_arayazi(array $b): void
         $b['kapakGorseli'] ?? null, norm_date($b['yayinTarihi'] ?? null),
     ]);
     sync_arayazi_kategoriler((int)db()->lastInsertId(), $syncListe);
+    // Serbest metin tarih etiketi (kolon varsa) — migration öncesi tolere edilir.
+    if (array_key_exists('tarihEtiketi', $b) && column_exists('ara_yazilar', 'tarih_etiketi')) {
+        db()->prepare("UPDATE ara_yazilar SET tarih_etiketi = ? WHERE code = ?")
+            ->execute([($b['tarihEtiketi'] ?? '') !== '' ? (string)$b['tarihEtiketi'] : null, $code]);
+    }
     $out = fetch_arayazi_full('code', $code);
     respond($out, null, 201);
 }
@@ -163,6 +168,9 @@ function handle_update_arayazi(string $code, array $b): void
     if (array_key_exists('yayinTarihi', $b))  { $set[] = 'yayin_tarihi = ?'; $params[] = norm_date($b['yayinTarihi']); }
     if (isset($b['yazarId']) || isset($b['yazar']['id'])) {
         $set[] = 'yazar_id = ?'; $params[] = require_id_by_code('yazarlar', (string)($b['yazarId'] ?? $b['yazar']['id']), 'Yazar');
+    }
+    if (array_key_exists('tarihEtiketi', $b) && column_exists('ara_yazilar', 'tarih_etiketi')) {
+        $set[] = 'tarih_etiketi = ?'; $params[] = ($b['tarihEtiketi'] ?? '') !== '' ? (string)$b['tarihEtiketi'] : null;
     }
     // Kategori: çoklu ('kategoriler' dizisi) veya tekil ('kategori') — birincil = ilki.
     $katListe = arayazi_kategori_input($b);   // null: kategoriler alanı gönderilmedi

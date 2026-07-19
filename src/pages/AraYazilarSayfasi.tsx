@@ -124,7 +124,7 @@ export default function AraYazilarSayfasi({
                   <span className="kategori-etiket">{araYazi.kategori}</span>
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    {formatDate(araYazi.yayinTarihi)}
+                    {araYazi.tarihEtiketi?.trim() ? araYazi.tarihEtiketi : formatDate(araYazi.yayinTarihi)}
                   </span>
                 </div>
 

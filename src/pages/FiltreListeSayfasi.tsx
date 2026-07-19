@@ -120,10 +120,10 @@ export default function FiltreListeSayfasi({ slug, araYazilar, onAraYaziClick, o
 
                   <div className="flex items-center gap-3 mb-2">
                     <span className="kategori-etiket">{araYazi.kategori}</span>
-                    {config.yazarTarihGoster && araYazi.yayinTarihi && (
+                    {config.yazarTarihGoster && (araYazi.tarihEtiketi?.trim() || araYazi.yayinTarihi) && (
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {formatDate(araYazi.yayinTarihi)}
+                        {araYazi.tarihEtiketi?.trim() ? araYazi.tarihEtiketi : formatDate(araYazi.yayinTarihi)}
                       </span>
                     )}
                   </div>

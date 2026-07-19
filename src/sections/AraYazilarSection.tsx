@@ -60,11 +60,13 @@ export default function AraYazilarSection({
               <div className="flex items-center gap-3 mb-2">
                 <span className="kategori-etiket">{araYazi.kategori}</span>
                 <span className="text-xs text-muted-foreground">
-                  {new Date(araYazi.yayinTarihi).toLocaleDateString('tr-TR', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                  })}
+                  {araYazi.tarihEtiketi?.trim()
+                    ? araYazi.tarihEtiketi
+                    : new Date(araYazi.yayinTarihi).toLocaleDateString('tr-TR', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
                 </span>
               </div>
 
