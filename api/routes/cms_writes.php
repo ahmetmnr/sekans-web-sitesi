@@ -731,7 +731,17 @@ function handle_create_filtre(array $b): void
         $siralama, max(1, min(96, (int)($b['sayfaBasina'] ?? 12))),
         $kapak, $yazarTarih, $aktif, (int)($b['sira'] ?? 0),
     ]);
-    respond(filtre_row_out((int)db()->lastInsertId()));
+    $newId = (int)db()->lastInsertId();
+    // Geri butonu (kolonlar varsa) — migration öncesi tolere edilir.
+    if ((array_key_exists('geriBaslik', $b) || array_key_exists('geriHedef', $b))
+        && column_exists('filtre_sayfalar', 'geri_hedef')) {
+        db()->prepare("UPDATE filtre_sayfalar SET geri_baslik = ?, geri_hedef = ? WHERE id = ?")->execute([
+            ($b['geriBaslik'] ?? '') !== '' ? (string)$b['geriBaslik'] : null,
+            ($b['geriHedef'] ?? '') !== '' ? (string)$b['geriHedef'] : null,
+            $newId,
+        ]);
+    }
+    respond(filtre_row_out($newId));
 }
 
 /** PUT /api/filtre/{id} — filtre sayfasını güncelle. editör+ */
@@ -750,6 +760,12 @@ function handle_update_filtre(string $idStr, array $b): void
         $set[] = 'baslik = ?'; $params[] = $bs;
     }
     if (array_key_exists('aciklama', $b)) { $set[] = 'aciklama = ?'; $params[] = (string)($b['aciklama'] ?? ''); }
+    if (array_key_exists('geriBaslik', $b) && column_exists('filtre_sayfalar', 'geri_baslik')) {
+        $set[] = 'geri_baslik = ?'; $params[] = ($b['geriBaslik'] ?? '') !== '' ? (string)$b['geriBaslik'] : null;
+    }
+    if (array_key_exists('geriHedef', $b) && column_exists('filtre_sayfalar', 'geri_hedef')) {
+        $set[] = 'geri_hedef = ?'; $params[] = ($b['geriHedef'] ?? '') !== '' ? (string)$b['geriHedef'] : null;
+    }
     if (array_key_exists('kategori', $b)) { $set[] = 'kategori = ?'; $params[] = ($b['kategori'] ?? '') !== '' ? (string)$b['kategori'] : null; }
     if (array_key_exists('siralama', $b)) {
         $s = (string)$b['siralama']; $set[] = 'siralama = ?'; $params[] = in_array($s, ['yeni','eski','alfabetik'], true) ? $s : 'yeni';

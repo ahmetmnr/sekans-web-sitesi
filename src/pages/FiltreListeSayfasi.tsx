@@ -10,13 +10,14 @@ interface FiltreListeSayfasiProps {
   araYazilar: AraYazi[];          // tüm ara yazılar (client tarafında filtrelenir)
   onAraYaziClick: (araYazi: AraYazi) => void;
   onBackClick: () => void;
+  onNavigate?: (target: string) => void;  // geri butonu özel hedefi için (config.geriHedef)
 }
 
 /**
  * Admin tanımlı filtre listeleme sayfası. Ayarları /api/filtre/{slug}'dan çeker;
  * içerik client tarafında kategoriye göre süzülür, sıralanır ve sayfalanır.
  */
-export default function FiltreListeSayfasi({ slug, araYazilar, onAraYaziClick, onBackClick }: FiltreListeSayfasiProps) {
+export default function FiltreListeSayfasi({ slug, araYazilar, onAraYaziClick, onBackClick, onNavigate }: FiltreListeSayfasiProps) {
   const [config, setConfig] = useState<FiltreSayfa | null>(null);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [bulunamadi, setBulunamadi] = useState(false);
@@ -83,12 +84,21 @@ export default function FiltreListeSayfasi({ slug, araYazilar, onAraYaziClick, o
     );
   }
 
+  // Geri butonu: config'te özel hedef (örn. 'arsiv' = e-Sayılar) varsa oraya git,
+  // yoksa varsayılan davranış (Ana Sayfa).
+  const geriHedef = config.geriHedef?.trim() || '';
+  const geriBaslik = config.geriBaslik?.trim() || (geriHedef ? 'Geri Dön' : 'Ana Sayfa');
+  const handleGeri = () => {
+    if (geriHedef && onNavigate) onNavigate(geriHedef);
+    else onBackClick();
+  };
+
   return (
     <main className="animate-fade-in py-8 md:py-12">
       <div className="container mx-auto px-4 md:px-6">
         {/* Geri Butonu */}
-        <Button variant="ghost" onClick={onBackClick} className="mb-6 -ml-2 text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="w-4 h-4 mr-2" /> Ana Sayfa
+        <Button variant="ghost" onClick={handleGeri} className="mb-6 -ml-2 text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="w-4 h-4 mr-2" /> {geriBaslik}
         </Button>
 
         {/* Başlık */}

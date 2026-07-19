@@ -122,10 +122,19 @@ else
   echo "    -> 'ara_yazilar.tarih_etiketi' kolonu zaten var, atlanıyor."
 fi
 
-echo ">>> 13/14 API konteyneri yeniden başlatılıyor..."
+echo ">>> 13/15 DB migration: filtre sayfası geri butonu (filtre_sayfalar.geri_hedef) (yalnızca yoksa)..."
+if [ "$(col_exists filtre_sayfalar geri_hedef)" = "0" ]; then
+  echo "    -> uygulanıyor: 2026-07-23_filtre_geri_link.sql"
+  $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-23_filtre_geri_link.sql
+  echo "    -> tamam."
+else
+  echo "    -> 'filtre_sayfalar.geri_hedef' kolonu zaten var, atlanıyor."
+fi
+
+echo ">>> 14/15 API konteyneri yeniden başlatılıyor..."
 $DC restart api
 
-echo ">>> 14/14 Kontrol — sayı durumları + filtre sayfaları + menü:"
+echo ">>> 15/15 Kontrol — sayı durumları + filtre sayfaları + menü:"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT durum, COUNT(*) FROM sayilar GROUP BY durum;" 2>/dev/null || echo "    (DB kontrolü atlandı)"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \

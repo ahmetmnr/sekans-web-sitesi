@@ -20,11 +20,11 @@ export default function ArsivSayfasi({ arsivSayilari }: ArsivSayfasiProps) {
   return (
     <main className="animate-fade-in py-8 md:py-12">
       <div className="container mx-auto px-4 md:px-6">
-        {/* Başlık */}
-        <div className="text-center mb-10 md:mb-12">
-          <h1 className="page-title mb-4">Arşiv</h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Sekans dergisinin geçmiş sayılarına buradan ulaşabilirsiniz. 
+        {/* Başlık — filtre sayfalarıyla aynı sola yaslı görünüm */}
+        <div className="mb-8 md:mb-10 border-b border-border pb-4">
+          <h1 className="page-title mb-3">e-Sayılar</h1>
+          <p className="text-muted-foreground max-w-2xl">
+            Sekans dergisinin geçmiş sayılarına buradan ulaşabilirsiniz.
             Her sayının kapağına tıklayarak PDF olarak indirebilirsiniz.
           </p>
         </div>

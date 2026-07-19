@@ -236,6 +236,8 @@ export interface FiltreSayfa {
   slug: string;
   baslik: string;
   aciklama: string;
+  geriBaslik?: string;        // geri butonu metni (boşsa "Ana Sayfa")
+  geriHedef?: string;         // geri butonu hedefi (yerleşik sayfa; örn. 'arsiv')
   kategori: string;           // gösterilecek kategori adı
   siralama: FiltreSiralama;
   sayfaBasina: number;        // sayfalama: sayfa başına içerik

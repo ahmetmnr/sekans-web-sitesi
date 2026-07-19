@@ -494,6 +494,7 @@ function AppContent() {
             araYazilar={araYazilar}
             onAraYaziClick={handleAraYaziClick}
             onBackClick={handleBackClick}
+            onNavigate={handleNavigate}
           />
         );
 

@@ -93,6 +93,8 @@ function filtre_sayfa_out(array $r): array
         'slug'             => $r['slug'],
         'baslik'           => $r['baslik'],
         'aciklama'         => $r['aciklama'] ?? '',
+        'geriBaslik'       => $r['geri_baslik'] ?? null,   // geri butonu metni (boşsa "Ana Sayfa")
+        'geriHedef'        => $r['geri_hedef'] ?? null,    // geri butonu hedefi (yerleşik sayfa)
         'kategori'         => $r['kategori'] ?? '',
         'siralama'         => $r['siralama'] ?? 'yeni',
         'sayfaBasina'      => isset($r['sayfa_basina']) ? (int)$r['sayfa_basina'] : 12,

@@ -32,6 +32,16 @@ const SIRALAMA_SECENEKLERI: { value: FiltreSiralama; label: string }[] = [
   { value: 'alfabetik', label: 'Alfabetik (A-Z)' },
 ];
 
+// Geri butonu hedefleri: yerleşik sayfalar (App.handleNavigate çözer).
+const GERI_HEDEFLERI: { value: string; label: string }[] = [
+  { value: '__default__', label: 'Ana Sayfa (varsayılan)' },
+  { value: 'arsiv', label: 'e-Sayılar (Arşiv)' },
+  { value: 'arayazilar', label: 'Blog (Ara Yazılar)' },
+  { value: 'sonsayi', label: 'Son Sayı' },
+  { value: 'yazarlar', label: 'Yazarlar' },
+  { value: 'iletisim', label: 'İletişim' },
+];
+
 const slugYap = (s: string): string =>
   s.toLowerCase()
     .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
@@ -85,6 +95,8 @@ export function CMSFiltreYonetimi() {
     const payload: Partial<FiltreSayfa> = {
       baslik,
       aciklama: form.aciklama ?? '',
+      geriBaslik: form.geriBaslik ?? '',
+      geriHedef: form.geriHedef ?? '',
       kategori: form.kategori ?? '',
       siralama: (form.siralama as FiltreSiralama) ?? 'yeni',
       sayfaBasina: form.sayfaBasina ?? 12,
@@ -226,6 +238,27 @@ export function CMSFiltreYonetimi() {
               <Label htmlFor="f-aciklama">Açıklama</Label>
               <Input id="f-aciklama" value={form.aciklama ?? ''} onChange={(e) => setForm({ ...form, aciklama: e.target.value })} placeholder="Sayfa açıklaması" />
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="f-geri-baslik">Geri butonu metni</Label>
+                <Input id="f-geri-baslik" value={form.geriBaslik ?? ''} onChange={(e) => setForm({ ...form, geriBaslik: e.target.value })} placeholder="örn. e-Sayılar" />
+              </div>
+              <div>
+                <Label>Geri butonu hedefi</Label>
+                <Select
+                  value={form.geriHedef ? form.geriHedef : '__default__'}
+                  onValueChange={(v) => setForm({ ...form, geriHedef: v === '__default__' ? '' : v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {GERI_HEDEFLERI.map((h) => (<SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 -mt-2">
+              Sayfanın sol üstündeki geri butonu. Boş bırakırsanız "Ana Sayfa"ya döner.
+            </p>
             <div>
               <Label>Kategoriler</Label>
               <p className="text-xs text-gray-500 mb-2">
