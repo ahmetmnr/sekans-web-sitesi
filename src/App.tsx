@@ -77,6 +77,7 @@ interface PageState {
   statikSlug?: string;      // 'statik' sayfası için slug (dinamik menü: sabit_sayfa hedefi)
   statikBaslik?: string;    // içerik yüklenene kadar gösterilecek başlık
   filtreSlug?: string;      // 'filtre' sayfası için slug (dinamik menü: filtre_liste hedefi)
+  donus?: PageState;        // detaydan "Geri Dön" ile dönülecek sayfa (geldiğin yer)
 }
 
 function AppContent() {
@@ -198,15 +199,28 @@ function AppContent() {
   }, [navigateTo]);
 
   // Ara yazı tıklama handler'ı — bootstrap listesi icerik içermez; tam içeriği API'den çek.
+  // "Geri Dön" geldiğin sayfaya dönsün diye orijin (currentPage) dönüş hedefi olarak saklanır.
+  // Detaydan detaya (ilgili yazı) geçişte orijinal dönüş hedefi korunur.
   const handleAraYaziClick = useCallback((araYazi: AraYazi) => {
+    const donus = currentPage.page === 'arayazidetay' ? currentPage.donus : currentPage;
     if (araYazi.icerik) {
-      navigateTo('arayazidetay', { selectedAraYazi: araYazi });
+      navigateTo('arayazidetay', { selectedAraYazi: araYazi, donus });
       return;
     }
     api.araYazi.get(araYazi.id)
-      .then((full) => navigateTo('arayazidetay', { selectedAraYazi: full }))
-      .catch(() => navigateTo('arayazidetay', { selectedAraYazi: araYazi }));
-  }, [navigateTo]);
+      .then((full) => navigateTo('arayazidetay', { selectedAraYazi: full, donus }))
+      .catch(() => navigateTo('arayazidetay', { selectedAraYazi: araYazi, donus }));
+  }, [navigateTo, currentPage]);
+
+  // Detay "Geri Dön": geldiğin sayfaya dön (yoksa Ana Sayfa).
+  const handleAraYaziBack = useCallback(() => {
+    if (currentPage.donus) {
+      setCurrentPage(currentPage.donus);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      navigateTo('anasayfa');
+    }
+  }, [currentPage, navigateTo]);
 
   // Tüm ara yazılar sayfasına git
   const handleTumAraYazilarClick = useCallback(() => {
@@ -508,7 +522,7 @@ function AppContent() {
               araYazi={currentPage.selectedAraYazi}
               oncekiAraYazi={onceki}
               sonrakiAraYazi={sonraki}
-              onBackClick={handleBackClick}
+              onBackClick={handleAraYaziBack}
               onOncekiAraYazi={onceki ? () => handleAraYaziClick(onceki) : undefined}
               onSonrakiAraYazi={sonraki ? () => handleAraYaziClick(sonraki) : undefined}
               tumAraYazilar={getSectionList(currentPage.selectedAraYazi)}
