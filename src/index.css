@@ -557,10 +557,11 @@
   clear: both;
 }
 
-/* Float sonrası paragrafların düzgün akması için */
-.ProseMirror p {
-  overflow: hidden;
-}
+/* NOT: Paragraflara `overflow: hidden` VERİLMEZ. Bu, her paragrafı ayrı bir
+   blok biçimlendirme bağlamına sokar; paragraf float'ın yanında daralarak
+   DURUR ve metin resim bittikten sonra altına inmez (sarmalama bozulur).
+   Sarmalamanın resmin yüksekliğine göre çalışması için varsayılan
+   (overflow: visible) davranış korunmalıdır. */
 
 /* Float temizleme - editör içinde */
 .ProseMirror::after {
@@ -603,10 +604,8 @@ figure.resizable-image.float-right {
   clear: right;
 }
 
-/* Prose içinde float sonrası paragraflar */
-.prose p {
-  overflow: hidden;
-}
+/* NOT: `.prose p { overflow: hidden }` KULLANILMAZ — bkz. yukarıdaki açıklama.
+   Yayınlanan yazıda da metin, resmin yanında akar ve resim bitince altına iner. */
 
 /* Prose içinde float temizleme */
 .prose::after {
