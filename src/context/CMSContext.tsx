@@ -1,7 +1,7 @@
 // CMS Context — API tabanlı veri yönetimi (localStorage YOK).
 // useCMS() veri şekli aynı kalır; bileşenler değişmez. Mutator'lar artık async.
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import type { Sayi, AraYazi, Yazar, Kategori, ArsivSayi, Yazi, SayiDurum, EditorOzet, MenuOgesi, AnasayfaBlok } from '@/types';
+import type { Sayi, AraYazi, Yazar, Kategori, ArsivSayi, Yazi, SayiDurum, EditorOzet, MenuOgesi, AnasayfaBlok, SayfaMetinleri } from '@/types';
 import { api, type YarismaBilgi, type HakkimizdaIcerik } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 
@@ -29,6 +29,14 @@ const EMPTY_HAKKIMIZDA: HakkimizdaIcerik = {
   baslik: '', icerik: '',
   iletisim: { email: '', adres: '', sosyal: { twitter: '', instagram: '', facebook: '' } },
 };
+// Yerleşik sayfa metinleri — API göndermezse (eski sürüm) bu varsayılanlar kullanılır.
+const VARSAYILAN_SAYFA_METINLERI: SayfaMetinleri = {
+  yazarlar: { baslik: 'Yazarlar', aciklama: 'Sekans\'a katkıda bulunan yazarlar' },
+  blog: {
+    baslik: 'Blog',
+    aciklama: 'Sekans dergisinin rutin sayılarından ayrı olarak yayınlanan, güncel sinema yazıları ve derinlemesine analizler.',
+  },
+};
 
 interface CMSContextType {
   // Veriler
@@ -42,6 +50,7 @@ interface CMSContextType {
   kategoriler: Kategori[];
   menu: MenuOgesi[];          // dinamik üst menü (boşsa Header sabit menüye düşer)
   anasayfaBloklar: AnasayfaBlok[]; // ana sayfa panelleri (boşsa AnaSayfa sabit düzene düşer)
+  sayfaMetinleri: SayfaMetinleri;  // yerleşik sayfa başlık/açıklamaları (Yazarlar, Blog)
   yarismasiBilgi: YarismaBilgi;
   hakkimizdaIcerik: HakkimizdaIcerik;
 
@@ -72,16 +81,19 @@ interface CMSContextType {
   updateAraYazi: (id: string, araYazi: Partial<AraYazi> & { yazarId?: string }) => Promise<void>;
   deleteAraYazi: (id: string) => Promise<void>;
 
-  // Yazar işlemleri
+  // Yazar işlemleri (silmede devirYazarId: bağlı içerik önce o yazara aktarılır)
   addYazar: (yazar: Partial<Yazar>) => Promise<void>;
   updateYazar: (id: string, yazar: Partial<Yazar>) => Promise<void>;
-  deleteYazar: (id: string) => Promise<void>;
+  deleteYazar: (id: string, devirYazarId?: string) => Promise<void>;
 
-  // Kategori işlemleri
+  // Kategori işlemleri (silmede devirKategoriId: bağlı içerik önce o kategoriye aktarılır)
   addKategori: (kategori: Partial<Kategori>) => Promise<void>;
   updateKategori: (id: string, kategori: Partial<Kategori>) => Promise<void>;
-  deleteKategori: (id: string) => Promise<void>;
+  deleteKategori: (id: string, devirKategoriId?: string) => Promise<void>;
   reorderKategori: (siralar: { id: string; sira: number }[]) => Promise<void>;
+
+  // Yerleşik sayfa metinleri
+  updateSayfaMetinleri: (metinler: SayfaMetinleri) => Promise<void>;
 
   // Yarışma işlemleri
   updateYarismasiBilgi: (bilgi: Partial<YarismaBilgi>) => Promise<void>;
@@ -110,6 +122,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   const [kategoriler, setKategoriler] = useState<Kategori[]>([]);
   const [menu, setMenu] = useState<MenuOgesi[]>([]);
   const [anasayfaBloklar, setAnasayfaBloklar] = useState<AnasayfaBlok[]>([]);
+  const [sayfaMetinleri, setSayfaMetinleri] = useState<SayfaMetinleri>(VARSAYILAN_SAYFA_METINLERI);
   const [yarismasiBilgi, setYarismasiBilgi] = useState<YarismaBilgi>(EMPTY_YARISMA);
   const [hakkimizdaIcerik, setHakkimizdaIcerik] = useState<HakkimizdaIcerik>(EMPTY_HAKKIMIZDA);
 
@@ -133,6 +146,10 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
       setKategoriler(d.kategoriler ?? []);
       setMenu(d.menu ?? []);
       setAnasayfaBloklar(d.anasayfaBloklar ?? []);
+      setSayfaMetinleri({
+        yazarlar: d.sayfaMetinleri?.yazarlar ?? VARSAYILAN_SAYFA_METINLERI.yazarlar,
+        blog: d.sayfaMetinleri?.blog ?? VARSAYILAN_SAYFA_METINLERI.blog,
+      });
       setYarismasiBilgi(d.yarismasiBilgi ?? EMPTY_YARISMA);
       setHakkimizdaIcerik(d.hakkimizdaIcerik ?? EMPTY_HAKKIMIZDA);
     } catch (e) {
@@ -266,15 +283,26 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     setYazarlar((prev) => [...prev, saved]);
   }, []);
 
+  // Yazar güncellemesi bağlı TÜM içeriğe yansır: yazar nesnesi ara yazılara ve
+  // sayı yazılarına gömülü taşındığı için sayfa yenilenmeden de adı tazeleriz.
   const updateYazar = useCallback(async (id: string, updates: Partial<Yazar>) => {
     const saved = await api.yazar.update(id, updates);
     setYazarlar((prev) => prev.map((y) => (y.id === id ? saved : y)));
+    const yaziyaUygula = (liste: Yazi[]) =>
+      liste.map((y) => (y.yazar?.id === id ? { ...y, yazar: saved } : y));
+    setAraYazilar((prev) => prev.map((a) => (a.yazar?.id === id ? { ...a, yazar: saved } : a)));
+    setSayilar((prev) => prev.map((s) => ({ ...s, yazilar: yaziyaUygula(s.yazilar) })));
+    setSonSayiState((prev) => ({ ...prev, yazilar: yaziyaUygula(prev.yazilar) }));
+    setAnasayfaSayilari((prev) => prev.map((s) => ({ ...s, yazilar: yaziyaUygula(s.yazilar) })));
   }, []);
 
-  const deleteYazar = useCallback(async (id: string) => {
-    await api.yazar.remove(id);
+  // devirYazarId verilirse sunucu bağlı içeriği önce o yazara aktarır; bu durumda
+  // yerel veri de tazelenmeli (içeriklerin yazarı değişti).
+  const deleteYazar = useCallback(async (id: string, devirYazarId?: string) => {
+    await api.yazar.remove(id, devirYazarId);
     setYazarlar((prev) => prev.filter((y) => y.id !== id));
-  }, []);
+    if (devirYazarId) await refresh();
+  }, [refresh]);
 
   // --- Kategori ---
   const addKategori = useCallback(async (kategori: Partial<Kategori>) => {
@@ -287,14 +315,22 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     setKategoriler((prev) => prev.map((k) => (k.id === id ? saved : k)));
   }, []);
 
-  const deleteKategori = useCallback(async (id: string) => {
-    await api.kategori.remove(id);
+  // devirKategoriId verilirse sunucu bağlı içeriği önce o kategoriye aktarır.
+  const deleteKategori = useCallback(async (id: string, devirKategoriId?: string) => {
+    await api.kategori.remove(id, devirKategoriId);
     setKategoriler((prev) => prev.filter((k) => k.id !== id));
-  }, []);
+    if (devirKategoriId) await refresh();
+  }, [refresh]);
 
   const reorderKategori = useCallback(async (siralar: { id: string; sira: number }[]) => {
     const list = await api.kategori.reorder(siralar);
     setKategoriler(list);
+  }, []);
+
+  // --- Yerleşik sayfa metinleri (Yazarlar / Blog) ---
+  const updateSayfaMetinleri = useCallback(async (metinler: SayfaMetinleri) => {
+    const saved = await api.sayfaMetinleri.update(metinler);
+    setSayfaMetinleri(saved);
   }, []);
 
   // --- Yarışma ---
@@ -343,7 +379,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const value: CMSContextType = {
-    sonSayi, anasayfaSayilari, sayilar, editorler, arsivSayilari, araYazilar, yazarlar, kategoriler, menu, anasayfaBloklar, yarismasiBilgi, hakkimizdaIcerik,
+    sonSayi, anasayfaSayilari, sayilar, editorler, arsivSayilari, araYazilar, yazarlar, kategoriler, menu, anasayfaBloklar, sayfaMetinleri, yarismasiBilgi, hakkimizdaIcerik,
     isLoading, error, refresh, refreshSayilar,
     setSonSayi, addSayi, updateSayi, setSayiDurum, deleteSayi,
     addArsivSayi, updateArsivSayi, deleteArsivSayi, publishSonSayi,
@@ -351,6 +387,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     addAraYazi, updateAraYazi, deleteAraYazi,
     addYazar, updateYazar, deleteYazar,
     addKategori, updateKategori, deleteKategori, reorderKategori,
+    updateSayfaMetinleri,
     updateYarismasiBilgi, addYarismaKazanan,
     updateHakkimizdaIcerik,
     resetToDefaults, exportData, importData,

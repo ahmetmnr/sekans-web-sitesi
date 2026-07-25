@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import type { Yazar, AraYazi, Sayi } from '@/types';
 import { Button } from '@/components/ui/button';
+import { useCMS } from '@/context/CMSContext';
 
 interface YazarlarSayfasiProps {
   yazarlar: Yazar[];
@@ -18,6 +19,10 @@ export default function YazarlarSayfasi({
   onYazarClick,
   onBackClick,
 }: YazarlarSayfasiProps) {
+  // Başlık/açıklama CMS > Sayfa Metinleri ekranından yönetilir.
+  const { sayfaMetinleri } = useCMS();
+  const metin = sayfaMetinleri.yazarlar;
+
   // Yazı sayısı: API bootstrap'ta tüm sayıları kapsayan sayacı gönderir (yaziSayisi);
   // yoksa eldeki verilerden (blog + son sayı) hesaplanır.
   const yaziSayilari = useMemo(() => {
@@ -56,10 +61,12 @@ export default function YazarlarSayfasi({
 
         {/* Başlık */}
         <div className="text-center mb-8 md:mb-10">
-          <h1 className="page-title mb-4">Yazarlar</h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Sekans dergisine katkıda bulunan yazarlar
-          </p>
+          <h1 className="page-title mb-4">{metin.baslik || 'Yazarlar'}</h1>
+          {metin.aciklama?.trim() && (
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              {metin.aciklama}
+            </p>
+          )}
         </div>
 
         {/* Yazarlar Grid — sade: isim + yazı sayısı */}

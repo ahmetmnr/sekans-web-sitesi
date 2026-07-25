@@ -16,6 +16,18 @@ export interface Kategori {
   slug: string;
   sira?: number;
   aktif?: boolean;
+  indeksGoster?: boolean; // Sekans İndeks'te görünsün (varsayılan true)
+  blogGoster?: boolean;   // Blog'da sekme olarak görünsün (varsayılan true)
+}
+
+// Yerleşik sayfaların CMS'ten düzenlenebilir başlık/açıklama metinleri.
+export interface SayfaMetni {
+  baslik: string;
+  aciklama: string;
+}
+export interface SayfaMetinleri {
+  yazarlar: SayfaMetni;
+  blog: SayfaMetni;
 }
 
 export interface Yazi {

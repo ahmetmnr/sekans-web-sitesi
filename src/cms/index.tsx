@@ -15,6 +15,7 @@ import { CMSKategoriYonetimi } from './CMSKategoriYonetimi';
 import { CMSMenuYonetimi } from './CMSMenuYonetimi';
 import { CMSAnasayfaYonetimi } from './CMSAnasayfaYonetimi';
 import { CMSSayfaYonetimi } from './CMSSayfaYonetimi';
+import { CMSSayfaMetinleri } from './CMSSayfaMetinleri';
 import { CMSFiltreYonetimi } from './CMSFiltreYonetimi';
 import { CMSIndeksYonetimi } from './CMSIndeksYonetimi';
 import { CMSKullaniciYonetimi } from './CMSKullaniciYonetimi';
@@ -32,12 +33,37 @@ type EditorState =
   | { type: 'yazi'; yaziId?: string; sayiId?: string }
   | { type: 'ara-yazi'; yaziId?: string; initialTab?: 'edit' | 'preview' };
 
+// Liste görünüm durumları (sayfa/filtre/sıralama) — editöre girip çıkınca korunur.
+export interface AraYaziListeDurumu {
+  sayfa: number;
+  sayfaBasina: number;
+  arama: string;
+  kategori: string;   // 'all' veya kategori adı
+  siralama: 'yeni' | 'eski' | 'baslik' | 'yazar';
+}
+const VARSAYILAN_ARA_YAZI_LISTE: AraYaziListeDurumu = {
+  sayfa: 1, sayfaBasina: 9, arama: '', kategori: 'all', siralama: 'yeni',
+};
+
+export interface YaziListeDurumu {
+  sayfa: number;
+  sayfaBasina: number;
+  arama: string;
+  sayiId: string;   // seçili sayı (boşsa yayındaki sayıya düşer)
+}
+const VARSAYILAN_YAZI_LISTE: YaziListeDurumu = { sayfa: 1, sayfaBasina: 10, arama: '', sayiId: '' };
+
 export function CMS({ onExitCMS }: CMSProps) {
   const { isAuthenticated, isLoading } = useAuth();
   const [currentPage, setCurrentPage] = useState<CMSPage>('dashboard');
   const [editorState, setEditorState] = useState<EditorState>({ type: 'none' });
   // "Sayı Yönetimi -> Yazıları Yönet" ile açılan yazı listesinin önseçili sayısı.
   const [yaziListSayiId, setYaziListSayiId] = useState<string | undefined>(undefined);
+  // Liste görünüm durumları BURADA tutulur: editör tam sayfa açılınca listeler
+  // unmount olur; durum burada yaşadığı için kaydedip dönünce sayfa numarası,
+  // sayfa başına adet, arama/kategori/sıralama filtreleri KORUNUR.
+  const [araYaziListeDurumu, setAraYaziListeDurumu] = useState<AraYaziListeDurumu>(VARSAYILAN_ARA_YAZI_LISTE);
+  const [yaziListeDurumu, setYaziListeDurumu] = useState<YaziListeDurumu>(VARSAYILAN_YAZI_LISTE);
 
   // Yükleniyor durumu
   if (isLoading) {
@@ -116,9 +142,23 @@ export function CMS({ onExitCMS }: CMSProps) {
           />
         );
       case 'yazilar':
-        return <CMSYaziListesi onEditYazi={openYaziEditor} initialSayiId={yaziListSayiId} />;
+        return (
+          <CMSYaziListesi
+            onEditYazi={openYaziEditor}
+            initialSayiId={yaziListSayiId}
+            durum={yaziListeDurumu}
+            onDurumChange={setYaziListeDurumu}
+          />
+        );
       case 'ara-yazilar':
-        return <CMSAraYaziListesi onEditYazi={openAraYaziEditor} onPreviewYazi={openAraYaziPreview} />;
+        return (
+          <CMSAraYaziListesi
+            onEditYazi={openAraYaziEditor}
+            onPreviewYazi={openAraYaziPreview}
+            durum={araYaziListeDurumu}
+            onDurumChange={setAraYaziListeDurumu}
+          />
+        );
       case 'yazarlar':
         return <CMSYazarYonetimi />;
       case 'kategoriler':
@@ -127,6 +167,8 @@ export function CMS({ onExitCMS }: CMSProps) {
         return <CMSMenuYonetimi />;
       case 'sayfalar':
         return <CMSSayfaYonetimi />;
+      case 'sayfa-metinleri':
+        return <CMSSayfaMetinleri />;
       case 'filtreler':
         return <CMSFiltreYonetimi />;
       case 'indeks':

@@ -131,10 +131,19 @@ else
   echo "    -> 'filtre_sayfalar.geri_hedef' kolonu zaten var, atlanıyor."
 fi
 
-echo ">>> 14/15 API konteyneri yeniden başlatılıyor..."
+echo ">>> 14/16 DB migration: kategori görünürlük bayrakları + sayfa metinleri (yalnızca yoksa)..."
+if [ "$(col_exists kategoriler indeks_goster)" = "0" ]; then
+  echo "    -> uygulanıyor: 2026-07-24_kategori_gorunurluk_sayfa_metinleri.sql"
+  $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-24_kategori_gorunurluk_sayfa_metinleri.sql
+  echo "    -> tamam."
+else
+  echo "    -> 'kategoriler.indeks_goster' kolonu zaten var, atlanıyor."
+fi
+
+echo ">>> 15/16 API konteyneri yeniden başlatılıyor..."
 $DC restart api
 
-echo ">>> 15/15 Kontrol — sayı durumları + filtre sayfaları + menü:"
+echo ">>> 16/16 Kontrol — sayı durumları + filtre sayfaları + menü:"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT durum, COUNT(*) FROM sayilar GROUP BY durum;" 2>/dev/null || echo "    (DB kontrolü atlandı)"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \

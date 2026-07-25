@@ -1,6 +1,7 @@
 // CMS Kategori Yönetimi - Category Management
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useCMS } from '@/context/CMSContext';
+import { api, type KullanimSayaci } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,16 +15,12 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -44,15 +41,28 @@ import {
 } from 'lucide-react';
 import type { Kategori } from '@/types';
 
+const DEVIR_YOK = '__yok__';
+
 export function CMSKategoriYonetimi() {
   const {
     kategoriler,
-    sonSayi,
     addKategori,
     updateKategori,
     deleteKategori,
     reorderKategori,
   } = useCMS();
+
+  // Gerçek kullanım sayıları (tüm sayılar + blog). Bootstrap yalnızca yayındaki
+  // sayıyı taşıdığı için sayaçlar buradan çekilir.
+  const [kullanim, setKullanim] = useState<Record<string, KullanimSayaci>>({});
+  const kullanimYenile = useCallback(() => {
+    api.kullanim()
+      .then((d) => setKullanim(d.kategoriler ?? {}))
+      .catch(() => { /* uç yoksa sayaçlar boş kalır */ });
+  }, []);
+  useEffect(() => { kullanimYenile(); }, [kullanimYenile]);
+
+  const sayac = (id: string): KullanimSayaci => kullanim[id] ?? { dergi: 0, blog: 0 };
 
   // Sıralama (yukarı/aşağı) — komşu iki kategorinin sırasını değiştirip kaydeder.
   const moveKategori = async (idx: number, dir: -1 | 1) => {
@@ -67,9 +77,10 @@ export function CMSKategoriYonetimi() {
     }
   };
 
-  const toggleAktif = async (kategori: Kategori) => {
+  // Anahtarlar: aktif / Sekans İndeks'te görünsün / Blog'da sekme olarak görünsün
+  const toggleAlan = async (kategori: Kategori, alan: 'aktif' | 'indeksGoster' | 'blogGoster') => {
     try {
-      await updateKategori(kategori.id, { aktif: !(kategori.aktif ?? true) });
+      await updateKategori(kategori.id, { [alan]: !(kategori[alan] ?? true) });
     } catch (e) {
       alert('Güncellenemedi: ' + (e instanceof Error ? e.message : 'bilinmeyen hata'));
     }
@@ -78,6 +89,12 @@ export function CMSKategoriYonetimi() {
   const [showDialog, setShowDialog] = useState(false);
   const [editingKategori, setEditingKategori] = useState<Kategori | null>(null);
   const [formData, setFormData] = useState<Partial<Kategori>>({});
+
+  // Silme akışı: bağlı içerik varsa devir seçeneği sunulur.
+  const [silinecek, setSilinecek] = useState<Kategori | null>(null);
+  const [devirHedef, setDevirHedef] = useState<string>(DEVIR_YOK);
+  const [siliniyor, setSiliniyor] = useState(false);
+  const [silmeHatasi, setSilmeHatasi] = useState<string | null>(null);
 
   const generateSlug = (ad: string): string => {
     return ad
@@ -112,42 +129,55 @@ export function CMSKategoriYonetimi() {
     });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.ad) {
       alert('Lütfen kategori adını girin');
       return;
     }
-
     const slug = formData.slug || generateSlug(formData.ad);
-
-    if (editingKategori) {
-      updateKategori(editingKategori.id, {
-        ...formData,
-        slug,
-      });
-    } else {
-      const newId = String(Date.now());
-      addKategori({
-        id: newId,
-        ad: formData.ad,
-        slug,
-      });
+    try {
+      if (editingKategori) {
+        await updateKategori(editingKategori.id, { ...formData, slug });
+      } else {
+        await addKategori({
+          ad: formData.ad,
+          slug,
+          indeksGoster: formData.indeksGoster ?? true,
+          blogGoster: formData.blogGoster ?? true,
+        });
+      }
+      setShowDialog(false);
+      setEditingKategori(null);
+      setFormData({});
+    } catch (e) {
+      alert('Kaydedilemedi: ' + (e instanceof Error ? e.message : 'bilinmeyen hata'));
     }
-    setShowDialog(false);
-    setEditingKategori(null);
-    setFormData({});
   };
 
-  // Kategori yazı sayılarını hesapla
-  const getKategoriStats = (kategoriId: string) => {
-    const yaziSayisi = sonSayi.yazilar.filter(y => y.kategori.id === kategoriId).length;
-    return yaziSayisi;
+  const openSilDialog = (kategori: Kategori) => {
+    setSilinecek(kategori);
+    setDevirHedef(DEVIR_YOK);
+    setSilmeHatasi(null);
   };
 
-  // Kategori silinebilir mi kontrol et
-  const canDeleteKategori = (kategoriId: string): boolean => {
-    return getKategoriStats(kategoriId) === 0;
+  const handleSil = async () => {
+    if (!silinecek) return;
+    setSiliniyor(true);
+    setSilmeHatasi(null);
+    try {
+      await deleteKategori(silinecek.id, devirHedef !== DEVIR_YOK ? devirHedef : undefined);
+      setSilinecek(null);
+      kullanimYenile();
+    } catch (e) {
+      // Sessiz başarısızlık yok: sunucunun açık mesajı diyalogda gösterilir.
+      setSilmeHatasi(e instanceof Error ? e.message : 'Kategori silinemedi.');
+    } finally {
+      setSiliniyor(false);
+    }
   };
+
+  const silinecekSayac = silinecek ? sayac(silinecek.id) : { dergi: 0, blog: 0 };
+  const silinecekBagli = silinecekSayac.dergi + silinecekSayac.blog;
 
   return (
     <div className="space-y-8">
@@ -155,7 +185,7 @@ export function CMSKategoriYonetimi() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Kategori Yönetimi</h1>
-          <p className="text-gray-600 mt-1">Yazı kategorilerini yönetin</p>
+          <p className="text-gray-600 mt-1">Yazı kategorilerini ve görünürlüklerini yönetin</p>
         </div>
         <Button onClick={openNewKategori}>
           <Plus className="h-4 w-4 mr-2" />
@@ -186,7 +216,7 @@ export function CMSKategoriYonetimi() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {new Set(sonSayi.yazilar.map(y => y.kategori.id)).size}
+                  {kategoriler.filter((k) => sayac(k.id).dergi + sayac(k.id).blog > 0).length}
                 </p>
                 <p className="text-sm text-gray-500">Kullanılan Kategori</p>
               </div>
@@ -200,7 +230,9 @@ export function CMSKategoriYonetimi() {
         <CardHeader>
           <CardTitle>Kategoriler</CardTitle>
           <CardDescription>
-            Tüm kategorilerin listesi ve kullanım durumu
+            "Sekans İndeks" kapalıysa kategori ve içerikleri İndeks dökümünde görünmez.
+            "Blog sekmesi" kapalıysa Blog sayfasında sekmesi çıkmaz ve yalnız bu kategorideki
+            yazılar Blog akışında listelenmez.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -210,14 +242,17 @@ export function CMSKategoriYonetimi() {
                 <TableHead className="w-14">Sıra</TableHead>
                 <TableHead>Kategori Adı</TableHead>
                 <TableHead>Slug</TableHead>
-                <TableHead className="text-center">Yazı Sayısı</TableHead>
-                <TableHead className="text-center">Durum</TableHead>
+                <TableHead className="text-center">İçerik</TableHead>
+                <TableHead className="text-center">Aktif</TableHead>
+                <TableHead className="text-center">Sekans İndeks</TableHead>
+                <TableHead className="text-center">Blog sekmesi</TableHead>
                 <TableHead className="text-right">İşlemler</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {kategoriler.map((kategori, idx) => {
-                const yaziSayisi = getKategoriStats(kategori.id);
+                const s = sayac(kategori.id);
+                const toplam = s.dergi + s.blog;
                 return (
                   <TableRow key={kategori.id} className={kategori.aktif === false ? 'opacity-50' : ''}>
                     <TableCell>
@@ -239,17 +274,32 @@ export function CMSKategoriYonetimi() {
                     <TableCell className="text-center">
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded ${
-                          yaziSayisi > 0
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-600'
+                          toplam > 0 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'
                         }`}
+                        title={`${s.dergi} dergi yazısı · ${s.blog} ara yazı`}
                       >
-                        {yaziSayisi}
+                        {toplam}
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex justify-center" title={kategori.aktif === false ? 'Pasif' : 'Aktif'}>
-                        <Switch checked={kategori.aktif !== false} onCheckedChange={() => toggleAktif(kategori)} />
+                        <Switch checked={kategori.aktif !== false} onCheckedChange={() => toggleAlan(kategori, 'aktif')} />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center" title="Sekans İndeks'te görünsün">
+                        <Switch
+                          checked={kategori.indeksGoster !== false}
+                          onCheckedChange={() => toggleAlan(kategori, 'indeksGoster')}
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center" title="Blog'da sekme olarak görünsün">
+                        <Switch
+                          checked={kategori.blogGoster !== false}
+                          onCheckedChange={() => toggleAlan(kategori, 'blogGoster')}
+                        />
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -261,46 +311,14 @@ export function CMSKategoriYonetimi() {
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={!canDeleteKategori(kategori.id)}
-                              title={
-                                canDeleteKategori(kategori.id)
-                                  ? 'Kategoriyi sil'
-                                  : 'Bu kategoriye ait yazılar var, silinemez'
-                              }
-                            >
-                              <Trash2
-                                className={`h-4 w-4 ${
-                                  canDeleteKategori(kategori.id)
-                                    ? 'text-red-500'
-                                    : 'text-gray-300'
-                                }`}
-                              />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Kategoriyi Sil</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                "{kategori.ad}" kategorisini silmek istediğinizden emin misiniz?
-                                Bu işlem geri alınamaz.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>İptal</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteKategori(kategori.id)}
-                                className="bg-red-600 hover:bg-red-700"
-                              >
-                                Sil
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openSilDialog(kategori)}
+                          title="Kategoriyi sil"
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -308,7 +326,7 @@ export function CMSKategoriYonetimi() {
               })}
               {kategoriler.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                     Henüz kategori eklenmemiş.
                   </TableCell>
                 </TableRow>
@@ -351,6 +369,26 @@ export function CMSKategoriYonetimi() {
                 Otomatik oluşturulur, değiştirebilirsiniz
               </p>
             </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label className="text-sm">Sekans İndeks'te görünsün</Label>
+                <p className="text-xs text-gray-500">Kapalıysa kategori ve içerikleri İndeks'te listelenmez.</p>
+              </div>
+              <Switch
+                checked={formData.indeksGoster !== false}
+                onCheckedChange={(v) => setFormData({ ...formData, indeksGoster: v })}
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label className="text-sm">Blog'da sekme olarak görünsün</Label>
+                <p className="text-xs text-gray-500">Kapalıysa Blog sayfasında sekme açılmaz.</p>
+              </div>
+              <Switch
+                checked={formData.blogGoster !== false}
+                onCheckedChange={(v) => setFormData({ ...formData, blogGoster: v })}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>
@@ -358,6 +396,67 @@ export function CMSKategoriYonetimi() {
             </Button>
             <Button onClick={handleSubmit}>
               {editingKategori ? 'Güncelle' : 'Ekle'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Silme Dialog — bağlı içerik varsa devir seçeneği */}
+      <Dialog open={!!silinecek} onOpenChange={(acik) => { if (!acik) setSilinecek(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Kategoriyi Sil</DialogTitle>
+            <DialogDescription>
+              "{silinecek?.ad}" kategorisi silinecek. Bu işlem geri alınamaz.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {silinecekBagli > 0 ? (
+              <>
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  Bu kategoriye bağlı <strong>{silinecekSayac.dergi} dergi yazısı</strong> ve{' '}
+                  <strong>{silinecekSayac.blog} ara yazı</strong> var.
+                  {silinecekSayac.dergi > 0 && ' Dergi yazıları bağlıyken kategori silinemez; önce başka bir kategoriye aktarın.'}
+                </div>
+                <div>
+                  <Label>İçerikleri şu kategoriye aktar</Label>
+                  <Select value={devirHedef} onValueChange={setDevirHedef}>
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={DEVIR_YOK}>Aktarma (yalnızca sil)</SelectItem>
+                      {kategoriler
+                        .filter((k) => k.id !== silinecek?.id)
+                        .map((k) => (
+                          <SelectItem key={k.id} value={k.id}>{k.ad}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-gray-600">Bu kategoriye bağlı içerik yok, güvenle silinebilir.</p>
+            )}
+
+            {silmeHatasi && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                {silmeHatasi}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSilinecek(null)}>İptal</Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700"
+              onClick={handleSil}
+              disabled={siliniyor}
+            >
+              {siliniyor
+                ? 'Siliniyor...'
+                : devirHedef !== DEVIR_YOK ? 'Aktar ve Sil' : 'Sil'}
             </Button>
           </DialogFooter>
         </DialogContent>

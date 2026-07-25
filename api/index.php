@@ -90,13 +90,15 @@ $routes = [
     // ---- CMS writes: yazar ----
     ['POST',   '#^/yazar$#',             'editor', fn($m) => handle_create_yazar(read_json_body())],
     ['PUT',    '#^/yazar/([^/]+)$#',     'editor', fn($m) => handle_update_yazar($m[1], read_json_body())],
-    ['DELETE', '#^/yazar/([^/]+)$#',     'editor', fn($m) => handle_delete_yazar($m[1])],
+    // DELETE gövdesi opsiyoneldir: {devirYazarId} varsa içerik önce o yazara aktarılır.
+    ['DELETE', '#^/yazar/([^/]+)$#',     'editor', fn($m) => handle_delete_yazar($m[1], read_json_body())],
 
     // ---- CMS writes: kategori ----
     ['POST',   '#^/kategori$#',          'editor', fn($m) => handle_create_kategori(read_json_body())],
     ['PUT',    '#^/kategori-sirala$#',   'editor', fn($m) => handle_reorder_kategori(read_json_body())],
     ['PUT',    '#^/kategori/([^/]+)$#',  'editor', fn($m) => handle_update_kategori($m[1], read_json_body())],
-    ['DELETE', '#^/kategori/([^/]+)$#',  'editor', fn($m) => handle_delete_kategori($m[1])],
+    // DELETE gövdesi opsiyoneldir: {devirKategoriId} varsa içerik önce o kategoriye aktarılır.
+    ['DELETE', '#^/kategori/([^/]+)$#',  'editor', fn($m) => handle_delete_kategori($m[1], read_json_body())],
 
     // ---- CMS writes: arsiv ----
     ['POST',   '#^/arsiv$#',             'editor', fn($m) => handle_create_arsiv(read_json_body())],
@@ -142,6 +144,13 @@ $routes = [
     ['POST',   '#^/filtre$#',            'editor', fn($m) => handle_create_filtre(read_json_body())],
     ['PUT',    '#^/filtre/([^/]+)$#',    'editor', fn($m) => handle_update_filtre($m[1], read_json_body())],
     ['DELETE', '#^/filtre/([^/]+)$#',    'editor', fn($m) => handle_delete_filtre($m[1])],
+
+    // ---- CMS: yerleşik sayfa metinleri (Yazarlar / Blog) ----
+    ['GET',    '#^/cms/sayfa-metinleri$#', 'editor', fn($m) => handle_cms_get_sayfa_metinleri()],
+    ['PUT',    '#^/sayfa-metinleri$#',     'editor', fn($m) => handle_update_sayfa_metinleri(read_json_body())],
+
+    // ---- CMS: yazar/kategori kullanım sayaçları (silme & devir kararları) ----
+    ['GET',    '#^/cms/kullanim$#',      'editor', fn($m) => handle_cms_kullanim()],
 
     // ---- CMS writes: Sekans İndeks kategori ayarı ----
     ['GET',    '#^/cms/indeks-kategoriler$#', 'editor', fn($m) => handle_cms_list_indeks_kategoriler()],

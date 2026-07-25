@@ -1,6 +1,7 @@
 import { ArrowLeft, FileText, Calendar, Users } from 'lucide-react';
 import type { Sayi, Yazi } from '@/types';
 import { Button } from '@/components/ui/button';
+import { sayiAdi } from '@/lib/utils';
 
 interface SonSayiDetayProps {
   sayi: Sayi;
@@ -22,9 +23,9 @@ export default function SonSayiDetay({ sayi, onYaziClick, onBackClick }: SonSayi
           Geri Dön
         </Button>
 
-        {/* Sayı Başlığı */}
+        {/* Sayı Başlığı — CMS'te girilen ad aynen (otomatik "Sayı" öneki yok) */}
         <div className="text-center mb-10 md:mb-12">
-          <h1 className="page-title mb-4">{sayi.tamBaslik}</h1>
+          <h1 className="page-title mb-4">{sayiAdi(sayi)}</h1>
           <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Calendar className="w-4 h-4" />
@@ -40,7 +41,7 @@ export default function SonSayiDetay({ sayi, onYaziClick, onBackClick }: SonSayi
             <div className="aspect-[3/4] bg-muted overflow-hidden shadow-lg">
               <img
                 src={sayi.kapakGorseli}
-                alt={`Sekans ${sayi.numara} Kapak`}
+                alt={`${sayiAdi(sayi)} kapak`}
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = '/images/placeholder-sayi.jpg';

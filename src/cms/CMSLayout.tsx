@@ -19,7 +19,8 @@ import {
   Menu as MenuIcon,
   Files,
   Filter,
-  ListOrdered
+  ListOrdered,
+  Type
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -33,6 +34,7 @@ export type CMSPage =
   | 'kategoriler'
   | 'menu'
   | 'sayfalar'
+  | 'sayfa-metinleri'
   | 'filtreler'
   | 'indeks'
   | 'kullanicilar'
@@ -52,11 +54,14 @@ const menuItems: { id: CMSPage; label: string; icon: React.ReactNode; adminOnly?
   { id: 'anasayfa', label: 'Ana Sayfa', icon: <Home className="h-5 w-5" /> },
   { id: 'sayilar', label: 'Sayı Yönetimi', icon: <BookOpen className="h-5 w-5" /> },
   { id: 'yazilar', label: 'Yazı Yönetimi', icon: <FileText className="h-5 w-5" /> },
-  { id: 'ara-yazilar', label: 'Ara Yazılar', icon: <FileText className="h-5 w-5" /> },
+  // Bu bölüm yalnızca ara yazıları değil, basılı sayılar / duyurular /
+  // Sinema Kitaplığı / İngilizce metinleri de yönetir — adı bu yüzden "vd.".
+  { id: 'ara-yazilar', label: 'Ara Yazılar vd.', icon: <FileText className="h-5 w-5" /> },
   { id: 'yazarlar', label: 'Yazarlar', icon: <Users className="h-5 w-5" /> },
   { id: 'kategoriler', label: 'Kategoriler', icon: <FolderOpen className="h-5 w-5" /> },
   { id: 'menu', label: 'Menü Yönetimi', icon: <MenuIcon className="h-5 w-5" /> },
   { id: 'sayfalar', label: 'Sabit Sayfalar', icon: <Files className="h-5 w-5" /> },
+  { id: 'sayfa-metinleri', label: 'Sayfa Metinleri', icon: <Type className="h-5 w-5" /> },
   { id: 'filtreler', label: 'Filtre Sayfaları', icon: <Filter className="h-5 w-5" /> },
   { id: 'indeks', label: 'Sekans İndeks', icon: <ListOrdered className="h-5 w-5" /> },
   { id: 'kullanicilar', label: 'Kullanıcılar', icon: <UserCog className="h-5 w-5" />, adminOnly: true },

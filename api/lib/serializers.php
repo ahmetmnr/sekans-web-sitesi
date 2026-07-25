@@ -105,7 +105,10 @@ function filtre_sayfa_out(array $r): array
     ];
 }
 
-/** Kategori { id, ad, slug, sira, aktif } */
+/**
+ * Kategori { id, ad, slug, sira, aktif, indeksGoster, blogGoster }
+ * indeks_goster / blog_goster kolonları migration öncesi yoksa görünür sayılır.
+ */
 function kategori_out(?array $r): ?array
 {
     if (!$r) return null;
@@ -115,6 +118,9 @@ function kategori_out(?array $r): ?array
         'slug'  => $r['slug'],
         'sira'  => isset($r['sira_no']) ? (int)$r['sira_no'] : 0,
         'aktif' => isset($r['aktif']) ? (bool)(int)$r['aktif'] : true,
+        // Sekans İndeks'te / Blog sekmelerinde görünürlük (varsayılan AÇIK)
+        'indeksGoster' => isset($r['indeks_goster']) ? (bool)(int)$r['indeks_goster'] : true,
+        'blogGoster'   => isset($r['blog_goster']) ? (bool)(int)$r['blog_goster'] : true,
     ];
 }
 

@@ -1,5 +1,5 @@
 // CMS Yazı Listesi — seçili sayının yazılarını listeler (çoklu sayı destekli).
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useCMS } from '@/context/CMSContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,39 +42,41 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from 'lucide-react';
+import type { YaziListeDurumu } from './index';
 
 interface CMSYaziListesiProps {
   onEditYazi: (yaziId?: string, sayiId?: string) => void;
   initialSayiId?: string;
+  // Görünüm durumu üst bileşende tutulur: editöre girip çıkınca korunur.
+  durum: YaziListeDurumu;
+  onDurumChange: (durum: YaziListeDurumu) => void;
 }
 
-export function CMSYaziListesi({ onEditYazi, initialSayiId }: CMSYaziListesiProps) {
+export function CMSYaziListesi({ onEditYazi, initialSayiId, durum, onDurumChange }: CMSYaziListesiProps) {
   const { sayilar, sonSayi, deleteYazi } = useCMS();
+
+  const { sayfa: currentPage, sayfaBasina: itemsPerPage, arama: searchTerm } = durum;
+  const yamala = (patch: Partial<YaziListeDurumu>) => onDurumChange({ ...durum, ...patch });
 
   // Düzenlenebilir sayılar; boşsa yayındaki sayıya düş.
   const secilebilir = sayilar.length ? sayilar : (sonSayi.id ? [sonSayi] : []);
 
-  const [selectedSayiId, setSelectedSayiId] = useState<string>(
-    initialSayiId || secilebilir.find((s) => s.durum === 'yayinda')?.id || secilebilir[0]?.id || ''
-  );
-
   // Sayı Yönetimi'nden "Yazıları Yönet" ile gelince o sayıya odaklan.
   useEffect(() => {
-    if (initialSayiId) setSelectedSayiId(initialSayiId);
+    if (initialSayiId && initialSayiId !== durum.sayiId) {
+      onDurumChange({ ...durum, sayiId: initialSayiId, sayfa: 1 });
+    }
+    // Yalnızca dışarıdan gelen seçim değiştiğinde çalışır.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialSayiId]);
 
   // Seçili sayı listede yoksa uygun bir sayıya düş (durum değişince).
   const aktifSayi =
-    secilebilir.find((s) => s.id === selectedSayiId) ??
+    secilebilir.find((s) => s.id === durum.sayiId) ??
     secilebilir.find((s) => s.durum === 'yayinda') ??
     secilebilir[0];
 
   const yazilar = aktifSayi?.yazilar ?? [];
-
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [searchTerm, setSearchTerm] = useState('');
 
   // Filtreleme — yazar/kategori FK SET NULL ile null olabilir; güvenli erişim.
   const filteredYazilar = yazilar.filter((yazi) =>
@@ -86,32 +88,23 @@ export function CMSYaziListesi({ onEditYazi, initialSayiId }: CMSYaziListesiProp
   const sortedYazilar = [...filteredYazilar].sort((a, b) => (a.siraNo ?? 0) - (b.siraNo ?? 0));
 
   const totalItems = sortedYazilar.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const gecerliSayfa = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (gecerliSayfa - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentItems = sortedYazilar.slice(startIndex, endIndex);
 
-  const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  const goToPage = (page: number) => yamala({ sayfa: Math.max(1, Math.min(page, totalPages)) });
   const goToFirstPage = () => goToPage(1);
   const goToLastPage = () => goToPage(totalPages);
-  const goToPrevPage = () => goToPage(currentPage - 1);
-  const goToNextPage = () => goToPage(currentPage + 1);
+  const goToPrevPage = () => goToPage(gecerliSayfa - 1);
+  const goToNextPage = () => goToPage(gecerliSayfa + 1);
 
-  const handleSearch = (value: string) => {
-    setSearchTerm(value);
-    setCurrentPage(1);
-  };
+  const handleSearch = (value: string) => yamala({ arama: value, sayfa: 1 });
 
-  const handleItemsPerPageChange = (value: string) => {
-    setItemsPerPage(Number(value));
-    setCurrentPage(1);
-  };
+  const handleItemsPerPageChange = (value: string) => yamala({ sayfaBasina: Number(value), sayfa: 1 });
 
-  const handleSayiChange = (value: string) => {
-    setSelectedSayiId(value);
-    setCurrentPage(1);
-    setSearchTerm('');
-  };
+  const handleSayiChange = (value: string) => yamala({ sayiId: value, sayfa: 1, arama: '' });
 
   return (
     <div className="space-y-8">
@@ -267,7 +260,11 @@ export function CMSYaziListesi({ onEditYazi, initialSayiId }: CMSYaziListesiProp
                           <AlertDialogFooter>
                             <AlertDialogCancel>İptal</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => deleteYazi(yazi.id)}
+                              onClick={() => {
+                                // Sessiz başarısızlık olmasın: hata varsa kullanıcıya gösterilir.
+                                void deleteYazi(yazi.id).catch((e) =>
+                                  alert('Silinemedi: ' + (e instanceof Error ? e.message : 'bilinmeyen hata')));
+                              }}
                               className="bg-red-600 hover:bg-red-700"
                             >
                               Sil
@@ -313,10 +310,10 @@ export function CMSYaziListesi({ onEditYazi, initialSayiId }: CMSYaziListesiProp
               </div>
 
               <div className="flex items-center gap-1">
-                <Button variant="outline" size="sm" onClick={goToFirstPage} disabled={currentPage === 1} className="h-8 w-8 p-0">
+                <Button variant="outline" size="sm" onClick={goToFirstPage} disabled={gecerliSayfa === 1} className="h-8 w-8 p-0">
                   <ChevronsLeft className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={goToPrevPage} disabled={currentPage === 1} className="h-8 w-8 p-0">
+                <Button variant="outline" size="sm" onClick={goToPrevPage} disabled={gecerliSayfa === 1} className="h-8 w-8 p-0">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
 
@@ -324,13 +321,13 @@ export function CMSYaziListesi({ onEditYazi, initialSayiId }: CMSYaziListesiProp
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let pageNum;
                     if (totalPages <= 5) pageNum = i + 1;
-                    else if (currentPage <= 3) pageNum = i + 1;
-                    else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
-                    else pageNum = currentPage - 2 + i;
+                    else if (gecerliSayfa <= 3) pageNum = i + 1;
+                    else if (gecerliSayfa >= totalPages - 2) pageNum = totalPages - 4 + i;
+                    else pageNum = gecerliSayfa - 2 + i;
                     return (
                       <Button
                         key={pageNum}
-                        variant={currentPage === pageNum ? 'default' : 'outline'}
+                        variant={gecerliSayfa === pageNum ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => goToPage(pageNum)}
                         className="h-8 w-8 p-0"
@@ -341,10 +338,10 @@ export function CMSYaziListesi({ onEditYazi, initialSayiId }: CMSYaziListesiProp
                   })}
                 </div>
 
-                <Button variant="outline" size="sm" onClick={goToNextPage} disabled={currentPage === totalPages} className="h-8 w-8 p-0">
+                <Button variant="outline" size="sm" onClick={goToNextPage} disabled={gecerliSayfa === totalPages} className="h-8 w-8 p-0">
                   <ChevronRight className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={goToLastPage} disabled={currentPage === totalPages} className="h-8 w-8 p-0">
+                <Button variant="outline" size="sm" onClick={goToLastPage} disabled={gecerliSayfa === totalPages} className="h-8 w-8 p-0">
                   <ChevronsRight className="h-4 w-4" />
                 </Button>
               </div>

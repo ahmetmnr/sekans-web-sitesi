@@ -1,5 +1,6 @@
 import { FileText, Calendar, Download } from 'lucide-react';
 import type { ArsivSayi } from '@/types';
+import { sayiAdi } from '@/lib/utils';
 
 interface ArsivSayfasiProps {
   arsivSayilari: ArsivSayi[];
@@ -51,7 +52,7 @@ export default function ArsivSayfasi({ arsivSayilari }: ArsivSayfasiProps) {
                     >
                       <img
                         src={sayi.kapakGorseli}
-                        alt={`Sekans ${sayi.numara} Kapak`}
+                        alt={`${sayiAdi(sayi)} kapak`}
                         className="w-full h-full object-cover transition-transform duration-500"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = '/images/placeholder-sayi.jpg';
@@ -65,8 +66,9 @@ export default function ArsivSayfasi({ arsivSayilari }: ArsivSayfasiProps) {
 
                     {/* Bilgiler */}
                     <div className="mt-3 text-center">
+                      {/* CMS'te girilen sayı adı AYNEN gösterilir (otomatik "Sayı" öneki yok) */}
                       <h3 className="font-serif text-lg group-hover:underline underline-offset-2">
-                        Sayı {sayi.numara}
+                        {sayiAdi(sayi)}
                       </h3>
                       <p className="text-xs text-muted-foreground flex items-center justify-center gap-1 mt-1">
                         <Calendar className="w-3 h-3" />

@@ -347,9 +347,25 @@ function handle_search(): void
     ]);
 }
 
-/** İndeks kategori ayarı (admin: sıra + görünürlük) — ayarlar tablosundan. */
-function indeks_kategori_ayar(): array
+/**
+ * "Sekans İndeks'te görünsün" kapatılmış kategori adları (kategoriler.indeks_goster=0).
+ * Kolon migration öncesi yoksa boş dizi (hepsi görünür).
+ */
+function kategori_indeks_gizli_adlar(): array
 {
+    if (!column_exists('kategoriler', 'indeks_goster')) return [];
+    try {
+        $rows = db()->query("SELECT ad FROM kategoriler WHERE indeks_goster = 0")->fetchAll();
+        return array_map(fn($r) => (string)$r['ad'], $rows);
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+
+/** ayarlar.indeks_kategoriler JSON'unun HAM hâli (kategori bayrağı uygulanmadan). */
+function indeks_kategori_ayar_kayitli(): array
+{
+    $ayar = [];
     try {
         $st = db()->prepare("SELECT deger FROM ayarlar WHERE anahtar = 'indeks_kategoriler' LIMIT 1");
         $st->execute();
@@ -357,7 +373,7 @@ function indeks_kategori_ayar(): array
         if ($v !== false && $v !== null && $v !== '') {
             $d = json_decode((string)$v, true);
             if (is_array($d)) {
-                return array_map(fn($a) => [
+                $ayar = array_map(fn($a) => [
                     'ad'     => (string)($a['ad'] ?? ''),
                     'goster' => !empty($a['goster']),
                     'sira'   => (int)($a['sira'] ?? 0),
@@ -367,7 +383,71 @@ function indeks_kategori_ayar(): array
     } catch (PDOException $e) {
         // ayarlar tablosu yoksa boş ayar (frontend varsayılan sırayı kullanır).
     }
-    return [];
+    return $ayar;
+}
+
+/**
+ * İndeks kategori ayarı (admin: sıra + görünürlük).
+ * Kategori kartındaki "Sekans İndeks'te görünsün" anahtarı KAPALI olan kategoriler
+ * ayarda ne yazarsa yazsın gizli işaretlenir (ayarda yoksa gizli olarak eklenir).
+ */
+function indeks_kategori_ayar(): array
+{
+    $ayar  = indeks_kategori_ayar_kayitli();
+    $gizli = kategori_indeks_gizli_adlar();
+    if (!$gizli) return $ayar;
+
+    $mevcut = array_column($ayar, 'ad');
+    foreach ($ayar as $i => $a) {
+        if (in_array($a['ad'], $gizli, true)) $ayar[$i]['goster'] = false;
+    }
+    foreach ($gizli as $ad) {
+        if ($ad !== '' && !in_array($ad, $mevcut, true)) {
+            $ayar[] = ['ad' => $ad, 'goster' => false, 'sira' => 9999];
+        }
+    }
+    return $ayar;
+}
+
+/**
+ * Yerleşik sayfa metinleri (Yazarlar / Blog başlık + açıklama).
+ * ayarlar.sayfa_metinleri JSON'unda tutulur; eksik alanlar varsayılana düşer.
+ */
+function sayfa_metinleri_payload(): array
+{
+    $out = [
+        'yazarlar' => [
+            'baslik'   => 'Yazarlar',
+            'aciklama' => 'Sekans\'a katkıda bulunan yazarlar',
+        ],
+        'blog' => [
+            'baslik'   => 'Blog',
+            'aciklama' => 'Sekans dergisinin rutin sayılarından ayrı olarak yayınlanan, güncel sinema yazıları ve derinlemesine analizler.',
+        ],
+    ];
+    try {
+        $st = db()->prepare("SELECT deger FROM ayarlar WHERE anahtar = 'sayfa_metinleri' LIMIT 1");
+        $st->execute();
+        $v = $st->fetchColumn();
+        if ($v !== false && $v !== null && $v !== '') {
+            $d = json_decode((string)$v, true);
+            if (is_array($d)) {
+                foreach ($out as $anahtar => $varsayilan) {
+                    if (!isset($d[$anahtar]) || !is_array($d[$anahtar])) continue;
+                    $baslik = trim((string)($d[$anahtar]['baslik'] ?? ''));
+                    $out[$anahtar] = [
+                        'baslik'   => $baslik !== '' ? $baslik : $varsayilan['baslik'],
+                        'aciklama' => array_key_exists('aciklama', $d[$anahtar])
+                            ? (string)$d[$anahtar]['aciklama']
+                            : $varsayilan['aciklama'],
+                    ];
+                }
+            }
+        }
+    } catch (PDOException $e) {
+        // ayarlar tablosu yok — varsayılan metinler.
+    }
+    return $out;
 }
 
 /**
@@ -606,6 +686,7 @@ function handle_bootstrap(): void
         'kategoriler'      => $kategoriler,
         'menu'             => menu_tree(true),           // dinamik üst menü (tablo yoksa [] -> Header sabit menüye düşer)
         'anasayfaBloklar'  => anasayfa_bloklar_list(true), // ana sayfa panelleri (tablo yoksa [] -> sabit düzen)
+        'sayfaMetinleri'   => sayfa_metinleri_payload(),  // yerleşik sayfa başlık/açıklamaları (Yazarlar, Blog)
         'yarismasiBilgi'   => $yarismasiBilgi,
         'hakkimizdaIcerik' => $hakkimizdaIcerik,
     ]);

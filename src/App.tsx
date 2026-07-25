@@ -110,11 +110,23 @@ function AppContent() {
   }, []);
 
   // CMS'den verileri al
-  const { sonSayi, anasayfaSayilari, arsivSayilari, araYazilar, yazarlar, hakkimizdaIcerik, yarismasiBilgi, anasayfaBloklar, isLoading, error, refresh } = useCMS();
+  const { sonSayi, anasayfaSayilari, arsivSayilari, araYazilar, yazarlar, kategoriler, hakkimizdaIcerik, yarismasiBilgi, anasayfaBloklar, isLoading, error, refresh } = useCMS();
+
+  // Blog'da GÖSTERİLMEYECEK kategoriler (CMS > Kategoriler > "Blog sekmesi" kapalı).
+  // Örn. "Eski": ne sekmesi çıkar ne de yazıları blog akışında listelenir.
+  const blogGizliKategoriler = new Set(
+    kategoriler.filter((k) => k.blogGoster === false).map((k) => k.ad)
+  );
 
   // "Blog" sayfası: özel bölümlere (Sinema Kitaplığı vb.) ait OLMAYAN yazılar.
   // Çoklu kategori: bir yazı, kategorilerinden HİÇBİRİ özel bölüm değilse blogda kalır.
-  const araYazilarListesi = araYazilar.filter((y) => !araYaziKategorileri(y).some((k) => OZEL_BOLUMLER.has(k)));
+  // Ayrıca tüm kategorileri "blogda gizli" olan yazılar akıştan çıkar.
+  const araYazilarListesi = araYazilar.filter((y) => {
+    const katlari = araYaziKategorileri(y);
+    if (katlari.some((k) => OZEL_BOLUMLER.has(k))) return false;
+    if (katlari.length > 0 && katlari.every((k) => blogGizliKategoriler.has(k))) return false;
+    return true;
+  });
   // Bir bölüm sayfasının yazı listesi (eski + yeni kategori adları birlikte, çoklu kategori).
   const bolumListesi = (kategoriler: string[]) =>
     araYazilar.filter((y) => araYaziKategorileri(y).some((k) => kategoriler.includes(k)));
@@ -440,11 +452,13 @@ function AppContent() {
         );
 
       case 'duyurular':
+        // Duyurular Blog altındaki bir sekmeden açılıyor: geri bağlantısı Blog'a döner.
         return (
           <AraYazilarSayfasi
             araYazilar={bolumListesi(BOLUM_KATEGORILERI.duyurular)}
             onAraYaziClick={handleAraYaziClick}
-            onBackClick={handleBackClick}
+            onBackClick={() => navigateTo('arayazilar')}
+            geriBaslik="Blog"
             baslik="Duyurular"
             aciklama="Yarışma duyuruları, sonuçlar ve Sekans'tan haberler."
           />

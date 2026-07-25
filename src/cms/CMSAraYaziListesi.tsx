@@ -1,6 +1,10 @@
-// CMS Ara Yazı Listesi - Blog Post List with Pagination
-import { useState } from 'react';
+// CMS "Ara Yazılar vd." Listesi — ara yazıların yanında basılı sayılar, duyurular,
+// Sinema Kitaplığı ve İngilizce metinler de bu ekrandan yönetilir.
+// Görünüm durumu (sayfa/filtre/sıralama) üst bileşende tutulur; editöre girip
+// çıkınca liste aynı yerden devam eder.
+import { useMemo } from 'react';
 import { useCMS } from '@/context/CMSContext';
+import { araYaziKategorileri } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,72 +39,79 @@ import {
   FileText,
   Eye,
 } from 'lucide-react';
+import type { AraYaziListeDurumu } from './index';
 
-const araYaziKategorileri = [
-  'Deneme',
-  'Haber',
-  'Duyuru',
-  'İnceleme',
-  'Söyleşi',
-  'Etkinlik',
-  'Yorum',
+const TUM_KATEGORILER = 'all';
+
+const SIRALAMA_SECENEKLERI: { value: AraYaziListeDurumu['siralama']; label: string }[] = [
+  { value: 'yeni', label: 'En yeni' },
+  { value: 'eski', label: 'En eski' },
+  { value: 'baslik', label: 'Başlık (A-Z)' },
+  { value: 'yazar', label: 'Yazar (A-Z)' },
 ];
 
 interface CMSAraYaziListesiProps {
   onEditYazi: (yaziId?: string) => void;
   onPreviewYazi?: (yaziId: string) => void;
+  durum: AraYaziListeDurumu;
+  onDurumChange: (durum: AraYaziListeDurumu) => void;
 }
 
-export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi }: CMSAraYaziListesiProps) {
-  const { araYazilar, deleteAraYazi } = useCMS();
+export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi, durum, onDurumChange }: CMSAraYaziListesiProps) {
+  const { araYazilar, kategoriler, deleteAraYazi } = useCMS();
 
-  // Pagination and filter state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(9);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterKategori, setFilterKategori] = useState<string>('all');
+  const { sayfa, sayfaBasina, arama, kategori: filterKategori, siralama } = durum;
+  const yamala = (patch: Partial<AraYaziListeDurumu>) => onDurumChange({ ...durum, ...patch });
 
-  // Filtreleme
-  const filteredYazilar = araYazilar
-    .filter(yazi => {
-      const matchesSearch = yazi.baslik.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        yazi.yazar.tamAd.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesKategori = filterKategori === 'all' || yazi.kategori === filterKategori;
+  // Kategori seçenekleri SABİT KODLU DEĞİL: içerikte fiilen kullanılan kategoriler
+  // (çoklu kategori dahil) + CMS'te tanımlı kategoriler birleştirilir.
+  const kategoriSecenekleri = useMemo(() => {
+    const set = new Set<string>();
+    araYazilar.forEach((y) => araYaziKategorileri(y).forEach((k) => { if (k) set.add(k); }));
+    kategoriler.forEach((k) => { if (k.ad) set.add(k.ad); });
+    return [...set].sort((a, b) => a.localeCompare(b, 'tr'));
+  }, [araYazilar, kategoriler]);
+
+  // Filtreleme + sıralama (kategori eşleşmesi çoklu kategoriye göre)
+  const filteredYazilar = useMemo(() => {
+    const q = arama.trim().toLocaleLowerCase('tr');
+    const list = araYazilar.filter((yazi) => {
+      const matchesSearch = !q
+        || yazi.baslik.toLocaleLowerCase('tr').includes(q)
+        || (yazi.yazar?.tamAd ?? '').toLocaleLowerCase('tr').includes(q);
+      const matchesKategori = filterKategori === TUM_KATEGORILER
+        || araYaziKategorileri(yazi).includes(filterKategori);
       return matchesSearch && matchesKategori;
-    })
-    .sort((a, b) => new Date(b.yayinTarihi).getTime() - new Date(a.yayinTarihi).getTime());
+    });
+    const sorted = [...list];
+    if (siralama === 'eski') {
+      sorted.sort((a, b) => (a.yayinTarihi || '').localeCompare(b.yayinTarihi || ''));
+    } else if (siralama === 'baslik') {
+      sorted.sort((a, b) => a.baslik.localeCompare(b.baslik, 'tr'));
+    } else if (siralama === 'yazar') {
+      sorted.sort((a, b) => (a.yazar?.tamAd ?? '').localeCompare(b.yazar?.tamAd ?? '', 'tr'));
+    } else {
+      sorted.sort((a, b) => (b.yayinTarihi || '').localeCompare(a.yayinTarihi || ''));
+    }
+    return sorted;
+  }, [araYazilar, arama, filterKategori, siralama]);
 
-  // Pagination calculations
+  // Sayfalama — kayıt silinince/filtre değişince sayfa aralık dışında kalabilir.
   const totalItems = filteredYazilar.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
+  const totalPages = Math.max(1, Math.ceil(totalItems / sayfaBasina));
+  const gecerliSayfa = Math.min(Math.max(1, sayfa), totalPages);
+  const startIndex = (gecerliSayfa - 1) * sayfaBasina;
+  const endIndex = startIndex + sayfaBasina;
   const currentItems = filteredYazilar.slice(startIndex, endIndex);
 
-  // Pagination handlers
-  const goToPage = (page: number) => {
-    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-  };
+  const goToPage = (p: number) => yamala({ sayfa: Math.max(1, Math.min(p, totalPages)) });
 
-  const goToFirstPage = () => goToPage(1);
-  const goToLastPage = () => goToPage(totalPages);
-  const goToPrevPage = () => goToPage(currentPage - 1);
-  const goToNextPage = () => goToPage(currentPage + 1);
-
-  // Reset to first page when filters change
-  const handleSearch = (value: string) => {
-    setSearchTerm(value);
-    setCurrentPage(1);
-  };
-
-  const handleKategoriChange = (value: string) => {
-    setFilterKategori(value);
-    setCurrentPage(1);
-  };
-
-  const handleItemsPerPageChange = (value: string) => {
-    setItemsPerPage(Number(value));
-    setCurrentPage(1);
+  const handleDelete = async (id: string, baslik: string) => {
+    try {
+      await deleteAraYazi(id);
+    } catch (e) {
+      alert(`"${baslik}" silinemedi: ` + (e instanceof Error ? e.message : 'bilinmeyen hata'));
+    }
   };
 
   return (
@@ -108,8 +119,10 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi }: CMSAraYaziListe
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Ara Yazılar</h1>
-          <p className="text-gray-600 mt-1">Blog yazılarını yönetin</p>
+          <h1 className="text-3xl font-bold text-gray-900">Ara Yazılar vd.</h1>
+          <p className="text-gray-600 mt-1">
+            Ara yazılar, basılı sayılar, duyurular, Sinema Kitaplığı ve İngilizce metinler
+          </p>
         </div>
         <Button onClick={() => onEditYazi()}>
           <Plus className="h-4 w-4 mr-2" />
@@ -127,7 +140,7 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi }: CMSAraYaziListe
               </div>
               <div>
                 <p className="text-2xl font-bold">{araYazilar.length}</p>
-                <p className="text-sm text-gray-500">Toplam Ara Yazı</p>
+                <p className="text-sm text-gray-500">Toplam İçerik</p>
               </div>
             </div>
           </CardContent>
@@ -140,7 +153,7 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi }: CMSAraYaziListe
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {new Set(araYazilar.map(y => y.yazar.id)).size}
+                  {new Set(araYazilar.map(y => y.yazar?.id).filter(Boolean)).size}
                 </p>
                 <p className="text-sm text-gray-500">Farklı Yazar</p>
               </div>
@@ -154,9 +167,7 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi }: CMSAraYaziListe
                 <FileText className="h-5 w-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
-                  {new Set(araYazilar.map(y => y.kategori)).size}
-                </p>
+                <p className="text-2xl font-bold">{kategoriSecenekleri.length}</p>
                 <p className="text-sm text-gray-500">Farklı Kategori</p>
               </div>
             </div>
@@ -173,23 +184,41 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi }: CMSAraYaziListe
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="Başlık veya yazar ara..."
-                  value={searchTerm}
-                  onChange={(e) => handleSearch(e.target.value)}
+                  value={arama}
+                  onChange={(e) => yamala({ arama: e.target.value, sayfa: 1 })}
                   className="pl-10"
                 />
               </div>
             </div>
-            <div className="w-full md:w-48">
-              <Select value={filterKategori} onValueChange={handleKategoriChange}>
+            <div className="w-full md:w-56">
+              <Select
+                value={filterKategori}
+                onValueChange={(v) => yamala({ kategori: v, sayfa: 1 })}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Kategori" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tüm Kategoriler</SelectItem>
-                  {araYaziKategorileri.map((kategori) => (
+                  <SelectItem value={TUM_KATEGORILER}>Tüm Kategoriler</SelectItem>
+                  {kategoriSecenekleri.map((kategori) => (
                     <SelectItem key={kategori} value={kategori}>
                       {kategori}
                     </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full md:w-44">
+              <Select
+                value={siralama}
+                onValueChange={(v) => yamala({ siralama: v as AraYaziListeDurumu['siralama'], sayfa: 1 })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sıralama" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SIRALAMA_SECENEKLERI.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>Sırala: {s.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -225,10 +254,12 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi }: CMSAraYaziListe
                 {yazi.spot}
               </p>
               <div className="flex items-center justify-between text-sm text-gray-500">
-                <span>{yazi.yazar.tamAd}</span>
+                <span>{yazi.yazar?.tamAd ?? ''}</span>
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
-                  {new Date(yazi.yayinTarihi).toLocaleDateString('tr-TR')}
+                  {yazi.tarihEtiketi?.trim()
+                    ? yazi.tarihEtiketi
+                    : (yazi.yayinTarihi ? new Date(yazi.yayinTarihi).toLocaleDateString('tr-TR') : '')}
                 </span>
               </div>
 
@@ -269,7 +300,7 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi }: CMSAraYaziListe
                     <AlertDialogFooter>
                       <AlertDialogCancel>İptal</AlertDialogCancel>
                       <AlertDialogAction
-                        onClick={() => deleteAraYazi(yazi.id)}
+                        onClick={() => { void handleDelete(yazi.id, yazi.baslik); }}
                         className="bg-red-600 hover:bg-red-700"
                       >
                         Sil
@@ -284,7 +315,7 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi }: CMSAraYaziListe
 
         {currentItems.length === 0 && (
           <div className="col-span-full text-center py-12 text-gray-500">
-            {searchTerm || filterKategori !== 'all'
+            {arama || filterKategori !== TUM_KATEGORILER
               ? 'Arama kriterlerine uygun yazı bulunamadı.'
               : 'Henüz ara yazı eklenmemiş.'}
           </div>
@@ -298,7 +329,10 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi }: CMSAraYaziListe
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <span>Sayfa başına:</span>
-                <Select value={String(itemsPerPage)} onValueChange={handleItemsPerPageChange}>
+                <Select
+                  value={String(sayfaBasina)}
+                  onValueChange={(v) => yamala({ sayfaBasina: Number(v), sayfa: 1 })}
+                >
                   <SelectTrigger className="w-20 h-8">
                     <SelectValue />
                   </SelectTrigger>
@@ -307,6 +341,7 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi }: CMSAraYaziListe
                     <SelectItem value="9">9</SelectItem>
                     <SelectItem value="12">12</SelectItem>
                     <SelectItem value="24">24</SelectItem>
+                    <SelectItem value="48">48</SelectItem>
                   </SelectContent>
                 </Select>
                 <span className="ml-4">
@@ -318,8 +353,8 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi }: CMSAraYaziListe
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={goToFirstPage}
-                  disabled={currentPage === 1}
+                  onClick={() => goToPage(1)}
+                  disabled={gecerliSayfa === 1}
                   className="h-8 w-8 p-0"
                 >
                   <ChevronsLeft className="h-4 w-4" />
@@ -327,8 +362,8 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi }: CMSAraYaziListe
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={goToPrevPage}
-                  disabled={currentPage === 1}
+                  onClick={() => goToPage(gecerliSayfa - 1)}
+                  disabled={gecerliSayfa === 1}
                   className="h-8 w-8 p-0"
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -339,17 +374,17 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi }: CMSAraYaziListe
                     let pageNum;
                     if (totalPages <= 5) {
                       pageNum = i + 1;
-                    } else if (currentPage <= 3) {
+                    } else if (gecerliSayfa <= 3) {
                       pageNum = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
+                    } else if (gecerliSayfa >= totalPages - 2) {
                       pageNum = totalPages - 4 + i;
                     } else {
-                      pageNum = currentPage - 2 + i;
+                      pageNum = gecerliSayfa - 2 + i;
                     }
                     return (
                       <Button
                         key={pageNum}
-                        variant={currentPage === pageNum ? 'default' : 'outline'}
+                        variant={gecerliSayfa === pageNum ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => goToPage(pageNum)}
                         className="h-8 w-8 p-0"
@@ -363,8 +398,8 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi }: CMSAraYaziListe
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={goToNextPage}
-                  disabled={currentPage === totalPages}
+                  onClick={() => goToPage(gecerliSayfa + 1)}
+                  disabled={gecerliSayfa === totalPages}
                   className="h-8 w-8 p-0"
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -372,8 +407,8 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi }: CMSAraYaziListe
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={goToLastPage}
-                  disabled={currentPage === totalPages}
+                  onClick={() => goToPage(totalPages)}
+                  disabled={gecerliSayfa === totalPages}
                   className="h-8 w-8 p-0"
                 >
                   <ChevronsRight className="h-4 w-4" />

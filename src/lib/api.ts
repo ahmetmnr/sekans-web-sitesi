@@ -5,8 +5,15 @@
 import type {
   Sayi, ArsivSayi, AraYazi, Yazar, Kategori, Yazi, SayiDurum, Kullanici, EditorOzet,
   AramaSonuclari, IndeksGiris, StatikSayfaIcerik, MenuOgesi, AnasayfaBlok, FiltreSayfa,
-  IndeksKategoriAyar,
+  IndeksKategoriAyar, SayfaMetinleri,
 } from '@/types';
+
+// Yazar/kategori başına gerçek içerik sayıları (CMS silme & devir kararları).
+export interface KullanimSayaci { dergi: number; blog: number }
+export interface KullanimOzeti {
+  yazarlar: Record<string, KullanimSayaci>;
+  kategoriler: Record<string, KullanimSayaci>;
+}
 
 export const API_BASE: string =
   (import.meta.env.VITE_API_BASE as string | undefined) ?? '/api';
@@ -143,6 +150,7 @@ export interface BootstrapData {
   kategoriler: Kategori[];
   menu?: MenuOgesi[];             // dinamik üst menü (boş/eksikse Header sabit menüye düşer)
   anasayfaBloklar?: AnasayfaBlok[]; // ana sayfa panelleri (boş/eksikse AnaSayfa sabit düzene düşer)
+  sayfaMetinleri?: SayfaMetinleri;  // yerleşik sayfa başlık/açıklamaları (eski API'de yoksa varsayılan)
   yarismasiBilgi: YarismaBilgi;
   hakkimizdaIcerik: HakkimizdaIcerik;
 }
@@ -237,22 +245,36 @@ export const api = {
     remove: (id: string) => del<{ deleted: string }>(`/arayazi/${encodeURIComponent(id)}`),
   },
 
-  // Yazar
+  // Yazar — silmede devirYazarId verilirse bağlı içerik önce o yazara aktarılır.
   yazar: {
     list: () => get<Yazar[]>('/yazarlar'),
     create: (y: Partial<Yazar>) => post<Yazar>('/yazar', y),
     update: (id: string, patch: Partial<Yazar>) => put<Yazar>(`/yazar/${encodeURIComponent(id)}`, patch),
-    remove: (id: string) => del<{ deleted: string }>(`/yazar/${encodeURIComponent(id)}`),
+    remove: (id: string, devirYazarId?: string) =>
+      request<{ deleted: string }>('DELETE', `/yazar/${encodeURIComponent(id)}`,
+        devirYazarId ? { devirYazarId } : undefined).then((r) => r.data),
   },
 
-  // Kategori
+  // Kategori — silmede devirKategoriId verilirse bağlı içerik önce o kategoriye aktarılır.
   kategori: {
     list: () => get<Kategori[]>('/kategoriler'),
     create: (k: Partial<Kategori>) => post<Kategori>('/kategori', k),
     update: (id: string, patch: Partial<Kategori>) => put<Kategori>(`/kategori/${encodeURIComponent(id)}`, patch),
-    remove: (id: string) => del<{ deleted: string }>(`/kategori/${encodeURIComponent(id)}`),
+    remove: (id: string, devirKategoriId?: string) =>
+      request<{ deleted: string }>('DELETE', `/kategori/${encodeURIComponent(id)}`,
+        devirKategoriId ? { devirKategoriId } : undefined).then((r) => r.data),
     reorder: (siralar: { id: string; sira: number }[]) =>
       put<{ kategoriler: Kategori[] }>('/kategori-sirala', { siralar }).then((r) => r.kategoriler),
+  },
+
+  // Yazar/kategori kullanım sayaçları (gerçek içerik sayıları — tüm sayılar dahil)
+  kullanim: () => get<KullanimOzeti>('/cms/kullanim'),
+
+  // Yerleşik sayfa metinleri (Yazarlar / Blog başlık + açıklama)
+  sayfaMetinleri: {
+    getCms: () => get<{ sayfaMetinleri: SayfaMetinleri }>('/cms/sayfa-metinleri').then((r) => r.sayfaMetinleri),
+    update: (sayfaMetinleri: SayfaMetinleri) =>
+      put<{ sayfaMetinleri: SayfaMetinleri }>('/sayfa-metinleri', { sayfaMetinleri }).then((r) => r.sayfaMetinleri),
   },
 
   // Yarışma / Hakkımızda

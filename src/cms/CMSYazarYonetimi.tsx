@@ -1,7 +1,7 @@
 // CMS Yazar Yönetimi - Author Management
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useCMS } from '@/context/CMSContext';
-import { api } from '@/lib/api';
+import { api, type KullanimSayaci } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,16 +15,12 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -46,6 +42,8 @@ import {
 } from 'lucide-react';
 import type { Yazar } from '@/types';
 
+const DEVIR_YOK = '__yok__';
+
 export function CMSYazarYonetimi() {
   const {
     yazarlar,
@@ -60,6 +58,22 @@ export function CMSYazarYonetimi() {
   const [editingYazar, setEditingYazar] = useState<Yazar | null>(null);
   const [formData, setFormData] = useState<Partial<Yazar>>({});
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Gerçek içerik sayıları (TÜM sayılar + blog). Bootstrap yalnızca yayındaki
+  // sayıyı taşıdığı için eski sayılardaki yazılar buradan gelir.
+  const [kullanim, setKullanim] = useState<Record<string, KullanimSayaci>>({});
+  const kullanimYenile = useCallback(() => {
+    api.kullanim()
+      .then((d) => setKullanim(d.yazarlar ?? {}))
+      .catch(() => { /* uç yoksa yerel sayaçlara düşülür */ });
+  }, []);
+  useEffect(() => { kullanimYenile(); }, [kullanimYenile]);
+
+  // Silme akışı: bağlı içerik varsa başka yazara devir seçeneği sunulur.
+  const [silinecek, setSilinecek] = useState<Yazar | null>(null);
+  const [devirHedef, setDevirHedef] = useState<string>(DEVIR_YOK);
+  const [siliniyor, setSiliniyor] = useState(false);
+  const [silmeHatasi, setSilmeHatasi] = useState<string | null>(null);
 
   const openNewYazar = () => {
     setEditingYazar(null);
@@ -102,10 +116,14 @@ export function CMSYazarYonetimi() {
     }
   };
 
-  // Yazar yazı sayılarını hesapla
+  // Yazar yazı sayıları — sunucu sayaçları (tüm sayılar) varsa onlar kullanılır.
   const getYazarStats = (yazarId: string) => {
-    const sayiYazilari = sonSayi.yazilar.filter(y => y.yazar.id === yazarId).length;
-    const blogYazilari = araYazilar.filter(y => y.yazar.id === yazarId).length;
+    const uzak = kullanim[yazarId];
+    if (uzak) {
+      return { sayiYazilari: uzak.dergi, blogYazilari: uzak.blog, toplam: uzak.dergi + uzak.blog };
+    }
+    const sayiYazilari = sonSayi.yazilar.filter(y => y.yazar?.id === yazarId).length;
+    const blogYazilari = araYazilar.filter(y => y.yazar?.id === yazarId).length;
     return { sayiYazilari, blogYazilari, toplam: sayiYazilari + blogYazilari };
   };
 
@@ -114,11 +132,29 @@ export function CMSYazarYonetimi() {
     yazar.tamAd.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Yazar silinebilir mi kontrol et
-  const canDeleteYazar = (yazarId: string): boolean => {
-    const stats = getYazarStats(yazarId);
-    return stats.toplam === 0;
+  const openSilDialog = (yazar: Yazar) => {
+    setSilinecek(yazar);
+    setDevirHedef(DEVIR_YOK);
+    setSilmeHatasi(null);
   };
+
+  const handleSil = async () => {
+    if (!silinecek) return;
+    setSiliniyor(true);
+    setSilmeHatasi(null);
+    try {
+      await deleteYazar(silinecek.id, devirHedef !== DEVIR_YOK ? devirHedef : undefined);
+      setSilinecek(null);
+      kullanimYenile();
+    } catch (e) {
+      // Sessiz başarısızlık yok: sunucunun açık mesajı diyalogda görünür.
+      setSilmeHatasi(e instanceof Error ? e.message : 'Yazar silinemedi.');
+    } finally {
+      setSiliniyor(false);
+    }
+  };
+
+  const silinecekStats = silinecek ? getYazarStats(silinecek.id) : { sayiYazilari: 0, blogYazilari: 0, toplam: 0 };
 
   return (
     <div className="space-y-8">
@@ -257,46 +293,14 @@ export function CMSYazarYonetimi() {
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={!canDeleteYazar(yazar.id)}
-                              title={
-                                canDeleteYazar(yazar.id)
-                                  ? 'Yazarı sil'
-                                  : 'Bu yazarın yazıları var, silinemez'
-                              }
-                            >
-                              <Trash2
-                                className={`h-4 w-4 ${
-                                  canDeleteYazar(yazar.id)
-                                    ? 'text-red-500'
-                                    : 'text-gray-300'
-                                }`}
-                              />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Yazarı Sil</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                "{yazar.tamAd}" yazarını silmek istediğinizden emin misiniz?
-                                Bu işlem geri alınamaz.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>İptal</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteYazar(yazar.id)}
-                                className="bg-red-600 hover:bg-red-700"
-                              >
-                                Sil
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openSilDialog(yazar)}
+                          title="Yazarı sil"
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -315,6 +319,65 @@ export function CMSYazarYonetimi() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Silme Dialog — bağlı içerik varsa başka yazara devir seçeneği */}
+      <Dialog open={!!silinecek} onOpenChange={(acik) => { if (!acik) setSilinecek(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Yazarı Sil</DialogTitle>
+            <DialogDescription>
+              "{silinecek?.tamAd}" silinecek. Bu işlem geri alınamaz.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {silinecekStats.toplam > 0 ? (
+              <>
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  Bu yazara bağlı <strong>{silinecekStats.sayiYazilari} dergi yazısı</strong> ve{' '}
+                  <strong>{silinecekStats.blogYazilari} ara yazı</strong> var. İçerikler başka bir
+                  yazara aktarılmadan yazar silinemez.
+                </div>
+                <div>
+                  <Label>İçerikleri şu yazara aktar</Label>
+                  <Select value={devirHedef} onValueChange={setDevirHedef}>
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={DEVIR_YOK}>Aktarma (yalnızca sil)</SelectItem>
+                      {yazarlar
+                        .filter((y) => y.id !== silinecek?.id)
+                        .map((y) => (
+                          <SelectItem key={y.id} value={y.id}>{y.tamAd}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-gray-600">Bu yazara bağlı içerik yok, güvenle silinebilir.</p>
+            )}
+
+            {silmeHatasi && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                {silmeHatasi}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSilinecek(null)}>İptal</Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700"
+              onClick={handleSil}
+              disabled={siliniyor}
+            >
+              {siliniyor ? 'Siliniyor...' : devirHedef !== DEVIR_YOK ? 'Aktar ve Sil' : 'Sil'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Yazar Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>

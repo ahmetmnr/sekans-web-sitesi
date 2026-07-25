@@ -52,6 +52,8 @@ CREATE TABLE kategoriler (
   slug        VARCHAR(160)    NOT NULL,                 -- e.g. 'kuram-yorum'
   sira_no     INT             NOT NULL DEFAULT 0,        -- display order
   aktif       TINYINT(1)      NOT NULL DEFAULT 1,        -- aktif/pasif (pasif: seçicilerde/menüde gizlenebilir)
+  indeks_goster TINYINT(1)    NOT NULL DEFAULT 1,        -- "Sekans İndeks'te görünsün" (kapalıysa kategori + içerikleri indekste yok)
+  blog_goster   TINYINT(1)    NOT NULL DEFAULT 1,        -- "Blog'da sekme olarak görünsün" (kapalıysa sekme ve yalnız-bu-kategori yazıları Blog'da yok)
   created_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),

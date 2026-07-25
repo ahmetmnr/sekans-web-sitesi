@@ -446,7 +446,10 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
                               <AlertDialogFooter>
                                 <AlertDialogCancel>İptal</AlertDialogCancel>
                                 <AlertDialogAction
-                                  onClick={() => deleteArsivSayi(sayi.id)}
+                                  onClick={() => {
+                                    void deleteArsivSayi(sayi.id).catch((e) =>
+                                      alert('Silinemedi: ' + (e instanceof Error ? e.message : 'bilinmeyen hata')));
+                                  }}
                                   className="bg-red-600 hover:bg-red-700"
                                 >
                                   Sil

@@ -239,14 +239,58 @@ function handle_update_yazar(string $code, array $b): void
     respond(yazar_out($r->fetch()));
 }
 
-function handle_delete_yazar(string $code): void
+/** Bir yazara bağlı içerik sayıları (tüm sayılardaki dergi yazıları + blog). */
+function yazar_kullanim_sayilari(int $id): array
+{
+    $st = db()->prepare("SELECT COUNT(*) FROM yazilar WHERE yazar_id = ?");
+    $st->execute([$id]);
+    $dergi = (int)$st->fetchColumn();
+    $st2 = db()->prepare("SELECT COUNT(*) FROM ara_yazilar WHERE yazar_id = ?");
+    $st2->execute([$id]);
+    return ['dergi' => $dergi, 'blog' => (int)$st2->fetchColumn()];
+}
+
+/**
+ * DELETE /api/yazar/{code}
+ * Gövdede `devirYazarId` (hedef yazar code) varsa bağlı TÜM içerik önce o yazara
+ * aktarılır, sonra yazar silinir. Yoksa bağlı içerik varken 409 + açık mesaj döner
+ * (sessiz başarısızlık olmaz). editör+
+ */
+function handle_delete_yazar(string $code, array $b = []): void
 {
     $id = require_id_by_code('yazarlar', $code, 'Yazar');
+
+    $devir = trim((string)($b['devirYazarId'] ?? ''));
+    if ($devir !== '') {
+        if ($devir === $code) fail('VALIDATION', 'İçerikler aynı yazara aktarılamaz; farklı bir yazar seçin.', 400);
+        $hedefId = require_id_by_code('yazarlar', $devir, 'Hedef yazar');
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare("UPDATE yazilar SET yazar_id = ? WHERE yazar_id = ?")->execute([$hedefId, $id]);
+            $pdo->prepare("UPDATE ara_yazilar SET yazar_id = ? WHERE yazar_id = ?")->execute([$hedefId, $id]);
+            $pdo->prepare("DELETE FROM yazarlar WHERE id = ?")->execute([$id]);
+            $pdo->commit();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+        respond(['deleted' => $code]);
+    }
+
+    $k = yazar_kullanim_sayilari($id);
+    if ($k['dergi'] + $k['blog'] > 0) {
+        fail('IN_USE', sprintf(
+            'Bu yazar silinemez: %d dergi yazısı ve %d ara yazı bu yazara bağlı. İçerikleri başka bir yazara aktarın ya da önce o içerikleri silin.',
+            $k['dergi'], $k['blog']
+        ), 409);
+    }
+
     try {
         db()->prepare("DELETE FROM yazarlar WHERE id = ?")->execute([$id]);
     } catch (PDOException $e) {
         if ($e->getCode() === '23000') {
-            fail('IN_USE', 'Bu yazar yazılarda kullanıldığı için silinemez. Önce yazıları başka yazara taşıyın.', 409);
+            fail('IN_USE', 'Bu yazar başka kayıtlarda kullanıldığı için silinemez. Önce içerikleri başka yazara aktarın.', 409);
         }
         throw $e;
     }
@@ -271,6 +315,12 @@ function handle_create_kategori(array $b): void
         if ($e->getCode() === '23000') fail('DUPLICATE', 'Bu kategori adı veya slug zaten var.', 409);
         throw $e;
     }
+    // Görünürlük bayrakları (varsayılan AÇIK) — yalnızca kapatılmak istenirse yazılır.
+    foreach (['indeksGoster' => 'indeks_goster', 'blogGoster' => 'blog_goster'] as $k => $col) {
+        if (array_key_exists($k, $b) && empty($b[$k]) && column_exists('kategoriler', $col)) {
+            db()->prepare("UPDATE kategoriler SET `$col` = 0 WHERE code = ?")->execute([$code]);
+        }
+    }
     $r = db()->prepare("SELECT * FROM kategoriler WHERE code = ? LIMIT 1");
     $r->execute([$code]);
     respond(kategori_out($r->fetch()), null, 201);
@@ -288,6 +338,13 @@ function handle_update_kategori(string $code, array $b): void
     if (array_key_exists('aktif', $b) && column_exists('kategoriler', 'aktif')) {
         $set[] = 'aktif = ?'; $params[] = !empty($b['aktif']) ? 1 : 0;
     }
+    // Görünürlük bayrakları (Faz 12) — kolonlar yoksa sessizce atlanır.
+    if (array_key_exists('indeksGoster', $b) && column_exists('kategoriler', 'indeks_goster')) {
+        $set[] = 'indeks_goster = ?'; $params[] = !empty($b['indeksGoster']) ? 1 : 0;
+    }
+    if (array_key_exists('blogGoster', $b) && column_exists('kategoriler', 'blog_goster')) {
+        $set[] = 'blog_goster = ?'; $params[] = !empty($b['blogGoster']) ? 1 : 0;
+    }
     if (!$set) fail('VALIDATION', 'Güncellenecek alan yok.', 400);
     $params[] = $id;
     try {
@@ -298,7 +355,33 @@ function handle_update_kategori(string $code, array $b): void
     }
     $r = db()->prepare("SELECT * FROM kategoriler WHERE id = ? LIMIT 1");
     $r->execute([$id]);
-    respond(kategori_out($r->fetch()));
+    $row = $r->fetch();
+    // İndeks görünürlüğü değiştiyse Sekans İndeks ayarındaki (sıra/görünürlük)
+    // karşılığını da güncelle ki iki ekran çelişmesin.
+    if (array_key_exists('indeksGoster', $b)) {
+        indeks_ayar_goster_yaz((string)($row['ad'] ?? ''), !empty($b['indeksGoster']));
+    }
+    respond(kategori_out($row));
+}
+
+/** Sekans İndeks ayarında (ayarlar.indeks_kategoriler) bir kategorinin görünürlüğünü yaz. */
+function indeks_ayar_goster_yaz(string $ad, bool $goster): void
+{
+    if ($ad === '') return;
+    try {
+        $liste = indeks_kategori_ayar_kayitli();
+        $bulundu = false;
+        foreach ($liste as $i => $a) {
+            if (($a['ad'] ?? '') === $ad) { $liste[$i]['goster'] = $goster; $bulundu = true; }
+        }
+        if (!$bulundu) $liste[] = ['ad' => $ad, 'goster' => $goster, 'sira' => 9999];
+        db()->prepare(
+            "INSERT INTO ayarlar (anahtar, deger) VALUES ('indeks_kategoriler', ?)
+             ON DUPLICATE KEY UPDATE deger = VALUES(deger)"
+        )->execute([json_encode($liste, JSON_UNESCAPED_UNICODE)]);
+    } catch (PDOException $e) {
+        // ayarlar tablosu yok — kategori bayrağı tek başına yeterli.
+    }
 }
 
 /** PUT /api/kategori-sirala — kategori sırasını topluca kaydet. body {siralar:[{id(code),sira}]}. editör+ */
@@ -323,12 +406,125 @@ function handle_reorder_kategori(array $b): void
     respond(['kategoriler' => array_map('kategori_out', $rows)]);
 }
 
-function handle_delete_kategori(string $code): void
+/** Bir kategoriye bağlı içerik sayıları (dergi yazıları + blog; çoklu kategori dahil). */
+function kategori_kullanim_sayilari(int $id, string $ad): array
+{
+    $st = db()->prepare("SELECT COUNT(*) FROM yazilar WHERE kategori_id = ?");
+    $st->execute([$id]);
+    $dergi = (int)$st->fetchColumn();
+
+    $st2 = db()->prepare("SELECT COUNT(*) FROM ara_yazilar WHERE kategori_id = ? OR kategori_ad = ?");
+    $st2->execute([$id, $ad]);
+    $blog = (int)$st2->fetchColumn();
+    try {
+        $st3 = db()->prepare("SELECT COUNT(DISTINCT arayazi_id) FROM arayazi_kategorileri WHERE kategori_ad = ?");
+        $st3->execute([$ad]);
+        $blog = max($blog, (int)$st3->fetchColumn());
+    } catch (PDOException $e) {
+        // arayazi_kategorileri tablosu yok — birincil kategori sayımı yeterli.
+    }
+    return ['dergi' => $dergi, 'blog' => $blog];
+}
+
+/**
+ * DELETE /api/kategori/{code}
+ * Gövdede `devirKategoriId` (hedef kategori code) varsa bağlı içerik önce o
+ * kategoriye aktarılır, sonra kategori silinir. Yoksa: dergi yazıları FK
+ * RESTRICT olduğu için silme engellenir ve açık hata mesajı döner. editör+
+ */
+function handle_delete_kategori(string $code, array $b = []): void
 {
     $id = require_id_by_code('kategoriler', $code, 'Kategori');
-    // Yazılarda FK SET NULL, ara_yazilarda SET NULL — silme güvenli (referanslar nullanır).
-    db()->prepare("DELETE FROM kategoriler WHERE id = ?")->execute([$id]);
+    $adSt = db()->prepare("SELECT ad FROM kategoriler WHERE id = ? LIMIT 1");
+    $adSt->execute([$id]);
+    $ad = (string)$adSt->fetchColumn();
+
+    $devir = trim((string)($b['devirKategoriId'] ?? ''));
+    if ($devir !== '') {
+        if ($devir === $code) fail('VALIDATION', 'İçerikler aynı kategoriye aktarılamaz; farklı bir kategori seçin.', 400);
+        $hedefId = require_id_by_code('kategoriler', $devir, 'Hedef kategori');
+        $hSt = db()->prepare("SELECT ad FROM kategoriler WHERE id = ? LIMIT 1");
+        $hSt->execute([$hedefId]);
+        $hedefAd = (string)$hSt->fetchColumn();
+
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare("UPDATE yazilar SET kategori_id = ? WHERE kategori_id = ?")->execute([$hedefId, $id]);
+            $pdo->prepare("UPDATE ara_yazilar SET kategori_id = ?, kategori_ad = ? WHERE kategori_id = ? OR kategori_ad = ?")
+                ->execute([$hedefId, $hedefAd, $id, $ad]);
+            try {
+                // Çoklu kategori join: yazı zaten hedef kategoride ise çift kaydı önle.
+                $pdo->prepare(
+                    "DELETE eski FROM arayazi_kategorileri eski
+                     JOIN arayazi_kategorileri hedef
+                       ON hedef.arayazi_id = eski.arayazi_id AND hedef.kategori_ad = ?
+                     WHERE eski.kategori_ad = ?"
+                )->execute([$hedefAd, $ad]);
+                $pdo->prepare("UPDATE arayazi_kategorileri SET kategori_ad = ? WHERE kategori_ad = ?")
+                    ->execute([$hedefAd, $ad]);
+            } catch (PDOException $e) {
+                // arayazi_kategorileri tablosu yok (migration öncesi) — atla.
+            }
+            $pdo->prepare("DELETE FROM kategoriler WHERE id = ?")->execute([$id]);
+            $pdo->commit();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+        respond(['deleted' => $code]);
+    }
+
+    // Dergi yazıları FK RESTRICT: bağlı yazı varsa silme SESSİZCE değil, açık mesajla reddedilir.
+    $k = kategori_kullanim_sayilari($id, $ad);
+    if ($k['dergi'] > 0) {
+        fail('IN_USE', sprintf(
+            'Bu kategori silinemez: %d dergi yazısı bu kategoriye bağlı. İçerikleri başka bir kategoriye aktarın ya da o yazıların kategorisini değiştirin.',
+            $k['dergi']
+        ), 409);
+    }
+
+    try {
+        // Blog yazılarında kategori_id FK SET NULL'dur; kategori adı etiketi korunur.
+        db()->prepare("DELETE FROM kategoriler WHERE id = ?")->execute([$id]);
+    } catch (PDOException $e) {
+        if ($e->getCode() === '23000') {
+            fail('IN_USE', 'Bu kategori içeriklerde kullanıldığı için silinemez. İçerikleri başka bir kategoriye aktarın.', 409);
+        }
+        throw $e;
+    }
     respond(['deleted' => $code]);
+}
+
+/**
+ * GET /api/cms/kullanim — yazar ve kategori başına GERÇEK içerik sayıları.
+ * (Bootstrap yalnızca yayındaki sayıyı taşıdığı için CMS listelerindeki sayaçlar
+ * eksik kalıyordu; silme/devir kararları bu uçtan beslenir.) editör+
+ */
+function handle_cms_kullanim(): void
+{
+    $yazarlar = [];
+    foreach (db()->query("SELECT code FROM yazarlar")->fetchAll() as $r) {
+        $yazarlar[(string)$r['code']] = ['dergi' => 0, 'blog' => 0];
+    }
+    foreach (db()->query(
+        "SELECT y.code AS code, COUNT(*) AS c FROM yazilar a JOIN yazarlar y ON y.id = a.yazar_id GROUP BY y.code"
+    )->fetchAll() as $r) {
+        $yazarlar[(string)$r['code']]['dergi'] = (int)$r['c'];
+    }
+    foreach (db()->query(
+        "SELECT y.code AS code, COUNT(*) AS c FROM ara_yazilar a JOIN yazarlar y ON y.id = a.yazar_id GROUP BY y.code"
+    )->fetchAll() as $r) {
+        $yazarlar[(string)$r['code']]['blog'] = (int)$r['c'];
+    }
+
+    $kategoriler = [];
+    $katRows = db()->query("SELECT id, code, ad FROM kategoriler")->fetchAll();
+    foreach ($katRows as $r) {
+        $kategoriler[(string)$r['code']] = kategori_kullanim_sayilari((int)$r['id'], (string)$r['ad']);
+    }
+
+    respond(['yazarlar' => (object)$yazarlar, 'kategoriler' => (object)$kategoriler]);
 }
 
 /* ============================ ARŞİV SAYILARI =============================== */
@@ -852,7 +1048,49 @@ function handle_update_indeks_kategoriler(array $b): void
         "INSERT INTO ayarlar (anahtar, deger) VALUES ('indeks_kategoriler', ?)
          ON DUPLICATE KEY UPDATE deger = VALUES(deger)"
     )->execute([$json]);
+
+    // Görünürlük tek kaynaktan yönetilsin: kategoriler tablosunda karşılığı olan
+    // adlar için "Sekans İndeks'te görünsün" bayrağı da senkronlanır (Kategori
+    // Yönetimi ekranındaki anahtarla aynı değeri gösterir).
+    if (column_exists('kategoriler', 'indeks_goster')) {
+        $up = db()->prepare("UPDATE kategoriler SET indeks_goster = ? WHERE ad = ?");
+        foreach ($norm as $k) {
+            $up->execute([$k['goster'] ? 1 : 0, $k['ad']]);
+        }
+    }
     respond(['kategoriler' => $norm]);
+}
+
+/* ====================== YERLEŞİK SAYFA METİNLERİ ========================= */
+
+/** GET /api/cms/sayfa-metinleri — Yazarlar/Blog başlık + açıklama metinleri. editör+ */
+function handle_cms_get_sayfa_metinleri(): void
+{
+    respond(['sayfaMetinleri' => sayfa_metinleri_payload()]);
+}
+
+/** PUT /api/sayfa-metinleri — body {sayfaMetinleri:{yazarlar:{baslik,aciklama},blog:{...}}}. editör+ */
+function handle_update_sayfa_metinleri(array $b): void
+{
+    $in = (isset($b['sayfaMetinleri']) && is_array($b['sayfaMetinleri'])) ? $b['sayfaMetinleri'] : $b;
+    if (!is_array($in)) fail('VALIDATION', 'sayfaMetinleri gerekli.', 400);
+
+    $norm = [];
+    foreach (['yazarlar', 'blog'] as $anahtar) {
+        if (!isset($in[$anahtar]) || !is_array($in[$anahtar])) continue;
+        $norm[$anahtar] = [
+            'baslik'   => trim((string)($in[$anahtar]['baslik'] ?? '')),
+            'aciklama' => (string)($in[$anahtar]['aciklama'] ?? ''),
+        ];
+    }
+    if (!$norm) fail('VALIDATION', 'Kaydedilecek sayfa metni yok.', 400);
+
+    db()->prepare(
+        "INSERT INTO ayarlar (anahtar, deger) VALUES ('sayfa_metinleri', ?)
+         ON DUPLICATE KEY UPDATE deger = VALUES(deger)"
+    )->execute([json_encode($norm, JSON_UNESCAPED_UNICODE)]);
+
+    respond(['sayfaMetinleri' => sayfa_metinleri_payload()]);
 }
 
 function handle_update_hakkimizda(array $b): void

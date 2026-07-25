@@ -17,7 +17,7 @@ const SIRALAMA_SECENEKLERI: { value: SiralamaModu; label: string }[] = [
   { value: 'yeni', label: 'En yeni' },
   { value: 'eski', label: 'En eski' },
   { value: 'alfabetik', label: 'Alfabetik' },
-  { value: 'sayi', label: 'Dergi sayısına göre' },
+  { value: 'sayi', label: 'Sayıya göre' },
 ];
 
 // İndeks girişlerini seçilen moda göre sırala.
