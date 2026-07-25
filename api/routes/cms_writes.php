@@ -63,7 +63,13 @@ function handle_create_yazi(array $b): void
         $yazarId, $kategoriId, $sayiId, (int)($b['siraNo'] ?? 0),
         $b['pdfUrl'] ?? null, $b['kapakGorseli'] ?? null, norm_date($b['yayinTarihi'] ?? null),
     ]);
-    respond(yazi_response_by_id((int)db()->lastInsertId()), null, 201);
+    $newId = (int)db()->lastInsertId();
+    // İçindekiler listesinin küçük görseli (kolon varsa) — migration öncesi tolere edilir.
+    if (array_key_exists('dizinGorseli', $b) && column_exists('yazilar', 'dizin_gorseli')) {
+        db()->prepare("UPDATE yazilar SET dizin_gorseli = ? WHERE id = ?")
+            ->execute([($b['dizinGorseli'] ?? '') !== '' ? (string)$b['dizinGorseli'] : null, $newId]);
+    }
+    respond(yazi_response_by_id($newId), null, 201);
 }
 
 /** PUT /api/yazi/{code} */
@@ -78,6 +84,9 @@ function handle_update_yazi(string $code, array $b): void
     if (array_key_exists('siraNo', $b)) { $set[] = 'sira_no = ?'; $params[] = (int)$b['siraNo']; }
     if (array_key_exists('pdfUrl', $b)) { $set[] = 'pdf_url = ?'; $params[] = $b['pdfUrl']; }
     if (array_key_exists('kapakGorseli', $b)) { $set[] = 'kapak_gorseli = ?'; $params[] = $b['kapakGorseli']; }
+    if (array_key_exists('dizinGorseli', $b) && column_exists('yazilar', 'dizin_gorseli')) {
+        $set[] = 'dizin_gorseli = ?'; $params[] = ($b['dizinGorseli'] ?? '') !== '' ? (string)$b['dizinGorseli'] : null;
+    }
     if (array_key_exists('yayinTarihi', $b))  { $set[] = 'yayin_tarihi = ?'; $params[] = norm_date($b['yayinTarihi']); }
     if (isset($b['yazarId']) || isset($b['yazar']['id'])) {
         $set[] = 'yazar_id = ?'; $params[] = require_id_by_code('yazarlar', (string)($b['yazarId'] ?? $b['yazar']['id']), 'Yazar');

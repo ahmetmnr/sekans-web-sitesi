@@ -149,6 +149,7 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
           siraNo: formData.siraNo || varsayilanSonSira,
           pdfUrl: formData.pdfUrl,
           kapakGorseli: formData.kapakGorseli,
+          dizinGorseli: formData.dizinGorseli,
           yayinTarihi: formData.yayinTarihi,
         });
       } else {
@@ -163,6 +164,7 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
           siraNo: formData.siraNo || varsayilanSonSira,
           pdfUrl: formData.pdfUrl,
           kapakGorseli: formData.kapakGorseli,
+          dizinGorseli: formData.dizinGorseli,
           yayinTarihi: formData.yayinTarihi,
         });
       }
@@ -423,15 +425,36 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
               previewType="none"
             />
 
-            {/* Kapak Görseli */}
-            <FileUploadField
-              label="Kapak Görseli"
-              value={formData.kapakGorseli || ''}
-              onChange={(url) => setFormData({ ...formData, kapakGorseli: url })}
-              accept="image/*"
-              kind="image"
-              previewType="image"
-            />
+            {/* Kapak Görseli — yazı detay sayfasının üstündeki geniş görsel */}
+            <div>
+              <FileUploadField
+                label="Kapak Görseli"
+                value={formData.kapakGorseli || ''}
+                onChange={(url) => setFormData({ ...formData, kapakGorseli: url })}
+                accept="image/*"
+                kind="image"
+                previewType="image"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Yazı detay sayfasının en üstünde geniş olarak görünür.
+              </p>
+            </div>
+
+            {/* Dizin Görseli — sayı ana sayfasındaki içindekiler listesinin küçük görseli */}
+            <div>
+              <FileUploadField
+                label="Dizin Görseli"
+                value={formData.dizinGorseli || ''}
+                onChange={(url) => setFormData({ ...formData, dizinGorseli: url })}
+                accept="image/*"
+                kind="image"
+                previewType="image"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Sayı ana sayfasındaki içindekiler listesinde küçük kare olarak görünür.
+                Boş bırakılırsa kapak görseli kullanılır; ikisi de boşsa listede görsel çıkmaz.
+              </p>
+            </div>
           </div>
         </aside>
       </div>

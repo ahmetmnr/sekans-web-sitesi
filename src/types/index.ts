@@ -41,7 +41,8 @@ export interface Yazi {
   sayi?: Sayi;
   siraNo: number;
   pdfUrl?: string;
-  kapakGorseli?: string;
+  kapakGorseli?: string;  // detay sayfasının üstündeki geniş kapak
+  dizinGorseli?: string;  // içindekiler listesindeki küçük görsel (boşsa kapakGorseli)
   yayinTarihi?: string;
 }
 

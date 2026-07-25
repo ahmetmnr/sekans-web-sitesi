@@ -140,10 +140,19 @@ else
   echo "    -> 'kategoriler.indeks_goster' kolonu zaten var, atlanıyor."
 fi
 
-echo ">>> 15/16 API konteyneri yeniden başlatılıyor..."
+echo ">>> 15/17 DB migration: yazilar.dizin_gorseli (içindekiler küçük görseli) (yalnızca yoksa)..."
+if [ "$(col_exists yazilar dizin_gorseli)" = "0" ]; then
+  echo "    -> uygulanıyor: 2026-07-25_yazi_dizin_gorseli.sql"
+  $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-25_yazi_dizin_gorseli.sql
+  echo "    -> tamam."
+else
+  echo "    -> 'yazilar.dizin_gorseli' kolonu zaten var, atlanıyor."
+fi
+
+echo ">>> 16/17 API konteyneri yeniden başlatılıyor..."
 $DC restart api
 
-echo ">>> 16/16 Kontrol — sayı durumları + filtre sayfaları + menü:"
+echo ">>> 17/17 Kontrol — sayı durumları + filtre sayfaları + menü:"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT durum, COUNT(*) FROM sayilar GROUP BY durum;" 2>/dev/null || echo "    (DB kontrolü atlandı)"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \

@@ -125,8 +125,10 @@ function kategori_out(?array $r): ?array
 }
 
 /**
- * Yazi { id, baslik, spot?, icerik?, yazar, kategori, sayiId, siraNo, pdfUrl?, kapakGorseli?, yayinTarihi? }
+ * Yazi { id, baslik, spot?, icerik?, yazar, kategori, sayiId, siraNo, pdfUrl?,
+ *        kapakGorseli?, dizinGorseli?, yayinTarihi? }
  * $yazar ve $kategori önceden serileştirilmiş (gömülü) objelerdir.
+ * dizinGorseli: içindekiler listesindeki küçük görsel (kolon yoksa null).
  */
 function yazi_out(array $r, ?array $yazar, ?array $kategori, string $sayiCode): array
 {
@@ -141,6 +143,7 @@ function yazi_out(array $r, ?array $yazar, ?array $kategori, string $sayiCode): 
         'siraNo'       => (int)$r['sira_no'],
         'pdfUrl'       => $r['pdf_url'] ?? null,
         'kapakGorseli' => $r['kapak_gorseli'] ?? null,
+        'dizinGorseli' => $r['dizin_gorseli'] ?? null,
         'yayinTarihi'  => $r['yayin_tarihi'] ?? null,
     ];
 }

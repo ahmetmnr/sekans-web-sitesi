@@ -65,23 +65,30 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
             </div>
 
             <ul className="space-y-5 md:space-y-6">
-              {sayi.yazilar.map((yazi) => (
+              {sayi.yazilar.map((yazi) => {
+                // Küçük görsel: önce dizin görseli, yoksa kapak görseli.
+                // İkisi de yoksa görsel gösterilmez (sayı kapağı satırlarda tekrar etmesin).
+                const kucukGorsel = yazi.dizinGorseli?.trim() || yazi.kapakGorseli?.trim() || '';
+                return (
                 <li key={yazi.id}>
                   <button
                     onClick={() => onYaziClick(yazi)}
                     className="yazi-kart w-full text-left group flex items-start gap-4"
                   >
-                    {/* Küçük görsel */}
-                    <div className="w-20 h-20 md:w-24 md:h-24 flex-shrink-0 bg-muted overflow-hidden">
-                      <img
-                        src={yazi.kapakGorseli || sayi.kapakGorseli || '/images/default-cover.svg'}
-                        alt={yazi.baslik}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/images/default-cover.svg';
-                        }}
-                      />
-                    </div>
+                    {kucukGorsel && (
+                      <div className="w-20 h-20 md:w-24 md:h-24 flex-shrink-0 bg-muted overflow-hidden">
+                        <img
+                          src={kucukGorsel}
+                          alt={yazi.baslik}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          onError={(e) => {
+                            // Dosya bulunamazsa boş gri kutu kalmasın.
+                            const kutu = (e.target as HTMLImageElement).parentElement;
+                            if (kutu) kutu.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
 
                     <div className="flex-1 min-w-0">
                       <span className="kategori-etiket block mb-1">
@@ -108,7 +115,8 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
                     </div>
                   </button>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </div>
         </div>

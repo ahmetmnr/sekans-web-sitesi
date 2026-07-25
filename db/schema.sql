@@ -120,7 +120,8 @@ CREATE TABLE yazilar (
   sayi_id       BIGINT UNSIGNED NOT NULL,               -- FK -> sayilar.id (Yazi.sayiId)
   sira_no       INT             NOT NULL DEFAULT 0,     -- order within issue (siraNo)
   pdf_url       VARCHAR(512)    NULL,                   -- per-article PDF
-  kapak_gorseli VARCHAR(512)    NULL,                   -- cover image
+  kapak_gorseli VARCHAR(512)    NULL,                   -- cover image (detay sayfası üst görseli)
+  dizin_gorseli VARCHAR(512)    NULL,                   -- içindekiler listesindeki küçük görsel (boşsa kapak_gorseli)
   yayin_tarihi  DATE            NULL,                   -- publish date
   created_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
