@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Upload, Loader2, Link as LinkIcon, FileText } from 'lucide-react';
+import { Upload, Loader2, Link as LinkIcon, FileText, X } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 
 interface FileUploadFieldProps {
@@ -61,6 +61,20 @@ export function FileUploadField({
           <LinkIcon className="h-4 w-4 mr-1.5" />
           URL
         </Button>
+        {/* Yüklenen dosyayı alandan çıkar (kaydedince temizlenir). */}
+        {value && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            onClick={() => { setErr(null); onChange(''); }}
+            title="Bu alandaki dosyayı kaldır"
+          >
+            <X className="h-4 w-4 mr-1.5" />
+            Kaldır
+          </Button>
+        )}
       </div>
 
       {showUrl && (
@@ -76,7 +90,9 @@ export function FileUploadField({
 
       {value && previewType === 'image' && (
         <div className="mt-2 aspect-video bg-gray-100 rounded overflow-hidden">
+          {/* key: yeni dosya seçilince kırık görselden kalan display:none sıfırlansın */}
           <img
+            key={value}
             src={value}
             alt="Önizleme"
             className="w-full h-full object-cover"
