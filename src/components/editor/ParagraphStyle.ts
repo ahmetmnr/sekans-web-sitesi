@@ -14,6 +14,9 @@ import { Extension } from '@tiptap/core';
  *  - section      → Bölüm Başlığı (ortada, kalın)
  *  - filmkunye    → Künye (ortada, küçük punto, sıkı satır aralığı)
  *  - epigraf      → Epigraf (sağa yaslı, küçük punto)
+ *  - kaynaklar    → Kaynaklar (künye puntosu, iki yana yaslı, asılı girinti:
+ *                   ikinci ve sonraki satırlar içerden başlar; kaynakça girdileri
+ *                   arasında boşluk)
  *
  * Not: 'title-author' eski birleşik stildir; artık title/author olarak ayrıldı.
  * Eski içerik CSS'te başlık gibi render edilmeye devam eder (geriye dönük uyum).
@@ -25,7 +28,8 @@ export type ParagraphStyleName =
   | 'author'
   | 'section'
   | 'filmkunye'
-  | 'epigraf';
+  | 'epigraf'
+  | 'kaynaklar';
 
 export const ParagraphStyle = Extension.create({
   name: 'paragraphStyle',

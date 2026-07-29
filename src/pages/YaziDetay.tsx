@@ -4,7 +4,8 @@ import type { Yazi, Sayi, Yazar } from '@/types';
 import { useFootnotes } from '@/hooks/useFootnotes';
 import ReadingIndicator from '@/components/ReadingIndicator';
 import PaylasimKutusu from '@/components/PaylasimKutusu';
-import { sayiAdi } from '@/lib/utils';
+import { sayiAdi, yaziYazarlari, yazarAdlari } from '@/lib/utils';
+import { GORSEL_ORAN_SINIFI } from '@/lib/gorselStandardi';
 
 interface YaziDetayProps {
   yazi: Yazi;
@@ -44,6 +45,7 @@ export default function YaziDetay({
   // Sayıdaki tüm yazılar (içindekiler için)
   const tumYazilar = sayi.yazilar;
   const sayiBaslik = sayiAdi(sayi);
+  const yazarlar = yaziYazarlari(yazi);
 
   return (
     <main className="animate-fade-in py-8 md:py-12">
@@ -51,9 +53,10 @@ export default function YaziDetay({
       <ReadingIndicator contentRef={contentRef} contentDep={yazi.icerik} />
 
       <div className="container mx-auto px-4 md:px-6 max-w-6xl">
-        {/* Kapak Görseli */}
-        {yazi.kapakGorseli && (
-          <div className="aspect-[21/9] md:aspect-[3/1] bg-muted overflow-hidden mb-8">
+        {/* Kapak Görseli — dizin görseliyle AYNI oranda (2:1). Editör isterse
+            üst bantta gösterilmesini kapatabilir (kapakUstte). */}
+        {yazi.kapakGorseli && yazi.kapakUstte !== false && (
+          <div className={`${GORSEL_ORAN_SINIFI} bg-muted overflow-hidden mb-8`}>
             <img
               src={yazi.kapakGorseli}
               alt={yazi.baslik}
@@ -123,28 +126,31 @@ export default function YaziDetay({
 
           {/* Sağ Kolon — yazar kartı, sayı içeriği, paylaşım (sırayla) */}
           <aside className="lg:w-64 flex-shrink-0 space-y-6">
-            {/* Yazar: yalnızca profil görseli ve ad */}
-            {yazi.yazar && (
-              <div className="bg-muted/30 rounded-lg p-6">
-                <div className="text-center">
-                  {yazi.yazar.fotograf ? (
-                    <img
-                      src={yazi.yazar.fotograf}
-                      alt={yazi.yazar.tamAd}
-                      className="w-24 h-24 rounded-full object-cover mx-auto border-2 border-border"
-                    />
-                  ) : (
-                    <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mx-auto border-2 border-border">
-                      <User className="w-10 h-10 text-muted-foreground" />
-                    </div>
-                  )}
-                  <button
-                    onClick={() => onYazarClick?.(yazi.yazar)}
-                    className="block w-full mt-4 font-serif font-bold text-lg hover:text-primary transition-colors hover:underline underline-offset-2"
-                  >
-                    {yazi.yazar.tamAd}
-                  </button>
-                </div>
+            {/* Yazar(lar): yalnızca profil görseli ve ad. Çok yazarlı yazıda
+                her yazar alt alta listelenir. */}
+            {yazarlar.length > 0 && (
+              <div className="bg-muted/30 rounded-lg p-6 space-y-6">
+                {yazarlar.map((yzr) => (
+                  <div key={yzr.id} className="text-center">
+                    {yzr.fotograf ? (
+                      <img
+                        src={yzr.fotograf}
+                        alt={yzr.tamAd}
+                        className="w-24 h-24 rounded-full object-cover mx-auto border-2 border-border"
+                      />
+                    ) : (
+                      <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mx-auto border-2 border-border">
+                        <User className="w-10 h-10 text-muted-foreground" />
+                      </div>
+                    )}
+                    <button
+                      onClick={() => onYazarClick?.(yzr)}
+                      className="block w-full mt-4 font-serif font-bold text-lg hover:text-primary transition-colors hover:underline underline-offset-2"
+                    >
+                      {yzr.tamAd}
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -181,7 +187,7 @@ export default function YaziDetay({
                           <p className={`text-[11px] mt-0.5 ${
                             isActive ? 'text-muted-foreground' : 'text-muted-foreground/70'
                           }`}>
-                            {item.yazar?.tamAd ?? ''}
+                            {yazarAdlari(item)}
                           </p>
                         </div>
                       </button>

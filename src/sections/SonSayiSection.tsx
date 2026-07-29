@@ -1,6 +1,7 @@
 import { FileText } from 'lucide-react';
 import type { Sayi, Yazi } from '@/types';
-import { sayiAdi } from '@/lib/utils';
+import { sayiAdi, yazarAdlari } from '@/lib/utils';
+import { GORSEL_ORAN_SINIFI } from '@/lib/gorselStandardi';
 
 interface SonSayiSectionProps {
   sayi: Sayi;
@@ -9,11 +10,13 @@ interface SonSayiSectionProps {
 }
 
 /**
- * Sayı ana sayfası bölümü — iki kolonlu kompakt düzen:
- *   sol  : sayı kapağı (masaüstünde yapışkan)
- *   sağ  : ay/yıl + sayı adı + içindekiler (kategori, başlık, yazar, küçük görsel)
- * Tarih yalnızca bir kez (sağ kolonun üstünde) gösterilir. Bu düzen "Son Sayı"nın
- * yanı sıra siteye aktarılacak eski sayılar için de kullanılır.
+ * Ana sayfadaki sayı bölümü — iki kolonlu kompakt düzen:
+ *   sol  : sayı kapağı, PDF bağlantısı ve künye (masaüstünde yapışkan)
+ *   sağ  : ay/yıl + sayı adı + içindekiler
+ *
+ * İçindekiler satırında metin SOLDA, dizin görseli SAĞDA durur: sayfanın sol
+ * tarafında kapak ile küçük görseller üst üste yığılmasın.
+ * Tarih yalnızca bir kez (sağ kolonun üstünde) gösterilir.
  */
 export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSayiSectionProps) {
   const adi = sayiAdi(sayi);
@@ -23,11 +26,11 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
     <section className="son-sayi-section py-8 md:py-12">
       <div className="container mx-auto px-4 md:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,260px)_1fr] gap-8 lg:gap-12 items-start">
-          {/* Sol Kolon — Kapak */}
-          <div className="lg:sticky lg:top-24">
+          {/* Sol Kolon — Kapak, PDF, künye */}
+          <div className="lg:sticky lg:top-24 max-w-[260px] mx-auto lg:mx-0">
             <button
               onClick={() => onSayiClick(sayi)}
-              className="relative group block w-full max-w-[260px] mx-auto lg:mx-0"
+              className="relative group block w-full"
             >
               <div className="aspect-[3/4] bg-muted overflow-hidden shadow-lg transition-shadow duration-500 group-hover:shadow-xl">
                 <img
@@ -45,13 +48,22 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
             {sayi.pdfUrl && (
               <a
                 href={sayi.pdfUrl}
-                className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors max-w-[260px] mx-auto lg:mx-0"
+                className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 <FileText className="w-4 h-4 flex-shrink-0" />
                 <span>Tüm sayıyı PDF olarak indir</span>
               </a>
+            )}
+
+            {/* Künye — kapağın altında, sol kolonda */}
+            {sayi.kunye?.trim() && (
+              <div className="mt-4 pt-4 border-t border-border">
+                <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
+                  {sayi.kunye}
+                </p>
+              </div>
             )}
           </div>
 
@@ -66,7 +78,7 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
 
             <ul className="space-y-5 md:space-y-6">
               {sayi.yazilar.map((yazi) => {
-                // Küçük görsel: önce dizin görseli, yoksa kapak görseli.
+                // Küçük görsel: önce dizin görseli, yoksa kapak görselinin küçüğü.
                 // İkisi de yoksa görsel gösterilmez (sayı kapağı satırlarda tekrar etmesin).
                 const kucukGorsel = yazi.dizinGorseli?.trim() || yazi.kapakGorseli?.trim() || '';
                 return (
@@ -75,21 +87,6 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
                     onClick={() => onYaziClick(yazi)}
                     className="yazi-kart w-full text-left group flex items-start gap-4"
                   >
-                    {kucukGorsel && (
-                      <div className="w-20 h-20 md:w-24 md:h-24 flex-shrink-0 bg-muted overflow-hidden">
-                        <img
-                          src={kucukGorsel}
-                          alt={yazi.baslik}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          onError={(e) => {
-                            // Dosya bulunamazsa boş gri kutu kalmasın.
-                            const kutu = (e.target as HTMLImageElement).parentElement;
-                            if (kutu) kutu.style.display = 'none';
-                          }}
-                        />
-                      </div>
-                    )}
-
                     <div className="flex-1 min-w-0">
                       <span className="kategori-etiket block mb-1">
                         {yazi.kategori?.ad ?? ''}
@@ -98,7 +95,7 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
                         {yazi.baslik}
                       </h3>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {yazi.yazar?.tamAd ?? ''}
+                        {yazarAdlari(yazi)}
                       </p>
                       {yazi.pdfUrl && (
                         <a
@@ -113,6 +110,22 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
                         </a>
                       )}
                     </div>
+
+                    {/* Dizin görseli — satırın SAĞINDA, kapakla aynı oranda */}
+                    {kucukGorsel && (
+                      <div className={`w-28 md:w-36 flex-shrink-0 bg-muted overflow-hidden ${GORSEL_ORAN_SINIFI}`}>
+                        <img
+                          src={kucukGorsel}
+                          alt={yazi.baslik}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          onError={(e) => {
+                            // Dosya bulunamazsa boş gri kutu kalmasın.
+                            const kutu = (e.target as HTMLImageElement).parentElement;
+                            if (kutu) kutu.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
                   </button>
                 </li>
                 );

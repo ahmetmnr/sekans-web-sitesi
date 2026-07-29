@@ -3,7 +3,7 @@ import { ArrowLeft, User, Calendar, Loader2, ChevronLeft, ChevronRight } from 'l
 import type { AraYazi, FiltreSayfa } from '@/types';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
-import { araYaziKategorileri } from '@/lib/utils';
+import { araYaziKategorileri, yazarAdlari } from '@/lib/utils';
 
 interface FiltreListeSayfasiProps {
   slug: string;
@@ -155,7 +155,7 @@ export default function FiltreListeSayfasi({ slug, araYazilar, onAraYaziClick, o
                           <User className="w-3 h-3 text-muted-foreground" />
                         </div>
                       )}
-                      <span className="text-sm font-medium text-foreground/80">{araYazi.yazar?.tamAd ?? ''}</span>
+                      <span className="text-sm font-medium text-foreground/80">{yazarAdlari(araYazi)}</span>
                     </div>
                   )}
                 </article>

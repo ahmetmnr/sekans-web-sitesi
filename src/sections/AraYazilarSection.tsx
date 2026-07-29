@@ -1,5 +1,6 @@
 import { ArrowRight } from 'lucide-react';
 import type { AraYazi } from '@/types';
+import { yazarAdlari } from '@/lib/utils';
 
 interface AraYazilarSectionProps {
   araYazilar: AraYazi[];
@@ -82,7 +83,7 @@ export default function AraYazilarSection({
 
               {/* Yazar */}
               <p className="mt-3 text-sm font-medium text-foreground/80">
-                {araYazi.yazar.tamAd}
+                {yazarAdlari(araYazi)}
               </p>
             </article>
           ))}

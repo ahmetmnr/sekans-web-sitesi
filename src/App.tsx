@@ -22,7 +22,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { araYaziKategorileri } from '@/lib/utils';
+import { araYaziKategorileri, sayiAdi } from '@/lib/utils';
 
 import type { Yazi, AraYazi, Yazar, Sayi, AramaYaziSonuc } from '@/types';
 
@@ -223,6 +223,30 @@ function AppContent() {
       .then((full) => navigateTo('arayazidetay', { selectedAraYazi: full, donus }))
       .catch(() => navigateTo('arayazidetay', { selectedAraYazi: araYazi, donus }));
   }, [navigateTo, currentPage]);
+
+  // Ara yazı detayındaki "Geri Dön" butonunun ETİKETİ — gerçekten dönülecek
+  // sayfanın adı. (Eskiden hep "Ara Yazılar" yazıyordu ama buton geldiğin
+  // sayfaya döndüğü için etiket yanıltıcıydı.)
+  const geriBaslikBul = useCallback((hedef?: PageState): string => {
+    if (!hedef) return 'Ana Sayfa';
+    switch (hedef.page) {
+      case 'anasayfa':      return 'Ana Sayfa';
+      case 'arayazilar':    return hedef.blogKategori?.trim() || 'Blog';
+      case 'yazarlarimizdan': return 'Yazarlarımızdan';
+      case 'sinemakitapligi': return 'Sinema Kitaplığı';
+      case 'basilisayilar': return 'Basılı Sayılar';
+      case 'duyurular':     return 'Duyurular';
+      case 'textsinenglish':return 'Texts in English';
+      case 'indeks':        return 'Sekans İndeks';
+      case 'yazardetay':    return hedef.selectedYazar?.tamAd || 'Yazar';
+      case 'yazarlar':      return 'Yazarlar';
+      case 'sonsayi':       return hedef.selectedSayi ? sayiAdi(hedef.selectedSayi) : 'Son Sayı';
+      case 'arsiv':         return 'Arşiv';
+      case 'filtre':        return hedef.statikBaslik?.trim() || 'Listeye Dön';
+      case 'statik':        return hedef.statikBaslik?.trim() || 'Geri Dön';
+      default:              return 'Geri Dön';
+    }
+  }, []);
 
   // Detay "Geri Dön": geldiğin sayfaya dön (yoksa Ana Sayfa).
   const handleAraYaziBack = useCallback(() => {
@@ -536,6 +560,7 @@ function AppContent() {
               araYazi={currentPage.selectedAraYazi}
               oncekiAraYazi={onceki}
               sonrakiAraYazi={sonraki}
+              geriBaslik={geriBaslikBul(currentPage.donus)}
               onBackClick={handleAraYaziBack}
               onOncekiAraYazi={onceki ? () => handleAraYaziClick(onceki) : undefined}
               onSonrakiAraYazi={sonraki ? () => handleAraYaziClick(sonraki) : undefined}

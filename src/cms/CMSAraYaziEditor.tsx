@@ -9,13 +9,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { AdvancedEditor } from '@/components/AdvancedEditor';
 import { FileUploadField } from '@/components/cms/FileUploadField';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { YazarSecici } from '@/components/cms/YazarSecici';
+import { Switch } from '@/components/ui/switch';
+import { KAPAK_ACIKLAMA, GORSEL_ORAN_SINIFI } from '@/lib/gorselStandardi';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ArrowLeft,
@@ -26,7 +22,7 @@ import {
   User,
   Calendar,
 } from 'lucide-react';
-import type { AraYazi } from '@/types';
+import type { AraYazi, Yazar } from '@/types';
 
 // Blog için sık kullanılan kategoriler (gerçek kategorilerle birleştirilir).
 const SABIT_BLOG_KATEGORILERI = [
@@ -99,11 +95,17 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [yaziId]);
 
+  // Seçili yazarlar — ilk eleman birincil yazardır (çoklu yazar).
+  const seciliYazarlar: Yazar[] =
+    formData.yazarlar && formData.yazarlar.length > 0
+      ? formData.yazarlar
+      : (formData.yazar ? [formData.yazar] : []);
+
   const handleYazarChange = (yazarId: string) => {
     const yazar = yazarlar.find(y => y.id === yazarId);
-    if (yazar) {
-      setFormData({ ...formData, yazar });
-    }
+    if (!yazar) return;
+    const digerleri = seciliYazarlar.slice(1).filter((y) => y.id !== yazar.id);
+    setFormData({ ...formData, yazar, yazarlar: [yazar, ...digerleri] });
   };
 
   const handleBaslikChange = (baslik: string) => {
@@ -142,7 +144,7 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
       return;
     }
 
-    if (!formData.yazar?.id) {
+    if (!seciliYazarlar[0]?.id) {
       alert('Lütfen yazar seçin');
       return;
     }
@@ -158,33 +160,25 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
       const slug = formData.slug || generateSlug(formData.baslik);
 
       const kategoriPayload = seciliKategoriler.length > 0 ? seciliKategoriler : ['Ara Yazı'];
+      const ortakAlanlar = {
+        baslik: formData.baslik,
+        spot: formData.spot || '',
+        icerik: formData.icerik,
+        yazarId: seciliYazarlar[0].id,
+        yazarIds: seciliYazarlar.map((y) => y.id),
+        kategori: kategoriPayload[0],
+        kategoriler: kategoriPayload,
+        kapakGorseli: formData.kapakGorseli,
+        kapakUstte: formData.kapakUstte !== false,
+        yayinTarihi: formData.yayinTarihi || new Date().toISOString().split('T')[0],
+        tarihEtiketi: formData.tarihEtiketi || '',
+        slug,
+      };
       if (yaziId) {
-        await updateAraYazi(yaziId, {
-          baslik: formData.baslik,
-          spot: formData.spot || '',
-          icerik: formData.icerik,
-          yazarId: formData.yazar!.id,
-          kategori: kategoriPayload[0],
-          kategoriler: kategoriPayload,
-          kapakGorseli: formData.kapakGorseli,
-          yayinTarihi: formData.yayinTarihi || new Date().toISOString().split('T')[0],
-          tarihEtiketi: formData.tarihEtiketi || '',
-          slug,
-        });
+        await updateAraYazi(yaziId, ortakAlanlar);
       } else {
         // id sunucu tarafından atanır.
-        await addAraYazi({
-          baslik: formData.baslik,
-          spot: formData.spot || '',
-          icerik: formData.icerik,
-          yazarId: formData.yazar!.id,
-          kategori: kategoriPayload[0],
-          kategoriler: kategoriPayload,
-          kapakGorseli: formData.kapakGorseli,
-          yayinTarihi: formData.yayinTarihi || new Date().toISOString().split('T')[0],
-          tarihEtiketi: formData.tarihEtiketi || '',
-          slug,
-        });
+        await addAraYazi(ortakAlanlar);
       }
 
       setLastSaved(new Date());
@@ -280,9 +274,9 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
             <TabsContent value="preview" className="flex-1 min-h-0 overflow-y-auto p-6 mt-0">
               <div className="max-w-4xl mx-auto pb-16">
                 <article className="bg-white rounded-lg shadow-sm">
-                  {/* Kapak Görseli */}
-                  {formData.kapakGorseli && (
-                    <div className="aspect-video overflow-hidden rounded-t-lg">
+                  {/* Kapak Görseli — sitedeki bantla aynı oran ve görünürlük kuralı */}
+                  {formData.kapakGorseli && formData.kapakUstte !== false && (
+                    <div className={`${GORSEL_ORAN_SINIFI} overflow-hidden rounded-t-lg`}>
                       <img
                         src={formData.kapakGorseli}
                         alt={formData.baslik}
@@ -302,7 +296,7 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
                       <div className="flex items-center gap-4 text-gray-600 mb-4">
                         <span className="flex items-center gap-1">
                           <User className="h-4 w-4" />
-                          {formData.yazar?.tamAd || 'Yazar seçilmedi'}
+                          {seciliYazarlar.map((y) => y.tamAd).join(', ') || 'Yazar seçilmedi'}
                         </span>
                         <span>•</span>
                         <span className="flex items-center gap-1">
@@ -345,27 +339,16 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
           <div className="p-6 space-y-6">
             <h2 className="font-semibold text-gray-900">Yazı Ayarları</h2>
 
-            {/* Yazar */}
-            <div>
-              <Label htmlFor="yazar" className="text-sm font-medium">
-                Yazar *
-              </Label>
-              <Select
-                value={formData.yazar?.id || ''}
-                onValueChange={handleYazarChange}
-              >
-                <SelectTrigger className="mt-1.5">
-                  <SelectValue placeholder="Yazar seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  {yazarlar.map((yazar) => (
-                    <SelectItem key={yazar.id} value={yazar.id}>
-                      {yazar.tamAd}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Yazar(lar) — çok yazarlı yazı için ek yazar eklenebilir */}
+            <YazarSecici
+              yazarlar={yazarlar}
+              secili={seciliYazarlar}
+              onBirincilChange={handleYazarChange}
+              onEkle={(yzr) => setFormData({ ...formData, yazarlar: [...seciliYazarlar, yzr] })}
+              onCikar={(id) =>
+                setFormData({ ...formData, yazarlar: seciliYazarlar.filter((y) => y.id !== id) })
+              }
+            />
 
             {/* Kategoriler (çoklu seçim) */}
             <div>
@@ -450,14 +433,31 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
             <hr />
 
             {/* Kapak Görseli */}
-            <FileUploadField
-              label="Kapak Görseli"
-              value={formData.kapakGorseli || ''}
-              onChange={(url) => setFormData({ ...formData, kapakGorseli: url })}
-              accept="image/*"
-              kind="image"
-              previewType="image"
-            />
+            <div>
+              <FileUploadField
+                label="Kapak Görseli"
+                value={formData.kapakGorseli || ''}
+                onChange={(url) => setFormData({ ...formData, kapakGorseli: url })}
+                accept="image/*"
+                kind="image"
+                previewType="image"
+              />
+              <p className="text-xs text-gray-500 mt-1">{KAPAK_ACIKLAMA}</p>
+
+              <div className="mt-3 flex items-center justify-between rounded-lg border p-3">
+                <div className="pr-3">
+                  <Label className="text-sm">Yazının üstünde göster</Label>
+                  <p className="text-xs text-gray-500">
+                    Kapalıysa kapak görseli yazı sayfasının üst bandında çıkmaz;
+                    kartlarda ve listelerde kullanılmaya devam eder.
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.kapakUstte !== false}
+                  onCheckedChange={(v) => setFormData({ ...formData, kapakUstte: v })}
+                />
+              </div>
+            </div>
           </div>
         </aside>
       </div>

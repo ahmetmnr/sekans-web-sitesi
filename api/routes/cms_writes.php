@@ -24,7 +24,8 @@ function yazi_response_by_id(int $id): array
     $sayiCode = (string)$sc->fetchColumn();
     $yazar    = yazar_out($yazarMap[(int)$y['yazar_id']] ?? null);
     $kategori = $y['kategori_id'] !== null ? kategori_out($katMap[(int)$y['kategori_id']] ?? null) : null;
-    return yazi_out($y, $yazar, $kategori, $sayiCode);
+    $coklu    = yazarlar_out(yazar_bag_list('yazi_yazarlari', 'yazi_id', $id), $yazarMap);
+    return yazi_out($y, $yazar, $kategori, $sayiCode, $coklu);
 }
 
 /** POST /api/yazi  — yeni makale (aktif sayıya eklenir varsayılan) */
@@ -69,6 +70,13 @@ function handle_create_yazi(array $b): void
         db()->prepare("UPDATE yazilar SET dizin_gorseli = ? WHERE id = ?")
             ->execute([($b['dizinGorseli'] ?? '') !== '' ? (string)$b['dizinGorseli'] : null, $newId]);
     }
+    // Kapak görselinin üst bantta görünürlüğü (kolon varsa).
+    if (array_key_exists('kapakUstte', $b) && column_exists('yazilar', 'kapak_ustte')) {
+        db()->prepare("UPDATE yazilar SET kapak_ustte = ? WHERE id = ?")
+            ->execute([$b['kapakUstte'] ? 1 : 0, $newId]);
+    }
+    // Çoklu yazar: gönderilmediyse birincil yazar tek başına bağlanır.
+    sync_yazar_baglari('yazi_yazarlari', 'yazi_id', $newId, yazar_ids_input($b, $yazarId) ?? [$yazarId]);
     respond(yazi_response_by_id($newId), null, 201);
 }
 
@@ -87,9 +95,14 @@ function handle_update_yazi(string $code, array $b): void
     if (array_key_exists('dizinGorseli', $b) && column_exists('yazilar', 'dizin_gorseli')) {
         $set[] = 'dizin_gorseli = ?'; $params[] = ($b['dizinGorseli'] ?? '') !== '' ? (string)$b['dizinGorseli'] : null;
     }
+    if (array_key_exists('kapakUstte', $b) && column_exists('yazilar', 'kapak_ustte')) {
+        $set[] = 'kapak_ustte = ?'; $params[] = $b['kapakUstte'] ? 1 : 0;
+    }
     if (array_key_exists('yayinTarihi', $b))  { $set[] = 'yayin_tarihi = ?'; $params[] = norm_date($b['yayinTarihi']); }
+    $birincilYazarId = null;
     if (isset($b['yazarId']) || isset($b['yazar']['id'])) {
-        $set[] = 'yazar_id = ?'; $params[] = require_id_by_code('yazarlar', (string)($b['yazarId'] ?? $b['yazar']['id']), 'Yazar');
+        $birincilYazarId = require_id_by_code('yazarlar', (string)($b['yazarId'] ?? $b['yazar']['id']), 'Yazar');
+        $set[] = 'yazar_id = ?'; $params[] = $birincilYazarId;
     }
     if (array_key_exists('kategoriId', $b) || isset($b['kategori']['id'])) {
         $kc = (string)($b['kategoriId'] ?? ($b['kategori']['id'] ?? ''));
@@ -99,9 +112,25 @@ function handle_update_yazi(string $code, array $b): void
     if (array_key_exists('sayiId', $b) && (string)$b['sayiId'] !== '') {
         $set[] = 'sayi_id = ?'; $params[] = require_id_by_code('sayilar', (string)$b['sayiId'], 'Sayı');
     }
-    if (!$set) fail('VALIDATION', 'Güncellenecek alan yok.', 400);
-    $params[] = $id;
-    db()->prepare("UPDATE yazilar SET " . implode(', ', $set) . " WHERE id = ?")->execute($params);
+    // Çoklu yazar: birincil, gövdede yoksa mevcut kayıttan alınır.
+    if ($birincilYazarId === null) {
+        $mevcut = db()->prepare("SELECT yazar_id FROM yazilar WHERE id = ?");
+        $mevcut->execute([$id]);
+        $birincilYazarId = (int)$mevcut->fetchColumn();
+    }
+    $yazarIds = yazar_ids_input($b, $birincilYazarId);
+
+    if (!$set && $yazarIds === null) fail('VALIDATION', 'Güncellenecek alan yok.', 400);
+    if ($set) {
+        $params[] = $id;
+        db()->prepare("UPDATE yazilar SET " . implode(', ', $set) . " WHERE id = ?")->execute($params);
+    }
+    if ($yazarIds !== null) {
+        sync_yazar_baglari('yazi_yazarlari', 'yazi_id', $id, $yazarIds);
+    } elseif (isset($b['yazarId']) || isset($b['yazar']['id'])) {
+        // 'yazarIds' gönderilmedi ama birincil yazar değişti — listeyi tutarlı tut.
+        birincil_yazar_senkronla('yazi_yazarlari', 'yazi_id', $id, $birincilYazarId);
+    }
     respond(yazi_response_by_id($id));
 }
 
@@ -143,11 +172,17 @@ function handle_create_arayazi(array $b): void
         $yazarId, $kategoriId, $kategoriAd !== '' ? $kategoriAd : null,
         $b['kapakGorseli'] ?? null, norm_date($b['yayinTarihi'] ?? null),
     ]);
-    sync_arayazi_kategoriler((int)db()->lastInsertId(), $syncListe);
+    $newId = (int)db()->lastInsertId();
+    sync_arayazi_kategoriler($newId, $syncListe);
+    sync_yazar_baglari('arayazi_yazarlari', 'arayazi_id', $newId, yazar_ids_input($b, $yazarId) ?? [$yazarId]);
     // Serbest metin tarih etiketi (kolon varsa) — migration öncesi tolere edilir.
     if (array_key_exists('tarihEtiketi', $b) && column_exists('ara_yazilar', 'tarih_etiketi')) {
         db()->prepare("UPDATE ara_yazilar SET tarih_etiketi = ? WHERE code = ?")
             ->execute([($b['tarihEtiketi'] ?? '') !== '' ? (string)$b['tarihEtiketi'] : null, $code]);
+    }
+    if (array_key_exists('kapakUstte', $b) && column_exists('ara_yazilar', 'kapak_ustte')) {
+        db()->prepare("UPDATE ara_yazilar SET kapak_ustte = ? WHERE id = ?")
+            ->execute([$b['kapakUstte'] ? 1 : 0, $newId]);
     }
     $out = fetch_arayazi_full('code', $code);
     respond($out, null, 201);
@@ -175,11 +210,16 @@ function handle_update_arayazi(string $code, array $b): void
     if (array_key_exists('icerik', $b)) { $set[] = 'icerik = ?'; $params[] = $b['icerik']; }
     if (array_key_exists('kapakGorseli', $b)) { $set[] = 'kapak_gorseli = ?'; $params[] = $b['kapakGorseli']; }
     if (array_key_exists('yayinTarihi', $b))  { $set[] = 'yayin_tarihi = ?'; $params[] = norm_date($b['yayinTarihi']); }
+    $birincilYazarId = null;
     if (isset($b['yazarId']) || isset($b['yazar']['id'])) {
-        $set[] = 'yazar_id = ?'; $params[] = require_id_by_code('yazarlar', (string)($b['yazarId'] ?? $b['yazar']['id']), 'Yazar');
+        $birincilYazarId = require_id_by_code('yazarlar', (string)($b['yazarId'] ?? $b['yazar']['id']), 'Yazar');
+        $set[] = 'yazar_id = ?'; $params[] = $birincilYazarId;
     }
     if (array_key_exists('tarihEtiketi', $b) && column_exists('ara_yazilar', 'tarih_etiketi')) {
         $set[] = 'tarih_etiketi = ?'; $params[] = ($b['tarihEtiketi'] ?? '') !== '' ? (string)$b['tarihEtiketi'] : null;
+    }
+    if (array_key_exists('kapakUstte', $b) && column_exists('ara_yazilar', 'kapak_ustte')) {
+        $set[] = 'kapak_ustte = ?'; $params[] = $b['kapakUstte'] ? 1 : 0;
     }
     // Kategori: çoklu ('kategoriler' dizisi) veya tekil ('kategori') — birincil = ilki.
     $katListe = arayazi_kategori_input($b);   // null: kategoriler alanı gönderilmedi
@@ -196,10 +236,25 @@ function handle_update_arayazi(string $code, array $b): void
     if (array_key_exists('slug', $b) && trim((string)$b['slug']) !== '') {
         $set[] = 'slug = ?'; $params[] = unique_slug(slugify((string)$b['slug']), 'ara_yazilar', 'slug', $id);
     }
-    if (!$set) fail('VALIDATION', 'Güncellenecek alan yok.', 400);
-    $params[] = $id;
-    db()->prepare("UPDATE ara_yazilar SET " . implode(', ', $set) . " WHERE id = ?")->execute($params);
+    // Çoklu yazar: birincil, gövdede yoksa mevcut kayıttan alınır.
+    if ($birincilYazarId === null) {
+        $mevcut = db()->prepare("SELECT yazar_id FROM ara_yazilar WHERE id = ?");
+        $mevcut->execute([$id]);
+        $birincilYazarId = (int)$mevcut->fetchColumn();
+    }
+    $yazarIds = yazar_ids_input($b, $birincilYazarId);
+
+    if (!$set && $katListe === null && $yazarIds === null) fail('VALIDATION', 'Güncellenecek alan yok.', 400);
+    if ($set) {
+        $params[] = $id;
+        db()->prepare("UPDATE ara_yazilar SET " . implode(', ', $set) . " WHERE id = ?")->execute($params);
+    }
     if ($katListe !== null) sync_arayazi_kategoriler($id, $katListe);
+    if ($yazarIds !== null) {
+        sync_yazar_baglari('arayazi_yazarlari', 'arayazi_id', $id, $yazarIds);
+    } elseif (isset($b['yazarId']) || isset($b['yazar']['id'])) {
+        birincil_yazar_senkronla('arayazi_yazarlari', 'arayazi_id', $id, $birincilYazarId);
+    }
     respond(fetch_arayazi_full('code', $code));
 }
 

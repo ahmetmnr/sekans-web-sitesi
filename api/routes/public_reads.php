@@ -12,13 +12,16 @@ function build_sayi_payload(array $sayiRow): array
     $yazarMap = load_yazar_map();
     $katMap   = load_kategori_map();
 
+    $yazarBaglari = load_yazar_baglari('yazi_yazarlari', 'yazi_id');
+
     $st = db()->prepare("SELECT * FROM yazilar WHERE sayi_id = ? ORDER BY sira_no ASC, id ASC");
     $st->execute([(int)$sayiRow['id']]);
     $yazilar = [];
     foreach ($st->fetchAll() as $y) {
         $yazar    = yazar_out($yazarMap[(int)$y['yazar_id']] ?? null);
         $kategori = $y['kategori_id'] !== null ? kategori_out($katMap[(int)$y['kategori_id']] ?? null) : null;
-        $yazilar[] = yazi_out($y, $yazar, $kategori, (string)$sayiRow['code']);
+        $coklu    = yazarlar_out($yazarBaglari[(int)$y['id']] ?? [], $yazarMap);
+        $yazilar[] = yazi_out($y, $yazar, $kategori, (string)$sayiRow['code'], $coklu);
     }
     return sayi_out($sayiRow, $yazilar);
 }
@@ -60,7 +63,8 @@ function handle_get_yazi(string $code): void
 
     $yazar    = yazar_out($yazarMap[(int)$y['yazar_id']] ?? null);
     $kategori = $y['kategori_id'] !== null ? kategori_out($katMap[(int)$y['kategori_id']] ?? null) : null;
-    respond(yazi_out($y, $yazar, $kategori, $sayiCode));
+    $coklu    = yazarlar_out(yazar_bag_list('yazi_yazarlari', 'yazi_id', (int)$y['id']), $yazarMap);
+    respond(yazi_out($y, $yazar, $kategori, $sayiCode, $coklu));
 }
 
 /** GET /api/arayazi  — sayfalı blog listesi (icerik HARİÇ) */
@@ -109,13 +113,16 @@ function handle_list_arayazi(): void
     $st->execute($params);
 
     $araKatMap = load_arayazi_kategori_map();
+    $araYazarMap = load_yazar_baglari('arayazi_yazarlari', 'arayazi_id');
+    $yazarMap = load_yazar_map();
     $items = [];
     foreach ($st->fetchAll() as $r) {
         $yazar = $r['y_code'] !== null ? [
             'id' => (string)$r['y_code'], 'ad' => $r['y_ad'], 'soyad' => $r['y_soyad'],
             'tamAd' => $r['y_tam_ad'], 'fotograf' => $r['y_fotograf'], 'biyografi' => $r['y_biyografi'],
         ] : null;
-        $items[] = ara_yazi_out($r, $yazar, false, $araKatMap[(int)$r['id']] ?? null);
+        $coklu = yazarlar_out($araYazarMap[(int)$r['id']] ?? [], $yazarMap);
+        $items[] = ara_yazi_out($r, $yazar, false, $araKatMap[(int)$r['id']] ?? null, $coklu);
     }
 
     $totalPages = (int)ceil($total / $limit);
@@ -137,7 +144,8 @@ function fetch_arayazi_full(string $by, string $value): ?array
     if (!$r) return null;
     $yazarMap = load_yazar_map();
     $yazar = yazar_out($yazarMap[(int)$r['yazar_id']] ?? null);
-    return ara_yazi_out($r, $yazar, true, arayazi_kategori_list((int)$r['id']));
+    $coklu = yazarlar_out(yazar_bag_list('arayazi_yazarlari', 'arayazi_id', (int)$r['id']), $yazarMap);
+    return ara_yazi_out($r, $yazar, true, arayazi_kategori_list((int)$r['id']), $coklu);
 }
 
 /** GET /api/arayazi/slug/{slug} */
@@ -633,9 +641,16 @@ function handle_bootstrap(): void
     // Tüm ara yazılar (icerik HARİÇ — bootstrap hafif kalsın; detay ayrı çekilir).
     $yazarMap = load_yazar_map();
     $araKatMap = load_arayazi_kategori_map();
+    $araYazarBag = load_yazar_baglari('arayazi_yazarlari', 'arayazi_id');
     $araRows = db()->query("SELECT * FROM ara_yazilar ORDER BY yayin_tarihi DESC, id DESC")->fetchAll();
-    $araYazilar = array_map(function ($r) use ($yazarMap, $araKatMap) {
-        return ara_yazi_out($r, yazar_out($yazarMap[(int)$r['yazar_id']] ?? null), false, $araKatMap[(int)$r['id']] ?? null);
+    $araYazilar = array_map(function ($r) use ($yazarMap, $araKatMap, $araYazarBag) {
+        return ara_yazi_out(
+            $r,
+            yazar_out($yazarMap[(int)$r['yazar_id']] ?? null),
+            false,
+            $araKatMap[(int)$r['id']] ?? null,
+            yazarlar_out($araYazarBag[(int)$r['id']] ?? [], $yazarMap)
+        );
     }, $araRows);
 
     // Yazar başına toplam yazı sayısı (dergi yazıları [taslak hariç] + blog) — Yazarlar sayfası için.

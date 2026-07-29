@@ -72,13 +72,13 @@ interface CMSContextType {
   publishSonSayi: () => Promise<void>;
 
   // Yazı işlemleri
-  addYazi: (yazi: Partial<Yazi> & { yazarId?: string; kategoriId?: string }) => Promise<void>;
-  updateYazi: (id: string, yazi: Partial<Yazi> & { yazarId?: string; kategoriId?: string }) => Promise<void>;
+  addYazi: (yazi: Partial<Yazi> & { yazarId?: string; yazarIds?: string[]; kategoriId?: string }) => Promise<void>;
+  updateYazi: (id: string, yazi: Partial<Yazi> & { yazarId?: string; yazarIds?: string[]; kategoriId?: string }) => Promise<void>;
   deleteYazi: (id: string) => Promise<void>;
 
   // Ara yazı işlemleri
-  addAraYazi: (araYazi: Partial<AraYazi> & { yazarId?: string }) => Promise<void>;
-  updateAraYazi: (id: string, araYazi: Partial<AraYazi> & { yazarId?: string }) => Promise<void>;
+  addAraYazi: (araYazi: Partial<AraYazi> & { yazarId?: string; yazarIds?: string[] }) => Promise<void>;
+  updateAraYazi: (id: string, araYazi: Partial<AraYazi> & { yazarId?: string; yazarIds?: string[] }) => Promise<void>;
   deleteAraYazi: (id: string) => Promise<void>;
 
   // Yazar işlemleri (silmede devirYazarId: bağlı içerik önce o yazara aktarılır)
@@ -238,13 +238,13 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // --- Yazı (sayı içi) — hedef sayı saved.sayiId ile belirlenir (çoklu sayı) ---
-  const addYazi = useCallback(async (yazi: Partial<Yazi> & { yazarId?: string; kategoriId?: string }) => {
+  const addYazi = useCallback(async (yazi: Partial<Yazi> & { yazarId?: string; yazarIds?: string[]; kategoriId?: string }) => {
     const saved = await api.yazi.create(yazi);
     setSayilar((prev) => prev.map((s) => (s.id === saved.sayiId ? { ...s, yazilar: [...s.yazilar, saved] } : s)));
     setSonSayiState((prev) => (prev.id === saved.sayiId ? { ...prev, yazilar: [...prev.yazilar, saved] } : prev));
   }, []);
 
-  const updateYazi = useCallback(async (id: string, updates: Partial<Yazi> & { yazarId?: string; kategoriId?: string; sayiId?: string }) => {
+  const updateYazi = useCallback(async (id: string, updates: Partial<Yazi> & { yazarId?: string; yazarIds?: string[]; kategoriId?: string; sayiId?: string }) => {
     const saved = await api.yazi.update(id, updates);
     // Yazı sayı değiştirmiş olabilir: her sayıdan çıkar, hedef sayıya ekle.
     const place = (yazilar: Yazi[], sayiId: string): Yazi[] => {
@@ -262,12 +262,12 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // --- Ara yazı ---
-  const addAraYazi = useCallback(async (araYazi: Partial<AraYazi> & { yazarId?: string }) => {
+  const addAraYazi = useCallback(async (araYazi: Partial<AraYazi> & { yazarId?: string; yazarIds?: string[] }) => {
     const saved = await api.araYazi.create(araYazi);
     setAraYazilar((prev) => [saved, ...prev]);
   }, []);
 
-  const updateAraYazi = useCallback(async (id: string, updates: Partial<AraYazi> & { yazarId?: string }) => {
+  const updateAraYazi = useCallback(async (id: string, updates: Partial<AraYazi> & { yazarId?: string; yazarIds?: string[] }) => {
     const saved = await api.araYazi.update(id, updates);
     setAraYazilar((prev) => prev.map((y) => (y.id === id ? saved : y)));
   }, []);

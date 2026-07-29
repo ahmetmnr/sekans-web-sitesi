@@ -378,7 +378,7 @@
   margin: 1.5em 2.2em;
   padding: 0;
   font-style: normal;
-  font-size: 0.92em;
+  font-size: 0.9em;   /* "küçük" kademe (künye/epigraf/kaynaklar/dipnot ile aynı) */
   line-height: 1.45;
   text-align: justify;
   color: #3f4451;
@@ -468,6 +468,27 @@
   font-size: 0.9em;
   line-height: 1.4;
   margin: 1.4em 0 1.6em;
+}
+
+/* --- Kaynaklar (kaynakça) ---
+   Künye ile AYNI punto ve font. Farkı: iki yana yaslı, girdiler arasında
+   boşluk var ve ASILI GİRİNTİ uygulanır — ilk satır solda başlar, ikinci ve
+   sonraki satırlar içerden. (text-indent negatif + padding-left pozitif.) */
+.ProseMirror p[data-style="kaynaklar"],
+.cms-content-preview p[data-style="kaynaklar"] {
+  text-align: justify;
+  font-size: 0.9em;
+  line-height: 1.45;
+  margin: 0 0 0.85em;
+  padding-left: 2em;
+  text-indent: -2em;
+}
+
+/* Ardışık kaynak girdileri arasındaki boşluk sabit kalsın (yukarıdaki
+   "aynı stil ardışıksa sıkıştır" kuralı Kaynaklar için geçerli DEĞİL). */
+.ProseMirror p[data-style="kaynaklar"] + p[data-style="kaynaklar"],
+.cms-content-preview p[data-style="kaynaklar"] + p[data-style="kaynaklar"] {
+  margin-top: 0;
 }
 
 /* AYNI stilden ardışık satırlar tek satır aralığı gibi sık dursun; FARKLI
@@ -810,9 +831,26 @@ figure.resizable-image figcaption,
   display: flex;
   gap: 0.75rem;
   margin-bottom: 0.75rem;
-  font-size: 0.875rem;
+  font-size: 0.9em;   /* "küçük" kademe — künye/epigraf/kaynaklar ile aynı */
   color: #374151;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Not metni: iki yana yaslı ve kalan genişliği kaplar. Numara sütunundan sonra
+   düzgün bir blok olarak akar (eskiden flex öğesi olduğu için hizalanamıyordu). */
+.footnote-item .footnote-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: justify;
+}
+
+/* Başka bir yerden kopyalanan not metni kaynağın fontunu/rengini/puntosunu
+   TAŞIMASIN — dipnot her zaman kendi stilinde görünür. (Editörde de aynı.) */
+.footnote-item .footnote-text * {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  color: inherit !important;
+  background: none !important;
 }
 
 .footnote-item .footnote-num {
@@ -821,10 +859,81 @@ figure.resizable-image figcaption,
   color: #2563eb;
   cursor: pointer;
   text-decoration: none;
+  user-select: none;
 }
 
 .footnote-item .footnote-num:hover {
   text-decoration: underline;
+}
+
+/* ============================================
+   TABLO — editörde ve yayında görünür kenarlıklar.
+   (Kenarlık tanımı olmadan eklenen boş tablo ekranda hiç görünmüyordu.)
+   ============================================ */
+.ProseMirror table,
+.cms-content-preview table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 1.5em 0;
+  overflow: hidden;
+  font-size: 0.95em;
+}
+
+.ProseMirror table td,
+.ProseMirror table th,
+.cms-content-preview table td,
+.cms-content-preview table th {
+  border: 1px solid #d1d5db;
+  padding: 0.5em 0.65em;
+  vertical-align: top;
+  position: relative;
+  min-width: 3em;
+}
+
+.ProseMirror table th,
+.cms-content-preview table th {
+  background: #f3f4f6;
+  font-weight: 600;
+  text-align: left;
+}
+
+.ProseMirror table p,
+.cms-content-preview table p {
+  margin: 0;
+  text-align: left;
+}
+
+/* Seçili hücre vurgusu ve sütun genişletme tutamağı (TipTap Table) */
+.ProseMirror .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(37, 99, 235, 0.12);
+  pointer-events: none;
+}
+
+.ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #2563eb;
+  pointer-events: none;
+}
+
+.ProseMirror.resize-cursor {
+  cursor: col-resize;
+}
+
+/* Dar ekranda tablo sayfayı yatay kaydırmaya zorlamasın */
+@media (max-width: 640px) {
+  .cms-content-preview table,
+  .prose table {
+    display: block;
+    overflow-x: auto;
+  }
 }
 
 /* Prose içindeki footnote-ref linklerini normal link stilinden ayır */

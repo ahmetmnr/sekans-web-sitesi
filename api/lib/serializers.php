@@ -130,7 +130,7 @@ function kategori_out(?array $r): ?array
  * $yazar ve $kategori önceden serileştirilmiş (gömülü) objelerdir.
  * dizinGorseli: içindekiler listesindeki küçük görsel (kolon yoksa null).
  */
-function yazi_out(array $r, ?array $yazar, ?array $kategori, string $sayiCode): array
+function yazi_out(array $r, ?array $yazar, ?array $kategori, string $sayiCode, ?array $yazarlar = null): array
 {
     return [
         'id'           => (string)$r['code'],
@@ -138,12 +138,19 @@ function yazi_out(array $r, ?array $yazar, ?array $kategori, string $sayiCode): 
         'spot'         => $r['spot'] ?? null,
         'icerik'       => $r['icerik'] ?? null,
         'yazar'        => $yazar,
+        // Çoklu yazar: birincil dahil tüm yazarlar (sıralı). Join tablo yoksa
+        // (migration öncesi) birincil yazara düşer.
+        'yazarlar'     => $yazarlar !== null && count($yazarlar) > 0
+            ? $yazarlar
+            : ($yazar ? [$yazar] : []),
         'kategori'     => $kategori,
         'sayiId'       => $sayiCode,
         'siraNo'       => (int)$r['sira_no'],
         'pdfUrl'       => $r['pdf_url'] ?? null,
         'kapakGorseli' => $r['kapak_gorseli'] ?? null,
         'dizinGorseli' => $r['dizin_gorseli'] ?? null,
+        // Kapak görseli yazı sayfasının üst bandında görünsün mü (kolon yoksa: evet)
+        'kapakUstte'   => isset($r['kapak_ustte']) ? (bool)(int)$r['kapak_ustte'] : true,
         'yayinTarihi'  => $r['yayin_tarihi'] ?? null,
     ];
 }
@@ -203,8 +210,13 @@ function arsiv_out(array $r): array
  * (çoklu kategori; $kategoriler null ise birincil kategoriye düşer).
  * $includeIcerik=false ise liste görünümünde ağır HTML gövdesi atlanır.
  */
-function ara_yazi_out(array $r, ?array $yazar, bool $includeIcerik = true, ?array $kategoriler = null): array
-{
+function ara_yazi_out(
+    array $r,
+    ?array $yazar,
+    bool $includeIcerik = true,
+    ?array $kategoriler = null,
+    ?array $yazarlar = null
+): array {
     $birincil = $r['kategori_ad'] ?? '';
     $katListe = $kategoriler !== null && count($kategoriler) > 0
         ? $kategoriler
@@ -214,9 +226,13 @@ function ara_yazi_out(array $r, ?array $yazar, bool $includeIcerik = true, ?arra
         'baslik'       => $r['baslik'],
         'spot'         => $r['spot'] ?? '',
         'yazar'        => $yazar,
+        'yazarlar'     => $yazarlar !== null && count($yazarlar) > 0
+            ? $yazarlar
+            : ($yazar ? [$yazar] : []),
         'kategori'     => $birincil,   // birincil kategori (kart etiketi)
         'kategoriler'  => $katListe,   // tüm kategoriler (çoklu)
         'kapakGorseli' => $r['kapak_gorseli'] ?? null,
+        'kapakUstte'   => isset($r['kapak_ustte']) ? (bool)(int)$r['kapak_ustte'] : true,
         'yayinTarihi'  => $r['yayin_tarihi'] ?? '',
         'tarihEtiketi' => $r['tarih_etiketi'] ?? null,   // serbest metin tarih (varsa kartta bu görünür)
         'slug'         => $r['slug'],

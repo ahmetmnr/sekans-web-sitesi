@@ -8,6 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { AdvancedEditor } from '@/components/AdvancedEditor';
 import { FileUploadField } from '@/components/cms/FileUploadField';
+import { YazarSecici } from '@/components/cms/YazarSecici';
+import { Switch } from '@/components/ui/switch';
+import { KAPAK_ACIKLAMA, DIZIN_ACIKLAMA } from '@/lib/gorselStandardi';
 import {
   Select,
   SelectContent,
@@ -25,7 +28,7 @@ import {
   User,
   FolderOpen,
 } from 'lucide-react';
-import type { Yazi, Sayi } from '@/types';
+import type { Yazi, Sayi, Yazar } from '@/types';
 
 interface CMSYaziEditorProps {
   yaziId?: string;
@@ -96,11 +99,19 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
     });
   }, [sayilar, sonSayi, yaziId, preselectSayiId]);
 
+  // Seçili yazarlar — ilk eleman birincil yazardır (çoklu yazar).
+  const seciliYazarlar: Yazar[] =
+    formData.yazarlar && formData.yazarlar.length > 0
+      ? formData.yazarlar
+      : (formData.yazar ? [formData.yazar] : []);
+
   const handleYazarChange = (yazarId: string) => {
     const yazar = yazarlar.find(y => y.id === yazarId);
-    if (yazar) {
-      setFormData({ ...formData, yazar });
-    }
+    if (!yazar) return;
+    // Birincil yazarı değiştir; varsa ek yazarlar korunur (yeni birincil ek
+    // yazarlar arasındaysa oradan çıkarılır).
+    const digerleri = seciliYazarlar.slice(1).filter((y) => y.id !== yazar.id);
+    setFormData({ ...formData, yazar, yazarlar: [yazar, ...digerleri] });
   };
 
   const handleKategoriChange = (kategoriId: string) => {
@@ -120,7 +131,7 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
       return;
     }
 
-    if (!formData.yazar?.id || !formData.kategori?.id) {
+    if (!seciliYazarlar[0]?.id || !formData.kategori?.id) {
       alert('Lütfen yazar ve kategori seçin');
       return;
     }
@@ -136,37 +147,29 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
 
     setIsSaving(true);
 
+    const ortakAlanlar = {
+      baslik: formData.baslik || '',
+      spot: formData.spot,
+      icerik: formData.icerik,
+      yazarId: seciliYazarlar[0]?.id,
+      yazarIds: seciliYazarlar.map((y) => y.id),
+      kategoriId: formData.kategori?.id,
+      sayiId: formData.sayiId, // yazı başka sayıya taşınabilir
+      // Boş bırakılırsa sıra numarası verilmez -> yazı listenin sonuna eklenir
+      siraNo: formData.siraNo || varsayilanSonSira,
+      pdfUrl: formData.pdfUrl,
+      kapakGorseli: formData.kapakGorseli,
+      dizinGorseli: formData.dizinGorseli,
+      kapakUstte: formData.kapakUstte !== false,
+      yayinTarihi: formData.yayinTarihi,
+    };
+
     try {
       if (yaziId) {
-        await updateYazi(yaziId, {
-          baslik: formData.baslik || '',
-          spot: formData.spot,
-          icerik: formData.icerik,
-          yazarId: formData.yazar?.id,
-          kategoriId: formData.kategori?.id,
-          sayiId: formData.sayiId, // yazı başka sayıya taşınabilir
-          // Boş bırakılırsa sıra numarası verilmez -> yazı listenin sonuna eklenir
-          siraNo: formData.siraNo || varsayilanSonSira,
-          pdfUrl: formData.pdfUrl,
-          kapakGorseli: formData.kapakGorseli,
-          dizinGorseli: formData.dizinGorseli,
-          yayinTarihi: formData.yayinTarihi,
-        });
+        await updateYazi(yaziId, ortakAlanlar);
       } else {
         // id sunucu tarafından atanır.
-        await addYazi({
-          baslik: formData.baslik || '',
-          spot: formData.spot,
-          icerik: formData.icerik,
-          yazarId: formData.yazar?.id,
-          kategoriId: formData.kategori?.id,
-          sayiId: formData.sayiId,
-          siraNo: formData.siraNo || varsayilanSonSira,
-          pdfUrl: formData.pdfUrl,
-          kapakGorseli: formData.kapakGorseli,
-          dizinGorseli: formData.dizinGorseli,
-          yayinTarihi: formData.yayinTarihi,
-        });
+        await addYazi(ortakAlanlar);
       }
 
       setLastSaved(new Date());
@@ -303,27 +306,16 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
           <div className="p-6 space-y-6">
             <h2 className="font-semibold text-gray-900">Yazı Ayarları</h2>
 
-            {/* Yazar */}
-            <div>
-              <Label htmlFor="yazar" className="text-sm font-medium">
-                Yazar *
-              </Label>
-              <Select
-                value={formData.yazar?.id || ''}
-                onValueChange={handleYazarChange}
-              >
-                <SelectTrigger className="mt-1.5">
-                  <SelectValue placeholder="Yazar seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  {yazarlar.map((yazar) => (
-                    <SelectItem key={yazar.id} value={yazar.id}>
-                      {yazar.tamAd}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Yazar(lar) — çok yazarlı yazı için ek yazar eklenebilir */}
+            <YazarSecici
+              yazarlar={yazarlar}
+              secili={seciliYazarlar}
+              onBirincilChange={handleYazarChange}
+              onEkle={(yzr) => setFormData({ ...formData, yazarlar: [...seciliYazarlar, yzr] })}
+              onCikar={(id) =>
+                setFormData({ ...formData, yazarlar: seciliYazarlar.filter((y) => y.id !== id) })
+              }
+            />
 
             {/* Kategori */}
             <div>
@@ -435,12 +427,25 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
                 kind="image"
                 previewType="image"
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Yazı detay sayfasının en üstünde geniş olarak görünür.
-              </p>
+              <p className="text-xs text-gray-500 mt-1">{KAPAK_ACIKLAMA}</p>
+
+              {/* Kapak bandını gizleme seçeneği (varsayılan açık) */}
+              <div className="mt-3 flex items-center justify-between rounded-lg border p-3">
+                <div className="pr-3">
+                  <Label className="text-sm">Yazının üstünde göster</Label>
+                  <p className="text-xs text-gray-500">
+                    Kapalıysa kapak görseli yazı sayfasının üst bandında çıkmaz;
+                    listelerde ve dizin görseli olarak kullanılmaya devam eder.
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.kapakUstte !== false}
+                  onCheckedChange={(v) => setFormData({ ...formData, kapakUstte: v })}
+                />
+              </div>
             </div>
 
-            {/* Dizin Görseli — sayı ana sayfasındaki içindekiler listesinin küçük görseli */}
+            {/* Dizin Görseli — içindekiler listesindeki küçük görsel */}
             <div>
               <FileUploadField
                 label="Dizin Görseli"
@@ -450,10 +455,7 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
                 kind="image"
                 previewType="image"
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Sayı ana sayfasındaki içindekiler listesinde küçük kare olarak görünür.
-                Boş bırakılırsa kapak görseli kullanılır; ikisi de boşsa listede görsel çıkmaz.
-              </p>
+              <p className="text-xs text-gray-500 mt-1">{DIZIN_ACIKLAMA}</p>
             </div>
           </div>
         </aside>

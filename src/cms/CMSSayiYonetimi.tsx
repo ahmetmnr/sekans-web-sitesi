@@ -370,7 +370,11 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Arşiv Sayıları</CardTitle>
-                  <CardDescription>Geçmiş (yayımlanmış) sayıları yönetin</CardDescription>
+                  <CardDescription>
+                    Geçmiş (yayımlanmış) sayıları yönetin. Bir arşiv sayısını
+                    "Taslağa Al" ile yeniden hazırlanan sayılara çekip içeriğini
+                    düzenleyebilir, sonra tekrar yayına alabilirsiniz.
+                  </CardDescription>
                 </div>
                 <Button onClick={openNewArsiv}>
                   <Plus className="h-4 w-4 mr-2" />
@@ -427,6 +431,37 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          {/* Arşivden geri çekme: sayı yeniden "hazırlanan" listesine
+                              döner, yazıları düzenlenebilir ve tekrar yayına alınabilir. */}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Undo2 className="h-4 w-4 mr-1" /> Taslağa Al
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Arşiv Sayısını Taslağa Al</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  "{sayi.menuEtiket?.trim() || `Sayı ${sayi.numara}`}" arşivden
+                                  çıkarılıp "Hazırlanan Sayılar" listesine taslak olarak alınacak.
+                                  Sitedeki arşiv listesinde görünmeyi bırakır; içeriğini
+                                  düzenleyip hazır olunca yeniden yayına alabilirsiniz.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>İptal</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => {
+                                    void setSayiDurum(sayi.id, 'taslak').catch((e) =>
+                                      alert('Taslağa alınamadı: ' + (e instanceof Error ? e.message : 'bilinmeyen hata')));
+                                  }}
+                                >
+                                  Taslağa Al
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                           <Button variant="ghost" size="sm" onClick={() => openEditArsiv(sayi)}>
                             <Pencil className="h-4 w-4" />
                           </Button>

@@ -1,7 +1,8 @@
-import { ArrowLeft, FileText, Calendar, Users } from 'lucide-react';
+import { ArrowLeft, FileText } from 'lucide-react';
 import type { Sayi, Yazi } from '@/types';
 import { Button } from '@/components/ui/button';
-import { sayiAdi } from '@/lib/utils';
+import { sayiAdi, yazarAdlari } from '@/lib/utils';
+import { GORSEL_ORAN_SINIFI } from '@/lib/gorselStandardi';
 
 interface SonSayiDetayProps {
   sayi: Sayi;
@@ -9,7 +10,19 @@ interface SonSayiDetayProps {
   onBackClick: () => void;
 }
 
+/**
+ * Sayı ana sayfası — ana sayfadaki sayı bölümüyle AYNI iki kolonlu düzen:
+ *   sol : kapak, PDF bağlantısı, künye (masaüstünde yapışkan)
+ *   sağ : ay/yıl + sayı adı + önsöz + içindekiler
+ *
+ * Farkı: burada her yazının SPOTU da görünür. Dizin görseli satırın sağına
+ * yaslanır; kategori/başlık/yazar solunda durur, spot ise metnin devamı olarak
+ * görselin altından tam genişliğe yayılır (float sarmalaması).
+ */
 export default function SonSayiDetay({ sayi, onYaziClick, onBackClick }: SonSayiDetayProps) {
+  const adi = sayiAdi(sayi);
+  const tarih = [sayi.ay, sayi.yil || ''].filter(Boolean).join(' ');
+
   return (
     <main className="animate-fade-in py-8 md:py-12">
       <div className="container mx-auto px-4 md:px-6">
@@ -23,102 +36,120 @@ export default function SonSayiDetay({ sayi, onYaziClick, onBackClick }: SonSayi
           Geri Dön
         </Button>
 
-        {/* Sayı Başlığı — CMS'te girilen ad aynen (otomatik "Sayı" öneki yok) */}
-        <div className="text-center mb-10 md:mb-12">
-          <h1 className="page-title mb-4">{sayiAdi(sayi)}</h1>
-          <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4" />
-              {sayi.ay} {sayi.yil}
-            </span>
-          </div>
-        </div>
-
-        {/* Kapak ve Bilgiler Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-12 mb-12 md:mb-16">
-          {/* Sol - Kapak */}
-          <div className="lg:col-span-1">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,280px)_1fr] gap-8 lg:gap-12 items-start">
+          {/* Sol Kolon — Kapak, PDF, künye */}
+          <div className="lg:sticky lg:top-24 max-w-[280px] mx-auto lg:mx-0 w-full">
             <div className="aspect-[3/4] bg-muted overflow-hidden shadow-lg">
               <img
                 src={sayi.kapakGorseli}
-                alt={`${sayiAdi(sayi)} kapak`}
+                alt={`${adi} kapak`}
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = '/images/placeholder-sayi.jpg';
                 }}
               />
             </div>
-            
-            {/* PDF İndirme */}
-            <a
-              href={sayi.pdfUrl}
-              className="btn-sekans-outline w-full mt-4"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Tüm Sayıyı İndir (PDF)
-            </a>
-          </div>
 
-          {/* Sağ - Künye ve Önsöz */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Künye */}
-            {sayi.kunye && (
-              <div className="bg-muted/50 p-6 md:p-8">
-                <h2 className="section-title mb-4 flex items-center gap-2">
-                  <Users className="w-5 h-5" />
-                  Künye
-                </h2>
-                <div className="whitespace-pre-line text-sm text-muted-foreground leading-relaxed">
-                  {sayi.kunye}
-                </div>
-              </div>
+            {sayi.pdfUrl && (
+              <a
+                href={sayi.pdfUrl}
+                className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FileText className="w-4 h-4 flex-shrink-0" />
+                <span>Tüm sayıyı PDF olarak indir</span>
+              </a>
             )}
 
-            {/* Önsöz */}
-            {sayi.onsoz && (
-              <div>
-                <h2 className="section-title mb-4">Editörden</h2>
-                <p className="content-text italic border-l-2 border-border pl-4">
-                  {sayi.onsoz}
+            {/* Künye — kapağın altında */}
+            {sayi.kunye?.trim() && (
+              <div className="mt-4 pt-4 border-t border-border">
+                <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
+                  {sayi.kunye}
                 </p>
               </div>
             )}
           </div>
-        </div>
 
-        {/* İçindekiler */}
-        <div className="border-t border-border pt-10 md:pt-12">
-          <h2 className="section-title mb-8 text-center">İçindekiler</h2>
+          {/* Sağ Kolon — Sayı adı, önsöz, içindekiler */}
+          <div className="min-w-0">
+            <div className="border-b border-border pb-3 mb-6">
+              {tarih && <p className="text-sm text-muted-foreground mb-1">{tarih}</p>}
+              <h1 className="section-title">{adi}</h1>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-            {sayi.yazilar.map((yazi) => (
-              <article
-                key={yazi.id}
-                onClick={() => onYaziClick(yazi)}
-                className="group cursor-pointer p-4 md:p-6 bg-muted/30 hover:bg-muted/50 transition-colors"
-              >
-                <div>
-                  <span className="kategori-etiket block mb-2">
-                    {yazi.kategori?.ad ?? ''}
-                  </span>
-                  <h3 className="text-lg md:text-xl font-serif leading-snug mb-2 group-hover:underline underline-offset-4">
-                    {yazi.baslik}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {yazi.yazar?.tamAd ?? ''}
-                  </p>
+            {/* Önsöz (Editörden) */}
+            {sayi.onsoz?.trim() && (
+              <div className="mb-8">
+                <p className="content-text italic border-l-2 border-border pl-4 whitespace-pre-line">
+                  {sayi.onsoz}
+                </p>
+              </div>
+            )}
 
-                  {/* Spot */}
-                  {yazi.spot && (
-                    <p className="mt-3 text-sm text-muted-foreground line-clamp-2">
-                      {yazi.spot}
-                    </p>
-                  )}
-                </div>
-              </article>
-            ))}
+            <ul className="space-y-6 md:space-y-7">
+              {sayi.yazilar.map((yazi) => {
+                // Dizin görseli yoksa kapak görselinin küçültülmüş hali kullanılır.
+                const kucukGorsel = yazi.dizinGorseli?.trim() || yazi.kapakGorseli?.trim() || '';
+                return (
+                  <li key={yazi.id} className="border-b border-border pb-6 last:border-0 last:pb-0">
+                    <article
+                      onClick={() => onYaziClick(yazi)}
+                      className="group cursor-pointer"
+                    >
+                      {/* Dizin görseli sağa yaslanır; metin etrafını sarar */}
+                      {kucukGorsel && (
+                        <div
+                          className={`float-right ml-4 mb-2 w-32 md:w-44 flex-shrink-0 bg-muted overflow-hidden ${GORSEL_ORAN_SINIFI}`}
+                        >
+                          <img
+                            src={kucukGorsel}
+                            alt={yazi.baslik}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            onError={(e) => {
+                              const kutu = (e.target as HTMLImageElement).parentElement;
+                              if (kutu) kutu.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      <span className="kategori-etiket block mb-1">
+                        {yazi.kategori?.ad ?? ''}
+                      </span>
+                      <h3 className="yazi-baslik text-lg md:text-xl leading-snug group-hover:underline underline-offset-4">
+                        {yazi.baslik}
+                      </h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {yazarAdlari(yazi)}
+                      </p>
+
+                      {yazi.spot && (
+                        <p className="mt-2 text-sm leading-relaxed text-muted-foreground text-justify">
+                          {yazi.spot}
+                        </p>
+                      )}
+
+                      {yazi.pdfUrl && (
+                        <a
+                          href={yazi.pdfUrl}
+                          className="pdf-link mt-2 inline-flex"
+                          onClick={(e) => e.stopPropagation()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>PDF</span>
+                        </a>
+                      )}
+
+                      <div className="clear-both" />
+                    </article>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         </div>
       </div>

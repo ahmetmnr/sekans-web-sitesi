@@ -5,13 +5,16 @@ import { Button } from '@/components/ui/button';
 import { useFootnotes } from '@/hooks/useFootnotes';
 import ReadingIndicator from '@/components/ReadingIndicator';
 import PaylasimKutusu from '@/components/PaylasimKutusu';
-import { araYaziKategorileri } from '@/lib/utils';
+import { araYaziKategorileri, yaziYazarlari, yazarAdlari } from '@/lib/utils';
+import { GORSEL_ORAN_SINIFI } from '@/lib/gorselStandardi';
 
 interface AraYaziDetayProps {
   araYazi: AraYazi;
   oncekiAraYazi?: AraYazi;
   sonrakiAraYazi?: AraYazi;
   tumAraYazilar?: AraYazi[];
+  /** "Geri Dön" butonunun etiketi — geldiğin sayfanın adı (ör. "Blog", "Ana Sayfa"). */
+  geriBaslik?: string;
   onBackClick: () => void;
   onOncekiAraYazi?: () => void;
   onSonrakiAraYazi?: () => void;
@@ -31,6 +34,7 @@ export default function AraYaziDetay({
   oncekiAraYazi,
   sonrakiAraYazi,
   tumAraYazilar = [],
+  geriBaslik = 'Ara Yazılar',
   onBackClick,
   onOncekiAraYazi,
   onSonrakiAraYazi,
@@ -45,6 +49,8 @@ export default function AraYaziDetay({
   const benzerYazilar = tumAraYazilar
     .filter(y => y.id !== araYazi.id && araYaziKategorileri(y).some(k => kendiKategorileri.includes(k)))
     .slice(0, 3);
+
+  const yazarlar = yaziYazarlari(araYazi);
 
   // Yazarın diğer yazıları - aynı yazar, mevcut yazı hariç, max 4
   const yazarinDigerYazilari = tumAraYazilar
@@ -64,8 +70,23 @@ export default function AraYaziDetay({
           className="mb-6 -ml-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Ara Yazılar
+          {geriBaslik}
         </Button>
+
+        {/* Kapak Görseli — yazı yazılarıyla aynı oranda (2:1). Editör isterse
+            üst bantta gösterilmesini kapatabilir (kapakUstte). */}
+        {araYazi.kapakGorseli && araYazi.kapakUstte !== false && (
+          <div className={`${GORSEL_ORAN_SINIFI} bg-muted overflow-hidden mb-8`}>
+            <img
+              src={araYazi.kapakGorseli}
+              alt={araYazi.baslik}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          </div>
+        )}
 
         {/* Başlık — kategori etiketi ve tarih satırı kaldırıldı */}
         <header className="mb-8 pb-6 border-b border-border">
@@ -94,28 +115,30 @@ export default function AraYaziDetay({
 
           {/* Sağ Kolon */}
           <aside className="lg:w-64 flex-shrink-0 space-y-6">
-            {/* Yazar: yalnızca profil fotoğrafı ve ad */}
-            {araYazi.yazar && (
-              <div className="bg-muted/30 rounded-lg p-6">
-                <div className="text-center">
-                  {araYazi.yazar.fotograf ? (
-                    <img
-                      src={araYazi.yazar.fotograf}
-                      alt={araYazi.yazar.tamAd}
-                      className="w-24 h-24 rounded-full object-cover mx-auto border-2 border-border"
-                    />
-                  ) : (
-                    <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mx-auto border-2 border-border">
-                      <User className="w-10 h-10 text-muted-foreground" />
-                    </div>
-                  )}
-                  <button
-                    onClick={() => onYazarClick?.(araYazi.yazar)}
-                    className="block w-full mt-4 font-serif font-bold text-lg hover:text-primary transition-colors hover:underline underline-offset-2"
-                  >
-                    {araYazi.yazar.tamAd}
-                  </button>
-                </div>
+            {/* Yazar(lar): yalnızca profil fotoğrafı ve ad */}
+            {yazarlar.length > 0 && (
+              <div className="bg-muted/30 rounded-lg p-6 space-y-6">
+                {yazarlar.map((yzr) => (
+                  <div key={yzr.id} className="text-center">
+                    {yzr.fotograf ? (
+                      <img
+                        src={yzr.fotograf}
+                        alt={yzr.tamAd}
+                        className="w-24 h-24 rounded-full object-cover mx-auto border-2 border-border"
+                      />
+                    ) : (
+                      <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mx-auto border-2 border-border">
+                        <User className="w-10 h-10 text-muted-foreground" />
+                      </div>
+                    )}
+                    <button
+                      onClick={() => onYazarClick?.(yzr)}
+                      className="block w-full mt-4 font-serif font-bold text-lg hover:text-primary transition-colors hover:underline underline-offset-2"
+                    >
+                      {yzr.tamAd}
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -178,7 +201,7 @@ export default function AraYaziDetay({
                       {yazi.spot}
                     </p>
                     <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
-                      <span>{yazi.yazar?.tamAd ?? ''}</span>
+                      <span>{yazarAdlari(yazi)}</span>
                     </div>
                   </div>
                 </button>

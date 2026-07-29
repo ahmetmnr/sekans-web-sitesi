@@ -35,7 +35,8 @@ export interface Yazi {
   baslik: string;
   spot?: string;
   icerik?: string;
-  yazar: Yazar;
+  yazar: Yazar;           // birincil yazar (kartlar, listeler)
+  yazarlar?: Yazar[];     // tüm yazarlar (çoklu yazar; birincil dahil, sıralı)
   kategori: Kategori;
   sayiId: string;
   sayi?: Sayi;
@@ -43,6 +44,7 @@ export interface Yazi {
   pdfUrl?: string;
   kapakGorseli?: string;  // detay sayfasının üstündeki geniş kapak
   dizinGorseli?: string;  // içindekiler listesindeki küçük görsel (boşsa kapakGorseli)
+  kapakUstte?: boolean;   // kapak görseli yazı sayfasının üst bandında görünsün mü (varsayılan true)
   yayinTarihi?: string;
 }
 
@@ -74,10 +76,12 @@ export interface AraYazi {
   baslik: string;
   spot: string;
   icerik: string;
-  yazar: Yazar;
+  yazar: Yazar;            // birincil yazar (kartlar, listeler)
+  yazarlar?: Yazar[];      // tüm yazarlar (çoklu yazar; birincil dahil, sıralı)
   kategori: string;        // birincil kategori (kart etiketi)
   kategoriler?: string[];  // tüm kategoriler (çoklu; yoksa [kategori])
   kapakGorseli?: string;
+  kapakUstte?: boolean;    // kapak görseli yazı sayfasının üst bandında görünsün mü (varsayılan true)
   yayinTarihi: string;
   tarihEtiketi?: string;   // serbest metin tarih (örn. "Şubat - Mart 2005"); doluysa kartta bu görünür
   slug: string;

@@ -180,3 +180,122 @@ function sync_arayazi_kategoriler(int $id, array $adlar): void
         // tablo yok — çoklu kategori pasif (birincil kategori_ad zaten yazıldı)
     }
 }
+
+/* ------------------------- ÇOKLU YAZAR (Faz 13) ---------------------------- *
+ * Bir yazıya birden çok yazar atanabilir. Birincil yazar yazilar.yazar_id /
+ * ara_yazilar.yazar_id olarak KORUNUR (kartlar, "yazarın diğer yazıları" vb.
+ * bunu kullanmaya devam eder); join tablo tüm yazarları sıralı tutar.
+ * Join tablo yoksa (migration öncesi) tüm yardımcılar sessizce boşa düşer ve
+ * çağıran taraf tekil yazara geri döner.
+ * -------------------------------------------------------------------------- */
+
+/**
+ * Bir içerik tipinin tüm yazar bağlarını [icerik_id => [yazar_id,...]] yükle.
+ * $tablo: 'yazi_yazarlari' | 'arayazi_yazarlari', $fk: 'yazi_id' | 'arayazi_id'
+ */
+function load_yazar_baglari(string $tablo, string $fk): array
+{
+    $map = [];
+    try {
+        $rows = db()->query("SELECT `$fk` AS oid, yazar_id FROM `$tablo` ORDER BY sira_no ASC, id ASC")->fetchAll();
+        foreach ($rows as $r) {
+            $map[(int)$r['oid']][] = (int)$r['yazar_id'];
+        }
+    } catch (PDOException $e) {
+        // tablo yok — tekil yazara düşülür
+    }
+    return $map;
+}
+
+/** Tek bir içeriğin yazar id'leri (sıralı; tablo yoksa []). */
+function yazar_bag_list(string $tablo, string $fk, int $id): array
+{
+    try {
+        $st = db()->prepare("SELECT yazar_id FROM `$tablo` WHERE `$fk` = ? ORDER BY sira_no ASC, id ASC");
+        $st->execute([$id]);
+        return array_map(fn($r) => (int)$r['yazar_id'], $st->fetchAll());
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+
+/**
+ * Yazar id listesini serileştirilmiş Yazar[] dizisine çevir.
+ * $yazarMap load_yazar_map() çıktısıdır (internal id -> satır).
+ */
+function yazarlar_out(array $yazarIds, array $yazarMap): array
+{
+    $out = [];
+    foreach ($yazarIds as $yid) {
+        $y = yazar_out($yazarMap[(int)$yid] ?? null);
+        if ($y) $out[] = $y;
+    }
+    return $out;
+}
+
+/**
+ * Bir içeriğin yazar kümesini join tabloyla senkronla (sil + ekle).
+ * $yazarIds internal id dizisidir; ilk eleman birincil yazardır.
+ */
+function sync_yazar_baglari(string $tablo, string $fk, int $id, array $yazarIds): void
+{
+    $temiz = [];
+    foreach ($yazarIds as $yid) {
+        $yid = (int)$yid;
+        if ($yid > 0 && !in_array($yid, $temiz, true)) $temiz[] = $yid;
+    }
+    try {
+        db()->prepare("DELETE FROM `$tablo` WHERE `$fk` = ?")->execute([$id]);
+        if ($temiz) {
+            $ins = db()->prepare("INSERT IGNORE INTO `$tablo` (`$fk`, yazar_id, sira_no) VALUES (?, ?, ?)");
+            foreach ($temiz as $i => $yid) { $ins->execute([$id, $yid, $i]); }
+        }
+    } catch (PDOException $e) {
+        // tablo yok — çoklu yazar pasif (birincil yazar_id zaten yazıldı)
+    }
+}
+
+/**
+ * Yalnızca BİRİNCİL yazar değiştirildiğinde (istek 'yazarIds' göndermediyse)
+ * join tabloyu tutarlı tut: yeni birincil başa alınır, eski birincil listeden
+ * düşürülür, ek yazarlar korunur. Böylece eski bir istemci tekil yazar
+ * güncellese bile çoklu yazar listesi bayat kalmaz.
+ */
+function birincil_yazar_senkronla(string $tablo, string $fk, int $id, int $yeniBirincil): void
+{
+    if ($yeniBirincil <= 0) return;
+    $mevcut = yazar_bag_list($tablo, $fk, $id);
+    if (!$mevcut) {                       // tablo yok veya bağ yok
+        sync_yazar_baglari($tablo, $fk, $id, [$yeniBirincil]);
+        return;
+    }
+    if ($mevcut[0] === $yeniBirincil) return;   // zaten birincil
+    $eskiBirincil = $mevcut[0];
+    $ekler = array_values(array_filter(
+        array_slice($mevcut, 1),
+        fn($y) => $y !== $yeniBirincil && $y !== $eskiBirincil,
+    ));
+    sync_yazar_baglari($tablo, $fk, $id, array_merge([$yeniBirincil], $ekler));
+}
+
+/**
+ * İstek gövdesinden yazar code listesini internal id dizisine çöz.
+ * 'yazarIds' (dizi) gönderilmemişse null döner (alan hiç dokunulmamış demektir).
+ * Birincil yazar ('yazarId'/'yazar.id') listede yoksa başa eklenir.
+ */
+function yazar_ids_input(array $b, ?int $birincilId): ?array
+{
+    if (!array_key_exists('yazarIds', $b) || !is_array($b['yazarIds'])) return null;
+    $ids = [];
+    foreach ($b['yazarIds'] as $code) {
+        $code = trim((string)$code);
+        if ($code === '') continue;
+        $yid = id_by_code('yazarlar', $code);
+        if ($yid && !in_array((int)$yid, $ids, true)) $ids[] = (int)$yid;
+    }
+    if ($birincilId !== null && $birincilId > 0) {
+        $ids = array_values(array_filter($ids, fn($i) => $i !== $birincilId));
+        array_unshift($ids, $birincilId);
+    }
+    return $ids;
+}

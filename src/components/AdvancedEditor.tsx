@@ -7,7 +7,7 @@ import TextAlign from '@tiptap/extension-text-align';
 import Link from '@tiptap/extension-link';
 import { ResizableImage } from './editor/ResizableImage';
 import { ImageGallery } from './editor/ImageGallery';
-import { FootnoteRef, FootnoteItem, FootnotesSection } from './editor/FootnoteExtension';
+import { FootnoteRef, FootnoteItem, FootnotesSection, FootnoteSync } from './editor/FootnoteExtension';
 import { ParagraphStyle } from './editor/ParagraphStyle';
 import { AIEditModal } from './editor/AIEditModal';
 import { TextStyle } from '@tiptap/extension-text-style';
@@ -52,7 +52,6 @@ import {
   Plus,
   Trash2,
   RemoveFormatting,
-  Type,
   ChevronDown,
   LetterText,
   Indent,
@@ -67,6 +66,7 @@ import {
   LayoutGrid,
   BookmarkPlus,
   Sparkles,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
@@ -170,6 +170,163 @@ const highlightColors = [
   { name: 'Gri', value: '#E5E7EB' },
   { name: 'Açık Gri', value: '#F3F4F6' },
 ];
+
+/* ---------------------------------------------------------------------------
+   DERGİ STİL ÖLÇEĞİ
+   Punto stile sabittir; editör tek tek punto seçmez. Üç kademe vardır:
+     Büyük  (1.45×) : Yazı Başlığı
+     Orta   (1.15×) : Yazar Adı, Bölüm Başlığı
+     Gövde  (1.00×) : Ana Metin
+     Küçük  (0.90×) : Künye, Epigraf, Kaynaklar, Blok Alıntı, Dipnot
+   Etiketler hem stil menüsünde hem de editörün altındaki durum çubuğunda
+   görünür; böylece imlecin bulunduğu kısmın hangi stilde olduğu her an bellidir.
+   --------------------------------------------------------------------------- */
+type ParagrafStilAdi = 'title' | 'author' | 'section' | 'filmkunye' | 'epigraf' | 'kaynaklar';
+type StilAnahtari = ParagrafStilAdi | 'main' | 'blockquote' | 'h1' | 'h2';
+
+const STIL_BILGI: Record<StilAnahtari, { ad: string; punto: string }> = {
+  main:       { ad: 'Ana Metin',     punto: 'gövde' },
+  title:      { ad: 'Yazı Başlığı',  punto: 'büyük' },
+  author:     { ad: 'Yazar Adı',     punto: 'orta' },
+  section:    { ad: 'Bölüm Başlığı', punto: 'orta' },
+  filmkunye:  { ad: 'Künye',         punto: 'küçük' },
+  epigraf:    { ad: 'Epigraf',       punto: 'küçük' },
+  kaynaklar:  { ad: 'Kaynaklar',     punto: 'küçük' },
+  blockquote: { ad: 'Blok Alıntı',   punto: 'küçük' },
+  h1:         { ad: 'Başlık 1',      punto: 'büyük' },
+  h2:         { ad: 'Başlık 2',      punto: 'orta' },
+};
+
+// Dergi tipografisi stile bağlıdır: punto, font ve renk paragraf stilinden gelir.
+// Word/Docs/web'den yapıştırılan HTML bunları satır içi olarak taşır ve metnin
+// bazı kısımları sessizce farklı (ör. koyu gri) kalır. Yapıştırma anında bu
+// bildirimler temizlenir; kalın/italik/altı çizili gibi anlamlı biçimler kalır.
+const SILINECEK_STIL_OZELLIKLERI = [
+  'color',
+  'background',
+  'background-color',
+  'font-family',
+  'font-size',
+  'line-height',
+];
+
+function temizlePastedHTML(html: string): string {
+  if (!html || typeof window === 'undefined') return html;
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.body.querySelectorAll<HTMLElement>('*').forEach((el) => {
+      el.removeAttribute('color');
+      el.removeAttribute('face');
+      const style = el.getAttribute('style');
+      if (!style) return;
+      const kalan = style
+        .split(';')
+        .filter((kural) => {
+          const ad = kural.split(':')[0]?.trim().toLowerCase();
+          return ad !== '' && !SILINECEK_STIL_OZELLIKLERI.includes(ad);
+        })
+        .join(';')
+        .trim();
+      if (kalan) el.setAttribute('style', kalan);
+      else el.removeAttribute('style');
+    });
+    return doc.body.innerHTML;
+  } catch {
+    return html;
+  }
+}
+
+/** Stil menüsü öğesi — imlecin bulunduğu stilde onay işareti gösterir. */
+function StilOgesi({
+  anahtar,
+  aktif,
+  onSelect,
+  children,
+}: {
+  anahtar: StilAnahtari;
+  aktif: StilAnahtari;
+  onSelect: () => void;
+  children: React.ReactNode;
+}) {
+  const secili = aktif === anahtar;
+  return (
+    <DropdownMenuItem onClick={onSelect} className={secili ? 'bg-blue-50' : ''}>
+      <Check className={`h-4 w-4 mr-2 flex-shrink-0 ${secili ? 'text-blue-600' : 'opacity-0'}`} />
+      {children}
+    </DropdownMenuItem>
+  );
+}
+
+/** İmlecin bulunduğu bloğun stil anahtarı (menü işareti + durum çubuğu). */
+function stilAnahtari(editor: NonNullable<ReturnType<typeof useEditor>>): StilAnahtari {
+  if (editor.isActive('blockquote')) return 'blockquote';
+  if (editor.isActive('heading', { level: 1 })) return 'h1';
+  if (editor.isActive('heading', { level: 2 })) return 'h2';
+  const ds = editor.getAttributes('paragraph').dataStyle as string | null;
+  if (ds === 'title' || ds === 'title-author') return 'title';
+  if (ds === 'author') return 'author';
+  if (ds === 'section') return 'section';
+  if (ds === 'filmkunye') return 'filmkunye';
+  if (ds === 'epigraf') return 'epigraf';
+  if (ds === 'kaynaklar') return 'kaynaklar';
+  return 'main';
+}
+
+/**
+ * Dipnot ekle — referans işareti ile not öğesini TEK transaction'da ekler.
+ * İkisi ayrı adımda eklenirse FootnoteSync aradaki "notu olmayan referans"
+ * durumunu görür ve fazladan boş bir not açardı.
+ *
+ * Numara burada HESAPLANMAZ: geçici benzersiz bir kimlik verilir, FootnoteSync
+ * belge sırasına göre 1..n olarak numaralar. Böylece metnin ortasına eklenen
+ * dipnot, "en son eklenen" numarayı değil, YERİNE düşen numarayı alır.
+ */
+function dipnotEkle(editor: NonNullable<ReturnType<typeof useEditor>>) {
+  editor
+    .chain()
+    .focus()
+    .command(({ tr, state, dispatch }) => {
+      const { schema, selection } = state;
+      const uid = `fn-yeni-${Math.random().toString(36).slice(2, 10)}`;
+      const ref = schema.nodes.footnoteRef.create({
+        footnoteNum: '?',
+        targetId: uid,
+        refId: `fnref-${uid}`,
+      });
+      const item = schema.nodes.footnoteItem.create(
+        { footnoteId: uid },
+        schema.text('Not metnini buraya yazın'),
+      );
+
+      tr.insert(selection.to, ref);
+
+      let bolumPos = -1;
+      let bolumSize = 0;
+      state.doc.descendants((node, pos) => {
+        if (bolumPos >= 0) return false;
+        if (node.type.name === 'footnotesSection') {
+          bolumPos = pos;
+          bolumSize = node.nodeSize;
+          return false;
+        }
+        return true;
+      });
+
+      if (bolumPos >= 0) {
+        tr.insert(tr.mapping.map(bolumPos + bolumSize - 1), item);
+      } else {
+        const bolum = schema.nodes.footnotesSection.create(null, [
+          schema.nodes.heading.create({ level: 3 }, schema.text('Notlar')),
+          item,
+        ]);
+        tr.insert(tr.doc.content.size, bolum);
+      }
+
+      if (dispatch) dispatch(tr);
+      return true;
+    })
+    .run();
+}
 
 // Toolbar Butonu
 function ToolbarButton({
@@ -347,30 +504,18 @@ function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick, show
     setIsDragging(false);
   };
 
-  // Stil menüsü etiketi - imlecin bulunduğu bloğun stilini gösterir
-  const getCurrentStyle = () => {
-    if (editor.isActive('blockquote')) return 'Blok Alıntı';
-    if (editor.isActive('heading', { level: 1 })) return 'Başlık 1';
-    if (editor.isActive('heading', { level: 2 })) return 'Başlık 2';
-    const ds = editor.getAttributes('paragraph').dataStyle as string | null;
-    if (ds === 'title' || ds === 'title-author') return 'Yazı Başlığı';
-    if (ds === 'author') return 'Yazar Adı';
-    if (ds === 'section') return 'Bölüm Başlığı';
-    if (ds === 'filmkunye') return 'Künye';
-    if (ds === 'epigraf') return 'Epigraf';
-    return 'Ana Metin';
-  };
+  const aktifStil = stilAnahtari(editor);
 
   // Özel paragraf stilini uygula: paragrafa çevir, data-style ata ve
   // stile uygun varsayılan hizalamayı ver (editör sonradan değiştirebilir).
-  // Ayrıca bloktaki satır içi font işaretleri temizlenir: stil fontu her
-  // zaman varsayılan Inter'dir (Word'den yapıştırılan serif fontlar kalmasın).
+  // Bloktaki satır içi font/renk/vurgu işaretleri temizlenir: punto, font ve
+  // renk STİLDEN gelir (Word'den yapıştırılan serif fontlar/gri metin kalmasın).
   const applyParagraphStyle = (
-    style: 'title' | 'author' | 'section' | 'filmkunye' | 'epigraf' | null,
+    style: ParagrafStilAdi | null,
     align: 'left' | 'center' | 'right' | 'justify',
   ) => {
     const { from, to } = editor.state.selection;
-    // Seçimin kapsadığı blokların tamamına yay (font temizliği blok bazında)
+    // Seçimin kapsadığı blokların tamamına yay (temizlik blok bazında)
     let start = from;
     let end = to;
     editor.state.doc.nodesBetween(from, to, (node, pos) => {
@@ -387,9 +532,12 @@ function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick, show
       .setTextAlign(align)
       .setTextSelection({ from: start, to: end })
       .unsetFontFamily()
+      .unsetColor()
+      .unsetHighlight()
       .setTextSelection({ from, to })
       .run();
   };
+
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -442,56 +590,70 @@ function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick, show
           {/* Stil Dropdown - Dergi yazıları için özel paragraf stilleri */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 px-2 gap-1 text-xs min-w-[120px] justify-start">
-                <LetterText className="h-4 w-4" />
-                <span className="hidden sm:inline">{getCurrentStyle()}</span>
-                <ChevronDown className="h-3 w-3 ml-auto" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 gap-1 text-xs min-w-[150px] justify-start border border-gray-200 bg-white"
+              >
+                <LetterText className="h-4 w-4 flex-shrink-0" />
+                <span className="font-medium truncate">{STIL_BILGI[aktifStil].ad}</span>
+                <ChevronDown className="h-3 w-3 ml-auto flex-shrink-0" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-60">
-              <DropdownMenuItem onClick={() => applyParagraphStyle(null, 'justify')}>
-                <Pilcrow className="h-4 w-4 mr-2 flex-shrink-0" />
-                <span>Ana Metin</span>
-                <span className="ml-auto text-[10px] text-gray-400">MAIN</span>
-              </DropdownMenuItem>
+            <DropdownMenuContent align="start" className="w-64">
+              <StilOgesi anahtar="main" aktif={aktifStil} onSelect={() => applyParagraphStyle(null, 'justify')}>
+                <span className="flex-1">Ana Metin</span>
+                <span className="ml-auto text-[10px] text-gray-400">gövde</span>
+              </StilOgesi>
 
               <DropdownMenuSeparator />
 
-              <DropdownMenuItem onClick={() => applyParagraphStyle('title', 'center')}>
-                <Type className="h-4 w-4 mr-2 flex-shrink-0" />
+              <StilOgesi anahtar="title" aktif={aktifStil} onSelect={() => applyParagraphStyle('title', 'center')}>
                 <span className="flex-1 text-center font-bold text-base">Yazı Başlığı</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => applyParagraphStyle('author', 'center')}>
-                <Type className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="ml-auto text-[10px] text-gray-400">büyük</span>
+              </StilOgesi>
+              <StilOgesi anahtar="author" aktif={aktifStil} onSelect={() => applyParagraphStyle('author', 'center')}>
                 <span className="flex-1 text-center font-bold">Yazar Adı</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => applyParagraphStyle('section', 'center')}>
-                <Heading2 className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="ml-auto text-[10px] text-gray-400">orta</span>
+              </StilOgesi>
+              <StilOgesi anahtar="section" aktif={aktifStil} onSelect={() => applyParagraphStyle('section', 'center')}>
                 <span className="flex-1 text-center font-bold">Bölüm Başlığı</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => applyParagraphStyle('filmkunye', 'center')}>
-                <AlignCenter className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="ml-auto text-[10px] text-gray-400">orta</span>
+              </StilOgesi>
+              <StilOgesi anahtar="filmkunye" aktif={aktifStil} onSelect={() => applyParagraphStyle('filmkunye', 'center')}>
                 <span className="flex-1 text-center text-sm text-gray-600">Künye</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => applyParagraphStyle('epigraf', 'right')}>
-                <AlignRight className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="ml-auto text-[10px] text-gray-400">küçük</span>
+              </StilOgesi>
+              <StilOgesi anahtar="epigraf" aktif={aktifStil} onSelect={() => applyParagraphStyle('epigraf', 'right')}>
                 <span className="flex-1 text-right text-sm text-gray-600">Epigraf</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().toggleBlockquote().run()}>
-                <Quote className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="ml-auto text-[10px] text-gray-400">küçük</span>
+              </StilOgesi>
+              <StilOgesi anahtar="kaynaklar" aktif={aktifStil} onSelect={() => applyParagraphStyle('kaynaklar', 'justify')}>
+                <span className="flex-1 text-sm text-gray-600">Kaynaklar</span>
+                <span className="ml-auto text-[10px] text-gray-400">küçük</span>
+              </StilOgesi>
+              <StilOgesi anahtar="blockquote" aktif={aktifStil}
+                onSelect={() => editor.chain().focus().toggleBlockquote().run()}
+              >
+                <Quote className="h-3.5 w-3.5 mr-1.5 flex-shrink-0 text-gray-400" />
                 <span className="flex-1 text-sm text-gray-600">Blok Alıntı</span>
-              </DropdownMenuItem>
+                <span className="ml-auto text-[10px] text-gray-400">küçük</span>
+              </StilOgesi>
 
               <DropdownMenuSeparator />
 
-              <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
+              <StilOgesi anahtar="h1" aktif={aktifStil}
+                onSelect={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+              >
                 <Heading1 className="h-4 w-4 mr-2 flex-shrink-0" />
                 <span className="text-xl font-bold">Başlık 1</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
+              </StilOgesi>
+              <StilOgesi anahtar="h2" aktif={aktifStil}
+                onSelect={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+              >
                 <Heading2 className="h-4 w-4 mr-2 flex-shrink-0" />
                 <span className="text-lg font-bold">Başlık 2</span>
-              </DropdownMenuItem>
+              </StilOgesi>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -1140,85 +1302,8 @@ function MainToolbar({ editor, isFullscreen, onToggleFullscreen, onAIClick, show
 
           {/* Referans/Dipnot Ekle */}
           <ToolbarButton
-            onClick={() => {
-              // Sıradaki dipnot numarası = mevcut referans düğümlerinin sayısı + 1
-              let count = 0;
-              editor.state.doc.descendants((node) => {
-                if (node.type.name === 'footnoteRef') count++;
-              });
-              const num = count + 1;
-
-              // 1) İmlecin bulunduğu yere referans işaretini DÜĞÜM olarak ekle
-              editor
-                .chain()
-                .focus()
-                .insertContent({
-                  type: 'footnoteRef',
-                  attrs: {
-                    footnoteNum: String(num),
-                    targetId: `fn-${num}`,
-                    refId: `fnref-${num}`,
-                  },
-                })
-                .run();
-
-              // Yeni not öğesi — ipucu metni İTALİK DEĞİL (editör üzerine yazınca
-              // metin otomatik italik kalmasın; italik tamamen editör inisiyatifinde).
-              const newItem = {
-                type: 'footnoteItem',
-                attrs: { footnoteId: `fn-${num}` },
-                content: [
-                  {
-                    type: 'text',
-                    text: 'Not metnini buraya yazın',
-                  },
-                ],
-              };
-
-              // 2) Dipnot bölümünü bul (referans eklendikten sonraki güncel durumda)
-              let sectionPos = -1;
-              let sectionSize = 0;
-              editor.state.doc.descendants((node, pos) => {
-                if (node.type.name === 'footnotesSection') {
-                  sectionPos = pos;
-                  sectionSize = node.nodeSize;
-                  return false;
-                }
-                return true;
-              });
-
-              if (sectionPos >= 0) {
-                // Mevcut "Notlar" bölümünün sonuna ekle.
-                // setContent KULLANILMAZ -> belge yeniden ayrıştırılmaz, imleç/içerik korunur.
-                editor
-                  .chain()
-                  .insertContentAt(sectionPos + sectionSize - 1, newItem, {
-                    updateSelection: false,
-                  })
-                  .run();
-              } else {
-                // Bölüm yoksa belgenin sonunda "Notlar" başlığıyla oluştur
-                editor
-                  .chain()
-                  .insertContentAt(
-                    editor.state.doc.content.size,
-                    {
-                      type: 'footnotesSection',
-                      content: [
-                        {
-                          type: 'heading',
-                          attrs: { level: 3 },
-                          content: [{ type: 'text', text: 'Notlar' }],
-                        },
-                        newItem,
-                      ],
-                    },
-                    { updateSelection: false },
-                  )
-                  .run();
-              }
-            }}
-            tooltip="Referans/Dipnot Ekle"
+            onClick={() => dipnotEkle(editor)}
+            tooltip="Referans/Dipnot Ekle (numara metindeki yerine göre verilir)"
           >
             <BookmarkPlus className="h-4 w-4" />
           </ToolbarButton>
@@ -1268,9 +1353,25 @@ function CharacterCounter({ editor }: { editor: ReturnType<typeof useEditor> }) 
   });
   const words = (bodyText.match(/\S+/g) || []).length;
 
+  // İmlecin bulunduğu kısmın stili + hizalaması — "burası hangi stilde?" sorusu
+  // için editörün her an görebileceği tek yer.
+  const stil = STIL_BILGI[stilAnahtari(editor)];
+  const hizalama = editor.isActive({ textAlign: 'center' })
+    ? 'ortalı'
+    : editor.isActive({ textAlign: 'right' })
+      ? 'sağa yaslı'
+      : editor.isActive({ textAlign: 'justify' })
+        ? 'iki yana yaslı'
+        : 'sola yaslı';
+
   return (
     <div className="flex items-center gap-4 px-4 py-2 bg-gray-50 border-t text-xs text-gray-500">
-      <span>{characters} karakter</span>
+      <span className="flex items-center gap-1.5 font-medium text-gray-700">
+        <LetterText className="h-3.5 w-3.5 text-gray-400" />
+        {stil.ad}
+      </span>
+      <span className="text-gray-400">{stil.punto} punto · {hizalama}</span>
+      <span className="ml-auto">{characters} karakter</span>
       <span>{words} kelime</span>
     </div>
   );
@@ -1330,6 +1431,7 @@ export function AdvancedEditor({
       FootnoteRef,
       FootnoteItem,
       FootnotesSection,
+      FootnoteSync,
       TableCell,
     ],
     content,
@@ -1337,10 +1439,19 @@ export function AdvancedEditor({
       attributes: {
         class: 'prose prose-lg max-w-4xl mx-auto p-6 min-h-[400px] focus:outline-none',
       },
+      // Word/Google Docs'tan yapıştırılan metin satır içi RENK taşıyor; ana metnin
+      // bazı bölümleri farkedilmeden koyu gri kalıyordu. Yapıştırmada renk/arka
+      // plan bildirimleri temizlenir (kalın/italik gibi anlamlı biçimler kalır).
+      transformPastedHTML: (html) => temizlePastedHTML(html),
     },
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
+    // TipTap v3'te bu varsayılan olarak KAPALIDIR: araç çubuğu imleç hareketinde
+    // yeniden çizilmez, dolayısıyla aktif stil/hizalama/kalın-italik göstergeleri
+    // ve tablo komutlarının etkin-pasif durumu donmuş kalırdı. Dergi editöründe
+    // "imlecin bulunduğu kısım hangi stilde?" bilgisi kritik olduğu için açıldı.
+    shouldRerenderOnTransaction: true,
   });
 
   // Content değiştiğinde editörü güncelle

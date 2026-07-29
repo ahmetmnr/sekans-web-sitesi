@@ -218,9 +218,9 @@ export const api = {
   // Yazı (sayı içi)
   yazi: {
     get: (id: string) => get<Yazi>(`/yazi/${encodeURIComponent(id)}`),
-    create: (y: Partial<Yazi> & { yazarId?: string; kategoriId?: string; sayiId?: string }) =>
+    create: (y: Partial<Yazi> & { yazarId?: string; yazarIds?: string[]; kategoriId?: string; sayiId?: string }) =>
       post<Yazi>('/yazi', y),
-    update: (id: string, patch: Partial<Yazi> & { yazarId?: string; kategoriId?: string; sayiId?: string }) =>
+    update: (id: string, patch: Partial<Yazi> & { yazarId?: string; yazarIds?: string[]; kategoriId?: string; sayiId?: string }) =>
       put<Yazi>(`/yazi/${encodeURIComponent(id)}`, patch),
     remove: (id: string) => del<{ deleted: string }>(`/yazi/${encodeURIComponent(id)}`),
   },
@@ -239,8 +239,8 @@ export const api = {
     },
     getBySlug: (slug: string) => get<AraYazi>(`/arayazi/slug/${encodeURIComponent(slug)}`),
     get: (id: string) => get<AraYazi>(`/arayazi/${encodeURIComponent(id)}`),
-    create: (a: Partial<AraYazi> & { yazarId?: string }) => post<AraYazi>('/arayazi', a),
-    update: (id: string, patch: Partial<AraYazi> & { yazarId?: string }) =>
+    create: (a: Partial<AraYazi> & { yazarId?: string; yazarIds?: string[] }) => post<AraYazi>('/arayazi', a),
+    update: (id: string, patch: Partial<AraYazi> & { yazarId?: string; yazarIds?: string[] }) =>
       put<AraYazi>(`/arayazi/${encodeURIComponent(id)}`, patch),
     remove: (id: string) => del<{ deleted: string }>(`/arayazi/${encodeURIComponent(id)}`),
   },

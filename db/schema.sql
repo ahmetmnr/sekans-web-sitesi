@@ -122,6 +122,7 @@ CREATE TABLE yazilar (
   pdf_url       VARCHAR(512)    NULL,                   -- per-article PDF
   kapak_gorseli VARCHAR(512)    NULL,                   -- cover image (detay sayfası üst görseli)
   dizin_gorseli VARCHAR(512)    NULL,                   -- içindekiler listesindeki küçük görsel (boşsa kapak_gorseli)
+  kapak_ustte   TINYINT(1)      NOT NULL DEFAULT 1,     -- kapak görseli yazı sayfasının üst bandında görünsün mü
   yayin_tarihi  DATE            NULL,                   -- publish date
   created_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -152,6 +153,7 @@ CREATE TABLE ara_yazilar (
   kategori_id   BIGINT UNSIGNED NULL,                   -- FK -> kategoriler.id (resolved from name)
   kategori_ad   VARCHAR(120)    NULL,                   -- raw original string fallback (audit)
   kapak_gorseli VARCHAR(512)    NULL,
+  kapak_ustte   TINYINT(1)      NOT NULL DEFAULT 1,     -- kapak görseli yazı sayfasının üst bandında görünsün mü
   yayin_tarihi  DATE            NULL,
   created_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -293,6 +295,36 @@ CREATE TABLE arayazi_kategorileri (
   UNIQUE KEY uq_arayazi_kat (arayazi_id, kategori_ad),
   KEY idx_arayazi_kat_ad (kategori_ad),
   CONSTRAINT fk_arayazi_kat_yazi FOREIGN KEY (arayazi_id) REFERENCES ara_yazilar (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- yazi_yazarlari / arayazi_yazarlari (çoklu yazar) — bir yazıya birden fazla
+-- yazar atanabilir. Birincil yazar yazilar.yazar_id / ara_yazilar.yazar_id
+-- olarak KORUNUR (kartlar ve "yazarın diğer yazıları" bunu kullanır); join
+-- tablo tüm yazarları sira_no ile sıralı tutar (0 = birincil).
+-- -----------------------------------------------------------------------------
+CREATE TABLE yazi_yazarlari (
+  id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  yazi_id   BIGINT UNSIGNED NOT NULL,
+  yazar_id  BIGINT UNSIGNED NOT NULL,
+  sira_no   INT             NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_yazi_yazar (yazi_id, yazar_id),
+  KEY idx_yazi_yazar_yazar (yazar_id),
+  CONSTRAINT fk_yy_yazi  FOREIGN KEY (yazi_id)  REFERENCES yazilar (id)  ON DELETE CASCADE,
+  CONSTRAINT fk_yy_yazar FOREIGN KEY (yazar_id) REFERENCES yazarlar (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE arayazi_yazarlari (
+  id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  arayazi_id  BIGINT UNSIGNED NOT NULL,
+  yazar_id    BIGINT UNSIGNED NOT NULL,
+  sira_no     INT             NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_arayazi_yazar (arayazi_id, yazar_id),
+  KEY idx_arayazi_yazar_yazar (yazar_id),
+  CONSTRAINT fk_ay_yazi  FOREIGN KEY (arayazi_id) REFERENCES ara_yazilar (id) ON DELETE CASCADE,
+  CONSTRAINT fk_ay_yazar FOREIGN KEY (yazar_id)   REFERENCES yazarlar (id)    ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------

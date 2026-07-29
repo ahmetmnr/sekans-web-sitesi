@@ -3,7 +3,7 @@ import { ArrowLeft, User, Calendar } from 'lucide-react';
 import type { AraYazi } from '@/types';
 import { Button } from '@/components/ui/button';
 import { useCMS } from '@/context/CMSContext';
-import { araYaziKategorileri } from '@/lib/utils';
+import { araYaziKategorileri, yazarAdlari } from '@/lib/utils';
 
 interface AraYazilarSayfasiProps {
   araYazilar: AraYazi[];
@@ -172,7 +172,7 @@ export default function AraYazilarSayfasi({
                     </div>
                   )}
                   <span className="text-sm font-medium text-foreground/80">
-                    {araYazi.yazar.tamAd}
+                    {yazarAdlari(araYazi)}
                   </span>
                 </div>
               </article>
