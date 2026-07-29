@@ -43,6 +43,7 @@ import {
   ChevronsRight,
 } from 'lucide-react';
 import type { YaziListeDurumu } from './index';
+import { duzMetin } from '@/lib/zenginMetin';
 
 interface CMSYaziListesiProps {
   onEditYazi: (yaziId?: string, sayiId?: string) => void;
@@ -80,7 +81,7 @@ export function CMSYaziListesi({ onEditYazi, initialSayiId, durum, onDurumChange
 
   // Filtreleme — yazar/kategori FK SET NULL ile null olabilir; güvenli erişim.
   const filteredYazilar = yazilar.filter((yazi) =>
-    yazi.baslik.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    duzMetin(yazi.baslik).toLowerCase().includes(searchTerm.toLowerCase()) ||
     (yazi.yazar?.tamAd ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (yazi.kategori?.ad ?? '').toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -226,7 +227,7 @@ export function CMSYaziListesi({ onEditYazi, initialSayiId, durum, onDurumChange
                   </TableCell>
                   <TableCell>
                     <div className="max-w-md">
-                      <p className="font-medium text-gray-900 truncate">{yazi.baslik}</p>
+                      <p className="font-medium text-gray-900 truncate">{duzMetin(yazi.baslik)}</p>
                       {yazi.spot && (
                         <p className="text-sm text-gray-500 truncate mt-1">{yazi.spot}</p>
                       )}
@@ -253,7 +254,7 @@ export function CMSYaziListesi({ onEditYazi, initialSayiId, durum, onDurumChange
                           <AlertDialogHeader>
                             <AlertDialogTitle>Yazıyı Sil</AlertDialogTitle>
                             <AlertDialogDescription>
-                              "{yazi.baslik}" yazısını silmek istediğinizden emin misiniz?
+                              "{duzMetin(yazi.baslik)}" yazısını silmek istediğinizden emin misiniz?
                               Bu işlem geri alınamaz.
                             </AlertDialogDescription>
                           </AlertDialogHeader>

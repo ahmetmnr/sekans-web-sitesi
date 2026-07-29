@@ -112,7 +112,7 @@ CREATE TABLE yazilar (
   id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   code          VARCHAR(60)     NOT NULL,               -- old id 'e27-01'
   slug          VARCHAR(200)    NULL,                   -- optional url slug (derived)
-  baslik        VARCHAR(500)    NOT NULL,               -- title
+  baslik        VARCHAR(1000)   NOT NULL,               -- title (satır içi biçim taşıyabilir: <em>film adı</em>)
   spot          TEXT            NULL,                   -- standfirst / dek
   icerik        LONGTEXT        NULL,                   -- HTML body
   yazar_id      BIGINT UNSIGNED NOT NULL,               -- FK -> yazarlar.id (Yazi.yazar)
@@ -146,7 +146,7 @@ CREATE TABLE ara_yazilar (
   id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   code          VARCHAR(60)     NOT NULL,               -- old id 'ay-001'
   slug          VARCHAR(200)    NOT NULL,               -- AraYazi.slug (url)
-  baslik        VARCHAR(500)    NOT NULL,
+  baslik        VARCHAR(1000)   NOT NULL,               -- satır içi biçim taşıyabilir
   spot          TEXT            NULL,
   icerik        LONGTEXT        NULL,                   -- HTML body
   yazar_id      BIGINT UNSIGNED NOT NULL,               -- FK -> yazarlar.id

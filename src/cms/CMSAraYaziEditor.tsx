@@ -6,10 +6,12 @@ import { useFootnotes } from '@/hooks/useFootnotes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { AdvancedEditor } from '@/components/AdvancedEditor';
 import { FileUploadField } from '@/components/cms/FileUploadField';
 import { YazarSecici } from '@/components/cms/YazarSecici';
+import { SatirIciEditor } from '@/components/cms/SatirIciEditor';
+import { ZenginMetin } from '@/components/ZenginMetin';
+import { duzMetin } from '@/lib/zenginMetin';
 import { Switch } from '@/components/ui/switch';
 import { KAPAK_ACIKLAMA, GORSEL_ORAN_SINIFI } from '@/lib/gorselStandardi';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -109,10 +111,11 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
   };
 
   const handleBaslikChange = (baslik: string) => {
+    // baslik satır içi HTML olabilir; slug her zaman DÜZ metinden üretilir.
     setFormData({
       ...formData,
       baslik,
-      slug: generateSlug(baslik),
+      slug: generateSlug(duzMetin(baslik)),
     });
   };
 
@@ -139,7 +142,7 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
   };
 
   const handleSave = async () => {
-    if (!formData.baslik) {
+    if (!duzMetin(formData.baslik)) {
       alert('Lütfen başlık girin');
       return;
     }
@@ -157,7 +160,7 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
     setIsSaving(true);
 
     try {
-      const slug = formData.slug || generateSlug(formData.baslik);
+      const slug = formData.slug || generateSlug(duzMetin(formData.baslik));
 
       const kategoriPayload = seciliKategoriler.length > 0 ? seciliKategoriler : ['Ara Yazı'];
       const ortakAlanlar = {
@@ -241,26 +244,22 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
 
             <TabsContent value="edit" className="flex-1 min-h-0 overflow-y-auto p-6 mt-0">
               <div className="max-w-4xl mx-auto space-y-6">
-                {/* Başlık */}
-                <div>
-                  <Input
-                    value={formData.baslik || ''}
-                    onChange={(e) => handleBaslikChange(e.target.value)}
-                    placeholder="Yazı başlığını girin..."
-                    className="text-3xl font-serif font-bold border-0 border-b rounded-none px-0 py-4 focus-visible:ring-0 focus-visible:border-gray-400"
-                  />
-                </div>
+                {/* Başlık — satır içi biçimlendirme (film adı italik vb.) */}
+                <SatirIciEditor
+                  value={formData.baslik || ''}
+                  onChange={handleBaslikChange}
+                  placeholder="Yazı başlığını girin..."
+                  className="text-3xl font-serif font-bold"
+                />
 
-                {/* Spot */}
-                <div>
-                  <Textarea
-                    value={formData.spot || ''}
-                    onChange={(e) => setFormData({ ...formData, spot: e.target.value })}
-                    placeholder="Yazının kısa özetini girin (spot)..."
-                    className="text-lg text-gray-600 border-0 border-b rounded-none px-0 py-2 resize-none focus-visible:ring-0 focus-visible:border-gray-400"
-                    rows={2}
-                  />
-                </div>
+                {/* Spot — satır içi biçimlendirme */}
+                <SatirIciEditor
+                  value={formData.spot || ''}
+                  onChange={(html) => setFormData({ ...formData, spot: html })}
+                  placeholder="Yazının kısa özetini girin (spot)..."
+                  className="text-lg text-gray-600"
+                  cokSatir
+                />
 
                 {/* Gelişmiş Dergi Editörü */}
                 <AdvancedEditor
@@ -279,7 +278,7 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
                     <div className={`${GORSEL_ORAN_SINIFI} overflow-hidden rounded-t-lg`}>
                       <img
                         src={formData.kapakGorseli}
-                        alt={formData.baslik}
+                        alt={duzMetin(formData.baslik)}
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -290,9 +289,11 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
                       <span className="inline-block px-3 py-1 text-sm font-medium bg-blue-100 text-blue-800 rounded-full mb-4">
                         {formData.kategori || 'Kategori'}
                       </span>
-                      <h1 className="text-4xl font-serif font-bold text-gray-900 mb-4">
-                        {formData.baslik || 'Başlık'}
-                      </h1>
+                      <ZenginMetin
+                        as="h1"
+                        html={formData.baslik || 'Başlık'}
+                        className="text-4xl font-serif font-bold text-gray-900 mb-4 block"
+                      />
                       <div className="flex items-center gap-4 text-gray-600 mb-4">
                         <span className="flex items-center gap-1">
                           <User className="h-4 w-4" />
@@ -313,9 +314,11 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
                         </span>
                       </div>
                       {formData.spot && (
-                        <p className="text-xl text-gray-600 italic leading-relaxed">
-                          {formData.spot}
-                        </p>
+                        <ZenginMetin
+                          as="p"
+                          html={formData.spot}
+                          className="text-xl text-gray-600 italic leading-relaxed"
+                        />
                       )}
                     </header>
                     <div

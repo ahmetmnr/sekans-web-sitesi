@@ -149,7 +149,7 @@ else
   echo "    -> 'yazilar.dizin_gorseli' kolonu zaten var, atlanıyor."
 fi
 
-echo ">>> 16/18 DB migration: çoklu yazar + kapak bandı görünürlüğü (yalnızca yoksa)..."
+echo ">>> 16/19 DB migration: çoklu yazar + kapak bandı görünürlüğü (yalnızca yoksa)..."
 if [ "$(col_exists yazilar kapak_ustte)" = "0" ]; then
   echo "    -> uygulanıyor: 2026-07-26_faz13_cok_yazar_kapak_bandi.sql"
   $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-26_faz13_cok_yazar_kapak_bandi.sql
@@ -158,10 +158,21 @@ else
   echo "    -> 'yazilar.kapak_ustte' kolonu zaten var, atlanıyor."
 fi
 
-echo ">>> 17/18 API konteyneri yeniden başlatılıyor..."
+echo ">>> 17/19 DB migration: başlık/spot satır içi biçim (kolon genişletme)..."
+BASLIK_UZ="$($DC exec -T db mariadb -uroot -p"${DB_PASS}" -N -e \
+  "SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='sekans' AND TABLE_NAME='yazilar' AND COLUMN_NAME='baslik';" 2>/dev/null || echo "0")"
+if [ "${BASLIK_UZ//[!0-9]/}" != "1000" ]; then
+  echo "    -> uygulanıyor: 2026-07-27_baslik_spot_satirici_bicim.sql"
+  $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-27_baslik_spot_satirici_bicim.sql
+  echo "    -> tamam."
+else
+  echo "    -> 'yazilar.baslik' zaten VARCHAR(1000), atlanıyor."
+fi
+
+echo ">>> 18/19 API konteyneri yeniden başlatılıyor..."
 $DC restart api
 
-echo ">>> 18/18 Kontrol — sayı durumları + filtre sayfaları + menü:"
+echo ">>> 19/19 Kontrol — sayı durumları + filtre sayfaları + menü:"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT durum, COUNT(*) FROM sayilar GROUP BY durum;" 2>/dev/null || echo "    (DB kontrolü atlandı)"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \

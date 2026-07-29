@@ -6,6 +6,8 @@ import ReadingIndicator from '@/components/ReadingIndicator';
 import PaylasimKutusu from '@/components/PaylasimKutusu';
 import { sayiAdi, yaziYazarlari, yazarAdlari } from '@/lib/utils';
 import { GORSEL_ORAN_SINIFI } from '@/lib/gorselStandardi';
+import { ZenginMetin } from '@/components/ZenginMetin';
+import { duzMetin } from '@/lib/zenginMetin';
 
 interface YaziDetayProps {
   yazi: Yazi;
@@ -59,7 +61,7 @@ export default function YaziDetay({
           <div className={`${GORSEL_ORAN_SINIFI} bg-muted overflow-hidden mb-8`}>
             <img
               src={yazi.kapakGorseli}
-              alt={yazi.baslik}
+              alt={duzMetin(yazi.baslik)}
               className="w-full h-full object-cover"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
@@ -81,16 +83,20 @@ export default function YaziDetay({
             {yazi.kategori?.ad ?? ''}
           </span>
 
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif leading-tight">
-            {yazi.baslik}
-          </h1>
+          <ZenginMetin
+            as="h1"
+            html={yazi.baslik}
+            className="block text-3xl md:text-4xl lg:text-5xl font-serif leading-tight"
+          />
         </header>
 
         {/* Spot */}
         {yazi.spot && (
-          <p className="text-xl text-muted-foreground italic leading-relaxed mb-8 border-l-2 border-border pl-4">
-            {yazi.spot}
-          </p>
+          <ZenginMetin
+            as="p"
+            html={yazi.spot}
+            className="text-xl text-muted-foreground italic leading-relaxed mb-8 border-l-2 border-border pl-4"
+          />
         )}
 
         {/* Ana Layout: İçerik | Sağ Kolon (sol paylaşım bandı kaldırıldı) */}
@@ -177,13 +183,15 @@ export default function YaziDetay({
                         }`}
                       >
                         <div className="min-w-0">
-                          <p className={`text-sm leading-snug line-clamp-2 ${
-                            isActive
-                              ? 'font-semibold text-foreground'
-                              : 'font-medium text-muted-foreground'
-                          }`}>
-                            {item.baslik}
-                          </p>
+                          <ZenginMetin
+                            as="p"
+                            html={item.baslik}
+                            className={`text-sm leading-snug line-clamp-2 ${
+                              isActive
+                                ? 'font-semibold text-foreground'
+                                : 'font-medium text-muted-foreground'
+                            }`}
+                          />
                           <p className={`text-[11px] mt-0.5 ${
                             isActive ? 'text-muted-foreground' : 'text-muted-foreground/70'
                           }`}>
@@ -198,7 +206,7 @@ export default function YaziDetay({
             )}
 
             {/* Paylaşım — yukarıdakiler geçildikten sonra sabitlenir, yazı bitince bırakır */}
-            <PaylasimKutusu baslik={yazi.baslik} className="lg:sticky lg:top-24" />
+            <PaylasimKutusu baslik={duzMetin(yazi.baslik)} className="lg:sticky lg:top-24" />
           </aside>
         </div>
 
@@ -214,9 +222,11 @@ export default function YaziDetay({
                   <ChevronLeft className="w-4 h-4" />
                   Önceki Yazı
                 </span>
-                <h4 className="font-serif text-lg group-hover:underline underline-offset-2 line-clamp-2">
-                  {oncekiYazi.baslik}
-                </h4>
+                <ZenginMetin
+                  as="h4"
+                  html={oncekiYazi.baslik}
+                  className="block font-serif text-lg group-hover:underline underline-offset-2 line-clamp-2"
+                />
               </button>
             ) : (
               <div />
@@ -230,9 +240,11 @@ export default function YaziDetay({
                   Sonraki Yazı
                   <ChevronRight className="w-4 h-4" />
                 </span>
-                <h4 className="font-serif text-lg group-hover:underline underline-offset-2 line-clamp-2">
-                  {sonrakiYazi.baslik}
-                </h4>
+                <ZenginMetin
+                  as="h4"
+                  html={sonrakiYazi.baslik}
+                  className="block font-serif text-lg group-hover:underline underline-offset-2 line-clamp-2"
+                />
               </button>
             ) : (
               <div />

@@ -4,6 +4,8 @@ import type { AraYazi, FiltreSayfa } from '@/types';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { araYaziKategorileri, yazarAdlari } from '@/lib/utils';
+import { ZenginMetin } from '@/components/ZenginMetin';
+import { duzMetin } from '@/lib/zenginMetin';
 
 interface FiltreListeSayfasiProps {
   slug: string;
@@ -48,7 +50,7 @@ export default function FiltreListeSayfasi({ slug, araYazilar, onAraYaziClick, o
     if (config.siralama === 'eski') {
       sorted.sort((a, b) => (a.yayinTarihi || '').localeCompare(b.yayinTarihi || ''));
     } else if (config.siralama === 'alfabetik') {
-      sorted.sort((a, b) => a.baslik.localeCompare(b.baslik, 'tr'));
+      sorted.sort((a, b) => duzMetin(a.baslik).localeCompare(duzMetin(b.baslik), 'tr'));
     } else {
       sorted.sort((a, b) => (b.yayinTarihi || '').localeCompare(a.yayinTarihi || ''));
     }
@@ -121,7 +123,7 @@ export default function FiltreListeSayfasi({ slug, araYazilar, onAraYaziClick, o
                     <div className="aspect-[16/10] bg-muted overflow-hidden mb-4">
                       <img
                         src={araYazi.kapakGorseli || '/images/default-cover.svg'}
-                        alt={araYazi.baslik}
+                        alt={duzMetin(araYazi.baslik)}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         onError={(e) => { (e.target as HTMLImageElement).src = '/images/default-cover.svg'; }}
                       />
@@ -138,13 +140,17 @@ export default function FiltreListeSayfasi({ slug, araYazilar, onAraYaziClick, o
                     )}
                   </div>
 
-                  <h3 className="ara-yazi-baslik text-xl md:text-2xl leading-tight mb-3 font-serif">
-                    {araYazi.baslik}
-                  </h3>
+                  <ZenginMetin
+                    as="h3"
+                    html={araYazi.baslik}
+                    className="block ara-yazi-baslik text-xl md:text-2xl leading-tight mb-3 font-serif"
+                  />
 
-                  <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
-                    {araYazi.spot}
-                  </p>
+                  <ZenginMetin
+                    as="p"
+                    html={araYazi.spot}
+                    className="text-sm text-muted-foreground line-clamp-3 leading-relaxed"
+                  />
 
                   {config.yazarTarihGoster && (
                     <div className="flex items-center gap-2 mt-3">

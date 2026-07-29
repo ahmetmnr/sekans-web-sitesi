@@ -40,6 +40,7 @@ import {
   Eye,
 } from 'lucide-react';
 import type { AraYaziListeDurumu } from './index';
+import { duzMetin } from '@/lib/zenginMetin';
 
 const TUM_KATEGORILER = 'all';
 
@@ -77,7 +78,7 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi, durum, onDurumCha
     const q = arama.trim().toLocaleLowerCase('tr');
     const list = araYazilar.filter((yazi) => {
       const matchesSearch = !q
-        || yazi.baslik.toLocaleLowerCase('tr').includes(q)
+        || duzMetin(yazi.baslik).toLocaleLowerCase('tr').includes(q)
         || (yazi.yazar?.tamAd ?? '').toLocaleLowerCase('tr').includes(q);
       const matchesKategori = filterKategori === TUM_KATEGORILER
         || araYaziKategorileri(yazi).includes(filterKategori);
@@ -87,7 +88,7 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi, durum, onDurumCha
     if (siralama === 'eski') {
       sorted.sort((a, b) => (a.yayinTarihi || '').localeCompare(b.yayinTarihi || ''));
     } else if (siralama === 'baslik') {
-      sorted.sort((a, b) => a.baslik.localeCompare(b.baslik, 'tr'));
+      sorted.sort((a, b) => duzMetin(a.baslik).localeCompare(duzMetin(b.baslik), 'tr'));
     } else if (siralama === 'yazar') {
       sorted.sort((a, b) => (a.yazar?.tamAd ?? '').localeCompare(b.yazar?.tamAd ?? '', 'tr'));
     } else {
@@ -235,7 +236,7 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi, durum, onDurumCha
             <div className="aspect-video bg-gray-100 relative">
               <img
                 src={yazi.kapakGorseli || '/images/default-cover.svg'}
-                alt={yazi.baslik}
+                alt={duzMetin(yazi.baslik)}
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = '/images/default-cover.svg';
@@ -248,7 +249,7 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi, durum, onDurumCha
 
             <CardContent className="p-4">
               <h3 className="font-semibold text-gray-900 line-clamp-2 mb-2">
-                {yazi.baslik}
+                {duzMetin(yazi.baslik)}
               </h3>
               <p className="text-sm text-gray-600 line-clamp-2 mb-3">
                 {yazi.spot}
@@ -293,14 +294,14 @@ export function CMSAraYaziListesi({ onEditYazi, onPreviewYazi, durum, onDurumCha
                     <AlertDialogHeader>
                       <AlertDialogTitle>Yazıyı Sil</AlertDialogTitle>
                       <AlertDialogDescription>
-                        "{yazi.baslik}" yazısını silmek istediğinizden emin misiniz?
+                        "{duzMetin(yazi.baslik)}" yazısını silmek istediğinizden emin misiniz?
                         Bu işlem geri alınamaz.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>İptal</AlertDialogCancel>
                       <AlertDialogAction
-                        onClick={() => { void handleDelete(yazi.id, yazi.baslik); }}
+                        onClick={() => { void handleDelete(yazi.id, duzMetin(yazi.baslik)); }}
                         className="bg-red-600 hover:bg-red-700"
                       >
                         Sil

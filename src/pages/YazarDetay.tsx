@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { ArrowLeft, User, Calendar, BookOpen } from 'lucide-react';
 import type { Yazar, AraYazi, Sayi } from '@/types';
 import { Button } from '@/components/ui/button';
+import { ZenginMetin } from '@/components/ZenginMetin';
+import { duzMetin } from '@/lib/zenginMetin';
 
 interface YazarDetayProps {
   yazar: Yazar;
@@ -124,13 +126,17 @@ export default function YazarDetay({
                       <span className="kategori-etiket text-xs mb-1 inline-block">
                         {yazi.kategori.ad}
                       </span>
-                      <h3 className="font-serif text-lg font-bold leading-snug">
-                        {yazi.baslik}
-                      </h3>
+                      <ZenginMetin
+                        as="h3"
+                        html={yazi.baslik}
+                        className="block font-serif text-lg font-bold leading-snug"
+                      />
                       {yazi.spot && (
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                          {yazi.spot}
-                        </p>
+                        <ZenginMetin
+                          as="p"
+                          html={yazi.spot}
+                          className="text-sm text-muted-foreground mt-1 line-clamp-2"
+                        />
                       )}
                     </div>
                     <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
@@ -163,7 +169,7 @@ export default function YazarDetay({
                   <div className="aspect-[16/10] bg-muted overflow-hidden mb-3 rounded-md">
                     <img
                       src={araYazi.kapakGorseli || '/images/default-cover.svg'}
-                      alt={araYazi.baslik}
+                      alt={duzMetin(araYazi.baslik)}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = '/images/default-cover.svg';
@@ -185,14 +191,18 @@ export default function YazarDetay({
                   </div>
 
                   {/* Başlık */}
-                  <h3 className="text-base md:text-lg leading-tight mb-2 font-serif font-bold group-hover:text-primary transition-colors line-clamp-2">
-                    {araYazi.baslik}
-                  </h3>
+                  <ZenginMetin
+                    as="h3"
+                    html={araYazi.baslik}
+                    className="block text-base md:text-lg leading-tight mb-2 font-serif font-bold group-hover:text-primary transition-colors line-clamp-2"
+                  />
 
                   {/* Spot */}
-                  <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-                    {araYazi.spot}
-                  </p>
+                  <ZenginMetin
+                    as="p"
+                    html={araYazi.spot}
+                    className="text-sm text-muted-foreground line-clamp-2 leading-relaxed"
+                  />
                 </article>
               ))}
             </div>

@@ -2,6 +2,8 @@ import { FileText } from 'lucide-react';
 import type { Sayi, Yazi } from '@/types';
 import { sayiAdi, yazarAdlari } from '@/lib/utils';
 import { GORSEL_ORAN_SINIFI } from '@/lib/gorselStandardi';
+import { ZenginMetin } from '@/components/ZenginMetin';
+import { duzMetin } from '@/lib/zenginMetin';
 
 interface SonSayiSectionProps {
   sayi: Sayi;
@@ -91,9 +93,11 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
                       <span className="kategori-etiket block mb-1">
                         {yazi.kategori?.ad ?? ''}
                       </span>
-                      <h3 className="yazi-baslik text-base md:text-lg leading-snug line-clamp-3">
-                        {yazi.baslik}
-                      </h3>
+                      <ZenginMetin
+                        as="h3"
+                        html={yazi.baslik}
+                        className="block yazi-baslik text-base md:text-lg leading-snug line-clamp-3"
+                      />
                       <p className="mt-1 text-sm text-muted-foreground">
                         {yazarAdlari(yazi)}
                       </p>
@@ -116,7 +120,7 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
                       <div className={`w-28 md:w-36 flex-shrink-0 bg-muted overflow-hidden ${GORSEL_ORAN_SINIFI}`}>
                         <img
                           src={kucukGorsel}
-                          alt={yazi.baslik}
+                          alt={duzMetin(yazi.baslik)}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                           onError={(e) => {
                             // Dosya bulunamazsa boş gri kutu kalmasın.

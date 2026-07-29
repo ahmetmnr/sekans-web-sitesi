@@ -13,6 +13,7 @@ import {
   Eye
 } from 'lucide-react';
 import type { CMSPage } from './CMSLayout';
+import { duzMetin } from '@/lib/zenginMetin';
 
 interface CMSDashboardProps {
   onNavigate: (page: CMSPage) => void;
@@ -184,7 +185,7 @@ export function CMSDashboard({ onNavigate }: CMSDashboardProps) {
                 <ul className="space-y-1">
                   {sonSayi.yazilar.slice(0, 3).map((yazi) => (
                     <li key={yazi.id} className="text-sm text-gray-800 truncate">
-                      • {yazi.baslik}
+                      • {duzMetin(yazi.baslik)}
                     </li>
                   ))}
                 </ul>
@@ -218,7 +219,7 @@ export function CMSDashboard({ onNavigate }: CMSDashboardProps) {
                 className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
               >
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-gray-900 truncate">{yazi.baslik}</h4>
+                  <h4 className="font-medium text-gray-900 truncate">{duzMetin(yazi.baslik)}</h4>
                   <p className="text-sm text-gray-500 mt-1">
                     {yazi.yazar.tamAd} • {new Date(yazi.yayinTarihi).toLocaleDateString('tr-TR')}
                   </p>

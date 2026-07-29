@@ -3,6 +3,8 @@ import { ArrowLeft, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import type { AramaYaziSonuc, IndeksGiris, IndeksKategoriAyar } from '@/types';
+import { ZenginMetin } from '@/components/ZenginMetin';
+import { duzMetin } from '@/lib/zenginMetin';
 
 interface SekansIndeksSayfasiProps {
   onDergiYaziClick: (sonuc: AramaYaziSonuc) => void;
@@ -26,7 +28,7 @@ function siralaGirisler(liste: IndeksGiris[], mod: SiralamaModu): IndeksGiris[] 
   if (mod === 'eski') {
     arr.sort((a, b) => (a.yayinTarihi || '').localeCompare(b.yayinTarihi || ''));
   } else if (mod === 'alfabetik') {
-    arr.sort((a, b) => a.baslik.localeCompare(b.baslik, 'tr'));
+    arr.sort((a, b) => duzMetin(a.baslik).localeCompare(duzMetin(b.baslik), 'tr'));
   } else if (mod === 'sayi') {
     // Dergi yazıları sayı yılına + numarasına göre (yeni->eski); blog yazıları sona.
     arr.sort((a, b) => {
@@ -147,9 +149,10 @@ export default function SekansIndeksSayfasi({
         className="w-full text-left py-3 group flex items-baseline justify-between gap-4 border-b border-border/50 hover:bg-muted/40 transition-colors px-2 -mx-2"
       >
         <span className="min-w-0">
-          <span className="block font-serif text-base md:text-lg leading-snug group-hover:underline underline-offset-2">
-            {g.baslik}
-          </span>
+          <ZenginMetin
+            html={g.baslik}
+            className="block font-serif text-base md:text-lg leading-snug group-hover:underline underline-offset-2"
+          />
           <span className="block text-xs text-muted-foreground mt-1">
             {g.yazarAd}
             {g.yazarAd ? ' · ' : ''}

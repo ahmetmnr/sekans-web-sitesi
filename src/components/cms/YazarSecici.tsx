@@ -31,7 +31,9 @@ export function YazarSecici({
 
   return (
     <div>
-      <Label className="text-sm font-medium">Yazar *</Label>
+      <Label className="text-sm font-medium">
+        {ekYazarlar.length > 0 ? 'Yazarlar *' : 'Yazar *'}
+      </Label>
       <Select value={birincil?.id || ''} onValueChange={onBirincilChange}>
         <SelectTrigger className="mt-1.5">
           <SelectValue placeholder="Yazar seçin" />
@@ -88,22 +90,22 @@ export function YazarSecici({
         eklenebilir.length > 0 && (
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="mt-1.5 h-7 px-1.5 text-xs text-blue-600 hover:text-blue-700"
+            className="mt-2 w-full h-8 text-xs border-dashed text-blue-600 hover:text-blue-700 hover:border-blue-400"
             onClick={() => setEkleAcik(true)}
           >
             <Plus className="h-3.5 w-3.5 mr-1" />
-            Yazar ekle
+            İkinci yazar ekle
           </Button>
         )
       )}
 
-      {ekYazarlar.length > 0 && (
-        <p className="mt-1 text-xs text-muted-foreground">
-          İlk sıradaki yazar birincildir; listelerde ve kartlarda o görünür.
-        </p>
-      )}
+      <p className="mt-1 text-xs text-muted-foreground">
+        {ekYazarlar.length > 0
+          ? 'İlk sıradaki yazar birincildir; kartlarda ve listelerde o görünür. Yazının sayfasında hepsi listelenir.'
+          : 'Çift yazarlı yazılar için aşağıdan ikinci (ve sonraki) yazarı ekleyebilirsiniz.'}
+      </p>
     </div>
   );
 }

@@ -4,6 +4,8 @@ import type { AraYazi } from '@/types';
 import { Button } from '@/components/ui/button';
 import { useCMS } from '@/context/CMSContext';
 import { araYaziKategorileri, yazarAdlari } from '@/lib/utils';
+import { ZenginMetin } from '@/components/ZenginMetin';
+import { duzMetin } from '@/lib/zenginMetin';
 
 interface AraYazilarSayfasiProps {
   araYazilar: AraYazi[];
@@ -131,7 +133,7 @@ export default function AraYazilarSayfasi({
                 <div className="aspect-[16/10] bg-muted overflow-hidden mb-4">
                   <img
                     src={araYazi.kapakGorseli || '/images/default-cover.svg'}
-                    alt={araYazi.baslik}
+                    alt={duzMetin(araYazi.baslik)}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = '/images/default-cover.svg';
@@ -149,14 +151,18 @@ export default function AraYazilarSayfasi({
                 </div>
 
                 {/* Başlık */}
-                <h3 className="ara-yazi-baslik text-xl md:text-2xl leading-tight mb-3 font-serif">
-                  {araYazi.baslik}
-                </h3>
+                <ZenginMetin
+                  as="h3"
+                  html={araYazi.baslik}
+                  className="block ara-yazi-baslik text-xl md:text-2xl leading-tight mb-3 font-serif"
+                />
 
                 {/* Spot */}
-                <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
-                  {araYazi.spot}
-                </p>
+                <ZenginMetin
+                  as="p"
+                  html={araYazi.spot}
+                  className="text-sm text-muted-foreground line-clamp-3 leading-relaxed"
+                />
 
                 {/* Yazar */}
                 <div className="flex items-center gap-2 mt-3">

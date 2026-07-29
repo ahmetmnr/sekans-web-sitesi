@@ -5,10 +5,12 @@ import { useFootnotes } from '@/hooks/useFootnotes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { AdvancedEditor } from '@/components/AdvancedEditor';
 import { FileUploadField } from '@/components/cms/FileUploadField';
 import { YazarSecici } from '@/components/cms/YazarSecici';
+import { SatirIciEditor } from '@/components/cms/SatirIciEditor';
+import { ZenginMetin } from '@/components/ZenginMetin';
+import { duzMetin } from '@/lib/zenginMetin';
 import { Switch } from '@/components/ui/switch';
 import { KAPAK_ACIKLAMA, DIZIN_ACIKLAMA } from '@/lib/gorselStandardi';
 import {
@@ -126,7 +128,8 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
     console.log('formData:', formData);
     console.log('formData.icerik uzunluğu:', formData.icerik?.length);
 
-    if (!formData.baslik) {
+    // Başlık artık satır içi HTML olabilir; boşluk kontrolü düz metne göre.
+    if (!duzMetin(formData.baslik)) {
       alert('Lütfen başlık girin');
       return;
     }
@@ -232,26 +235,22 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
 
             <TabsContent value="edit" className="flex-1 min-h-0 overflow-y-auto p-6 mt-0">
               <div className="max-w-4xl mx-auto space-y-6">
-                {/* Başlık */}
-                <div>
-                  <Input
-                    value={formData.baslik || ''}
-                    onChange={(e) => setFormData({ ...formData, baslik: e.target.value })}
-                    placeholder="Yazı başlığını girin..."
-                    className="text-3xl font-serif font-bold border-0 border-b rounded-none px-0 py-4 focus-visible:ring-0 focus-visible:border-gray-400"
-                  />
-                </div>
+                {/* Başlık — satır içi biçimlendirme (film adı italik vb.) */}
+                <SatirIciEditor
+                  value={formData.baslik || ''}
+                  onChange={(html) => setFormData({ ...formData, baslik: html })}
+                  placeholder="Yazı başlığını girin..."
+                  className="text-3xl font-serif font-bold"
+                />
 
-                {/* Spot */}
-                <div>
-                  <Textarea
-                    value={formData.spot || ''}
-                    onChange={(e) => setFormData({ ...formData, spot: e.target.value })}
-                    placeholder="Yazının kısa özetini girin (spot)..."
-                    className="text-lg text-gray-600 border-0 border-b rounded-none px-0 py-2 resize-none focus-visible:ring-0 focus-visible:border-gray-400"
-                    rows={2}
-                  />
-                </div>
+                {/* Spot — satır içi biçimlendirme */}
+                <SatirIciEditor
+                  value={formData.spot || ''}
+                  onChange={(html) => setFormData({ ...formData, spot: html })}
+                  placeholder="Yazının kısa özetini girin (spot)..."
+                  className="text-lg text-gray-600"
+                  cokSatir
+                />
 
                 {/* Gelişmiş Dergi Editörü */}
                 <AdvancedEditor
@@ -266,9 +265,11 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
               <div className="max-w-4xl mx-auto pb-16">
                 <article className="bg-white rounded-lg shadow-sm p-8">
                   <header className="mb-8 pb-6 border-b">
-                    <h1 className="text-4xl font-serif font-bold text-gray-900 mb-4">
-                      {formData.baslik || 'Başlık'}
-                    </h1>
+                    <ZenginMetin
+                      as="h1"
+                      html={formData.baslik || 'Başlık'}
+                      className="text-4xl font-serif font-bold text-gray-900 mb-4 block"
+                    />
                     <div className="flex items-center gap-4 text-gray-600 mb-4">
                       <span className="flex items-center gap-1">
                         <User className="h-4 w-4" />
@@ -281,9 +282,11 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
                       </span>
                     </div>
                     {formData.spot && (
-                      <p className="text-xl text-gray-600 italic leading-relaxed">
-                        {formData.spot}
-                      </p>
+                      <ZenginMetin
+                        as="p"
+                        html={formData.spot}
+                        className="text-xl text-gray-600 italic leading-relaxed"
+                      />
                     )}
                   </header>
                   <div

@@ -13,6 +13,7 @@ import {
 import { useCMS } from '@/context/CMSContext';
 import { api } from '@/lib/api';
 import type { AraYazi, AramaSonuclari, AramaYaziSonuc, MenuOgesi } from '@/types';
+import { ZenginMetin } from '@/components/ZenginMetin';
 
 interface HeaderProps {
   onNavigate: (page: string) => void;
@@ -365,7 +366,7 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                                     className="w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
                                     onClick={() => { closeSearch(); onYaziAc?.(y); }}
                                   >
-                                    <span className="block text-sm font-medium leading-snug">{y.baslik}</span>
+                                    <ZenginMetin html={y.baslik} className="block text-sm font-medium leading-snug" />
                                     <span className="block text-xs text-muted-foreground mt-0.5">
                                       {y.yazarAd}
                                       {y.kategoriAd ? ` · ${y.kategoriAd}` : ''}
@@ -390,7 +391,7 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                                     className="w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
                                     onClick={() => { closeSearch(); onAraYaziAc?.(ay); }}
                                   >
-                                    <span className="block text-sm font-medium leading-snug">{ay.baslik}</span>
+                                    <ZenginMetin html={ay.baslik} className="block text-sm font-medium leading-snug" />
                                     <span className="block text-xs text-muted-foreground mt-0.5">
                                       {ay.yazar?.tamAd ?? ''}
                                       {ay.kategori ? ` · ${ay.kategori}` : ''}

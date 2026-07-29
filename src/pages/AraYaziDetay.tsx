@@ -7,6 +7,8 @@ import ReadingIndicator from '@/components/ReadingIndicator';
 import PaylasimKutusu from '@/components/PaylasimKutusu';
 import { araYaziKategorileri, yaziYazarlari, yazarAdlari } from '@/lib/utils';
 import { GORSEL_ORAN_SINIFI } from '@/lib/gorselStandardi';
+import { ZenginMetin } from '@/components/ZenginMetin';
+import { duzMetin } from '@/lib/zenginMetin';
 
 interface AraYaziDetayProps {
   araYazi: AraYazi;
@@ -79,7 +81,7 @@ export default function AraYaziDetay({
           <div className={`${GORSEL_ORAN_SINIFI} bg-muted overflow-hidden mb-8`}>
             <img
               src={araYazi.kapakGorseli}
-              alt={araYazi.baslik}
+              alt={duzMetin(araYazi.baslik)}
               className="w-full h-full object-cover"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
@@ -90,16 +92,20 @@ export default function AraYaziDetay({
 
         {/* Başlık — kategori etiketi ve tarih satırı kaldırıldı */}
         <header className="mb-8 pb-6 border-b border-border">
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif leading-tight">
-            {araYazi.baslik}
-          </h1>
+          <ZenginMetin
+            as="h1"
+            html={araYazi.baslik}
+            className="block text-3xl md:text-4xl lg:text-5xl font-serif leading-tight"
+          />
         </header>
 
         {/* Spot */}
         {araYazi.spot && (
-          <p className="text-xl text-muted-foreground italic leading-relaxed mb-8 border-l-2 border-border pl-4">
-            {araYazi.spot}
-          </p>
+          <ZenginMetin
+            as="p"
+            html={araYazi.spot}
+            className="text-xl text-muted-foreground italic leading-relaxed mb-8 border-l-2 border-border pl-4"
+          />
         )}
 
         {/* Ana Layout: İçerik | Sağ Kolon (sol paylaşım bandı kaldırıldı) */}
@@ -155,9 +161,11 @@ export default function AraYaziDetay({
                       onClick={() => onAraYaziClick?.(yazi)}
                       className="block w-full text-left group"
                     >
-                      <p className="text-sm font-medium leading-snug group-hover:text-primary transition-colors line-clamp-2">
-                        {yazi.baslik}
-                      </p>
+                      <ZenginMetin
+                        as="p"
+                        html={yazi.baslik}
+                        className="text-sm font-medium leading-snug group-hover:text-primary transition-colors line-clamp-2"
+                      />
                     </button>
                   ))}
                 </div>
@@ -165,7 +173,7 @@ export default function AraYaziDetay({
             )}
 
             {/* Paylaşım — yukarıdakiler geçildikten sonra sabitlenir */}
-            <PaylasimKutusu baslik={araYazi.baslik} className="lg:sticky lg:top-24" />
+            <PaylasimKutusu baslik={duzMetin(araYazi.baslik)} className="lg:sticky lg:top-24" />
           </aside>
         </div>
 
@@ -183,7 +191,7 @@ export default function AraYaziDetay({
                   <div className="aspect-[16/9] overflow-hidden">
                     <img
                       src={yazi.kapakGorseli || '/images/default-cover.svg'}
-                      alt={yazi.baslik}
+                      alt={duzMetin(yazi.baslik)}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = '/images/default-cover.svg';
@@ -194,12 +202,16 @@ export default function AraYaziDetay({
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                       {yazi.kategori}
                     </span>
-                    <h4 className="font-serif text-base font-bold mt-1 leading-snug group-hover:text-primary transition-colors line-clamp-2">
-                      {yazi.baslik}
-                    </h4>
-                    <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                      {yazi.spot}
-                    </p>
+                    <ZenginMetin
+                      as="h4"
+                      html={yazi.baslik}
+                      className="block font-serif text-base font-bold mt-1 leading-snug group-hover:text-primary transition-colors line-clamp-2"
+                    />
+                    <ZenginMetin
+                      as="p"
+                      html={yazi.spot}
+                      className="text-sm text-muted-foreground mt-2 line-clamp-2"
+                    />
                     <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
                       <span>{yazarAdlari(yazi)}</span>
                     </div>
@@ -222,9 +234,11 @@ export default function AraYaziDetay({
                   <ChevronLeft className="w-4 h-4" />
                   Önceki Yazı
                 </span>
-                <h4 className="font-serif text-lg group-hover:underline underline-offset-2 line-clamp-2">
-                  {oncekiAraYazi.baslik}
-                </h4>
+                <ZenginMetin
+                  as="h4"
+                  html={oncekiAraYazi.baslik}
+                  className="block font-serif text-lg group-hover:underline underline-offset-2 line-clamp-2"
+                />
               </button>
             ) : (
               <div />
@@ -238,9 +252,11 @@ export default function AraYaziDetay({
                   Sonraki Yazı
                   <ChevronRight className="w-4 h-4" />
                 </span>
-                <h4 className="font-serif text-lg group-hover:underline underline-offset-2 line-clamp-2">
-                  {sonrakiAraYazi.baslik}
-                </h4>
+                <ZenginMetin
+                  as="h4"
+                  html={sonrakiAraYazi.baslik}
+                  className="block font-serif text-lg group-hover:underline underline-offset-2 line-clamp-2"
+                />
               </button>
             ) : (
               <div />

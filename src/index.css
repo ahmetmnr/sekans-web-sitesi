@@ -1047,6 +1047,39 @@ figure.resizable-image figcaption,
   pointer-events: none;
 }
 
+/* ============================================
+   SATIR İÇİ EDİTÖR (başlık / spot alanları)
+   Tek paragraflık alan; gövde editörünün paragraf boşlukları burada olmasın.
+   Punto ve font, alanın kendi sınıfından (text-3xl font-serif vb.) gelir.
+   ============================================ */
+.satirici-editor .ProseMirror {
+  outline: none;
+}
+
+.satirici-editor .ProseMirror p {
+  margin: 0;
+  line-height: 1.25;
+  text-align: left;   /* gövdedeki "iki yana yasla" varsayılanı buraya sızmasın */
+}
+
+.satirici-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #adb5bd;
+  pointer-events: none;
+  height: 0;
+  font-weight: 400;
+}
+
+/* Başlık/spot içindeki satır içi biçimler yayında da aynen görünür; bu alanlar
+   <h1>/<h3>/<p> olarak basıldığı için ek kurala gerek yok. Yalnızca bağlantılar
+   başlık içinde alt çizgisiz dursun (başlığın kendisi zaten tıklanabilir). */
+.yazi-baslik a,
+.ara-yazi-baslik a {
+  color: inherit;
+  text-decoration: none;
+}
+
 /* BlockNote Editor Stilleri */
 .mantine-root {
   --mantine-font-family: 'Inter', system-ui, -apple-system, sans-serif;
