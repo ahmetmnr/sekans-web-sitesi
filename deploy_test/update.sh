@@ -149,10 +149,19 @@ else
   echo "    -> 'yazilar.dizin_gorseli' kolonu zaten var, atlanıyor."
 fi
 
-echo ">>> 16/17 API konteyneri yeniden başlatılıyor..."
+echo ">>> 16/18 DB migration: çoklu yazar + kapak bandı görünürlüğü (yalnızca yoksa)..."
+if [ "$(col_exists yazilar kapak_ustte)" = "0" ]; then
+  echo "    -> uygulanıyor: 2026-07-26_faz13_cok_yazar_kapak_bandi.sql"
+  $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-07-26_faz13_cok_yazar_kapak_bandi.sql
+  echo "    -> tamam."
+else
+  echo "    -> 'yazilar.kapak_ustte' kolonu zaten var, atlanıyor."
+fi
+
+echo ">>> 17/18 API konteyneri yeniden başlatılıyor..."
 $DC restart api
 
-echo ">>> 17/17 Kontrol — sayı durumları + filtre sayfaları + menü:"
+echo ">>> 18/18 Kontrol — sayı durumları + filtre sayfaları + menü:"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT durum, COUNT(*) FROM sayilar GROUP BY durum;" 2>/dev/null || echo "    (DB kontrolü atlandı)"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
@@ -163,6 +172,10 @@ $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT CONCAT('menü öğesi: ', COUNT(*)) FROM menuler;" 2>/dev/null || true
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT CONCAT('ana sayfa paneli: ', COUNT(*)) FROM anasayfa_bloklar;" 2>/dev/null || true
+$DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
+  "SELECT CONCAT('yazi-yazar bagi: ', COUNT(*)) FROM yazi_yazarlari;" 2>/dev/null || true
+$DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
+  "SELECT CONCAT('arayazi-yazar bagi: ', COUNT(*)) FROM arayazi_yazarlari;" 2>/dev/null || true
 
 echo ""
 echo "==================== GÜNCELLEME TAMAM ===================="
