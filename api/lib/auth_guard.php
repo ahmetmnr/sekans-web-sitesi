@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/response.php';
+require_once __DIR__ . '/db.php';   // require_sayi_erisimi() sayı sahipliğini sorgular
 
 /** Oturumu (varsa) başlat. Güvenli çerez bayraklarıyla. Birden çok kez çağrılabilir. */
 function session_boot(): void
@@ -84,6 +85,52 @@ function require_role(string $role): array
         fail('FORBIDDEN', 'Bu işlem için yönetici yetkisi gerekir.', 403);
     }
     return $user;
+}
+
+/**
+ * Oturumdaki kullanıcı yönetici mi?
+ *
+ * Yetki modeli ([15]):
+ *   YÖNETİCİ — sitenin YAPISINI kurar: menü, ana sayfa panelleri, kategoriler,
+ *              sabit sayfalar, filtre listeleri, Sekans İndeks ayarları, arşiv,
+ *              kullanıcılar, sayı açma/silme/yayına alma, editör atama.
+ *   EDİTÖR   — İÇERİK üretir: sorumlusu olduğu sayıların yazıları, blog
+ *              yazıları, yazarlar. Site yapısına dokunamaz.
+ *
+ * Bu ayrım hem arayüzde (menü gizlenir) hem de BURADA, sunucuda uygulanır.
+ * Arayüzde gizlemek tek başına yeterli değildir: istek doğrudan da atılabilir.
+ */
+function is_admin(): bool
+{
+    session_boot();
+    return ($_SESSION['role'] ?? 'editor') === 'admin';
+}
+
+/** Oturumdaki kullanıcının kimliği (kullanicilar.id) — giriş yoksa 0. */
+function current_uid(): int
+{
+    session_boot();
+    return (int)($_SESSION['uid'] ?? 0);
+}
+
+/**
+ * EDİTÖR bu sayıya dokunabilir mi?
+ *
+ * Yönetici her sayıya dokunur. Editör yalnızca SORUMLUSU OLDUĞU sayılara
+ * dokunabilir; sorumlusu atanmamış sayılar tüm editörlere açıktır (bir sayı
+ * atama yapılmadan da hazırlanabilsin diye).
+ */
+function require_sayi_erisimi(int $sayiId): void
+{
+    if (is_admin()) return;
+    $st = db()->prepare("SELECT editor_id FROM sayilar WHERE id = ? LIMIT 1");
+    $st->execute([$sayiId]);
+    $editorId = $st->fetchColumn();
+    if ($editorId === false) fail('NOT_FOUND', 'Sayı bulunamadı.', 404);
+    if ($editorId === null || $editorId === '') return;   // atanmamış: herkese açık
+    if ((int)$editorId !== current_uid()) {
+        fail('FORBIDDEN', 'Bu sayının sorumlu editörü değilsiniz.', 403);
+    }
 }
 
 /**

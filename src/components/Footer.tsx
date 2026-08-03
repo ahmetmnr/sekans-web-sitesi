@@ -1,5 +1,7 @@
 import { Mail, MapPin, ExternalLink } from 'lucide-react';
 
+import { navKodundanYol, uygulamaIciTiklama } from '@/lib/rotalar';
+
 interface FooterProps {
   onNavigate: (page: string) => void;
 }
@@ -60,13 +62,19 @@ export default function Footer({ onNavigate }: FooterProps) {
                 { id: 'hakkimizda', label: 'Hakkımızda' },
                 { id: 'iletisim', label: 'İletişim' },
               ].map((item) => (
-                <button
+                <a
                   key={item.id}
-                  onClick={() => handleNavClick(item.id)}
+                  href={navKodundanYol(item.id)}
+                  onClick={(e) => {
+                    // Sağ tık / Ctrl+tık tarayıcıya bırakılır ([12]).
+                    if (!uygulamaIciTiklama(e)) return;
+                    e.preventDefault();
+                    handleNavClick(item.id);
+                  }}
                   className="block text-sm text-background/70 hover:text-background transition-colors"
                 >
                   {item.label}
-                </button>
+                </a>
               ))}
             </nav>
           </div>

@@ -15,6 +15,7 @@ import { api } from '@/lib/api';
 import type { AraYazi, AramaSonuclari, AramaYaziSonuc, MenuOgesi } from '@/types';
 import { ZenginMetin } from '@/components/ZenginMetin';
 import { SekansMarkasi } from '@/components/SekansMarkasi';
+import { navKodundanYol, uygulamaIciTiklama } from '@/lib/rotalar';
 
 interface HeaderProps {
   onNavigate: (page: string) => void;
@@ -73,9 +74,13 @@ const navItems: NavItem[] = [
 const MENU_SAYI_LIMIT = 8;
 
 // Birleşik render modeli — hem dinamik menüden hem sabit fallback'ten üretilir.
-type NavChildR = { key: string; label: string; onClick: () => void; activePage?: string };
+//
+// `href`: menü öğesinin gerçek adresi. Öğeler <a href> olarak basıldığı için
+// sağ tık → "yeni sekmede aç" ve orta tık çalışır ([12]). Sade sol tıkta
+// uygulama içi geçiş yapılır, sayfa yeniden yüklenmez.
+type NavChildR = { key: string; label: string; href: string; onClick: () => void; activePage?: string };
 type NavEntry =
-  | { kind: 'leaf'; key: string; label: string; onClick: () => void; activePage?: string }
+  | { kind: 'leaf'; key: string; label: string; href: string; onClick: () => void; activePage?: string }
   | { kind: 'group'; key: string; label: string; activePages: string[]; children: NavChildR[] }
   | { kind: 'sayilar'; key: string; label: string };
 
@@ -126,6 +131,19 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
     setSearchResults(null);
   };
 
+  /**
+   * Menü bağlantısı tıklaması.
+   *
+   * Ctrl/Cmd/Shift/orta tık tarayıcıya BIRAKILIR — "yeni sekmede aç" bu sayede
+   * çalışır ([12]). Sade sol tıkta sayfa yeniden yüklenmesin diye varsayılan
+   * davranış engellenip uygulama içi geçiş yapılır.
+   */
+  const menuBaglantiTikla = (e: React.MouseEvent, git: () => void) => {
+    if (!uygulamaIciTiklama(e)) return;
+    e.preventDefault();
+    git();
+  };
+
   const handleNavClick = (pageId: string) => {
     onNavigate(pageId);
     setMobileMenuOpen(false);
@@ -148,6 +166,14 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
       case 'dahili':       return item.hedef ?? 'anasayfa';
       default:             return 'anasayfa';
     }
+  };
+
+  // Dinamik menü öğesinin gerçek ADRESİ (<a href> için).
+  // Haricî bağlantılar kendi adreslerini kullanır; dergi sayısı /sayi/{code}.
+  const menuHedefYol = (item: MenuOgesi): string => {
+    if (item.tur === 'harici_link') return item.hedef ?? '#';
+    if (item.tur === 'dergi_sayisi') return item.hedef ? navKodundanYol(`sayi:${item.hedef}`) : '/arsiv';
+    return navKodundanYol(menuHedefNav(item));
   };
 
   // Aktiflik vurgusu için sayfa kimliği (dinamik öğeden en iyi tahmin).
@@ -189,11 +215,22 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
           label: item.gorunenBaslik,
           activePages: kids.map(menuActivePage).filter((p): p is string => !!p),
           children: kids.map((c) => ({
-            key: c.id, label: c.gorunenBaslik, onClick: () => menuTikla(c), activePage: menuActivePage(c),
+            key: c.id,
+            label: c.gorunenBaslik,
+            href: menuHedefYol(c),
+            onClick: () => menuTikla(c),
+            activePage: menuActivePage(c),
           })),
         };
       }
-      return { kind: 'leaf', key: item.id, label: item.gorunenBaslik, onClick: () => menuTikla(item), activePage: menuActivePage(item) };
+      return {
+        kind: 'leaf',
+        key: item.id,
+        label: item.gorunenBaslik,
+        href: menuHedefYol(item),
+        onClick: () => menuTikla(item),
+        activePage: menuActivePage(item),
+      };
     });
 
   // Render modelini sabit fallback'ten kur (menuler tablosu yoksa).
@@ -207,11 +244,22 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
           label: item.label,
           activePages: item.children.map((c) => c.page),
           children: item.children.map((c) => ({
-            key: c.nav, label: c.label, onClick: () => handleNavClick(c.nav), activePage: c.page,
+            key: c.nav,
+            label: c.label,
+            href: navKodundanYol(c.nav),
+            onClick: () => handleNavClick(c.nav),
+            activePage: c.page,
           })),
         };
       }
-      return { kind: 'leaf', key: item.id, label: item.label, onClick: () => handleNavClick(item.id), activePage: item.id };
+      return {
+        kind: 'leaf',
+        key: item.id,
+        label: item.label,
+        href: navKodundanYol(item.id),
+        onClick: () => handleNavClick(item.id),
+        activePage: item.id,
+      };
     });
 
   const entries: NavEntry[] = menu.length > 0 ? buildFromMenu(menu) : buildFromStatic();
@@ -249,8 +297,10 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="center" className="w-56">
                     {entry.children.map((c) => (
-                      <DropdownMenuItem key={c.key} onClick={c.onClick}>
-                        {c.label}
+                      <DropdownMenuItem key={c.key} asChild>
+                        <a href={c.href} onClick={(e) => menuBaglantiTikla(e, c.onClick)}>
+                          {c.label}
+                        </a>
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
@@ -266,35 +316,44 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="center" className="w-56">
-                    <DropdownMenuItem onClick={() => handleNavClick('sonsayi')}>
-                      <span className="font-medium">{sonSayi.menuEtiket?.trim() ? sonSayi.menuEtiket : 'Son Sayı'}</span>
-                      <span className="ml-auto text-xs text-muted-foreground">{sonSayi.numara}</span>
+                    <DropdownMenuItem asChild>
+                      <a
+                        href={navKodundanYol(`sayi:${sonSayi.id}`)}
+                        onClick={(e) => menuBaglantiTikla(e, () => handleNavClick('sonsayi'))}
+                      >
+                        <span className="font-medium">{sonSayi.menuEtiket?.trim() ? sonSayi.menuEtiket : 'Son Sayı'}</span>
+                        <span className="ml-auto text-xs text-muted-foreground">{sonSayi.numara}</span>
+                      </a>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     {menuSayilari.map((sayi) => (
-                      <DropdownMenuItem
-                        key={sayi.id}
-                        className="cursor-pointer"
-                        onClick={() => sayiAc(sayi.id)}
-                      >
-                        {sayiEtiketi(sayi)}
-                        <span className="ml-auto text-xs text-muted-foreground">{sayi.ay} {sayi.yil}</span>
+                      <DropdownMenuItem key={sayi.id} className="cursor-pointer" asChild>
+                        <a
+                          href={navKodundanYol(`sayi:${sayi.id}`)}
+                          onClick={(e) => menuBaglantiTikla(e, () => sayiAc(sayi.id))}
+                        >
+                          {sayiEtiketi(sayi)}
+                          <span className="ml-auto text-xs text-muted-foreground">{sayi.ay} {sayi.yil}</span>
+                        </a>
                       </DropdownMenuItem>
                     ))}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => handleNavClick('arsiv')}>
-                      <span className="text-muted-foreground">Tüm Sayılar (Arşiv) →</span>
+                    <DropdownMenuItem asChild>
+                      <a href="/arsiv" onClick={(e) => menuBaglantiTikla(e, () => handleNavClick('arsiv'))}>
+                        <span className="text-muted-foreground">Tüm Sayılar (Arşiv) →</span>
+                      </a>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <button
+                <a
                   key={entry.key}
-                  onClick={entry.onClick}
+                  href={entry.href}
+                  onClick={(e) => menuBaglantiTikla(e, entry.onClick)}
                   className={`main-nav-link ${entry.activePage && currentPage === entry.activePage ? 'text-foreground after:w-full' : ''}`}
                 >
                   {entry.label}
-                </button>
+                </a>
               )
             ))}
           </nav>
@@ -351,9 +410,10 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                             <ul className="divide-y divide-border/60">
                               {searchResults.yazilar.map((y) => (
                                 <li key={y.id}>
-                                  <button
-                                    className="w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
-                                    onClick={() => { closeSearch(); onYaziAc?.(y); }}
+                                  <a
+                                    href={`/yazi/${encodeURIComponent(y.id)}`}
+                                    className="block w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
+                                    onClick={(e) => menuBaglantiTikla(e, () => { closeSearch(); onYaziAc?.(y); })}
                                   >
                                     <ZenginMetin html={y.baslik} className="block text-sm font-medium leading-snug" />
                                     <span className="block text-xs text-muted-foreground mt-0.5">
@@ -361,7 +421,7 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                                       {y.kategoriAd ? ` · ${y.kategoriAd}` : ''}
                                       {y.sayiNumara ? ` · Sayı ${y.sayiNumara} (${y.sayiAy} ${y.sayiYil})` : ''}
                                     </span>
-                                  </button>
+                                  </a>
                                 </li>
                               ))}
                             </ul>
@@ -376,16 +436,17 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                             <ul className="divide-y divide-border/60">
                               {searchResults.araYazilar.map((ay) => (
                                 <li key={ay.id}>
-                                  <button
-                                    className="w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
-                                    onClick={() => { closeSearch(); onAraYaziAc?.(ay); }}
+                                  <a
+                                    href={`/blog/${encodeURIComponent(ay.slug)}`}
+                                    className="block w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
+                                    onClick={(e) => menuBaglantiTikla(e, () => { closeSearch(); onAraYaziAc?.(ay); })}
                                   >
                                     <ZenginMetin html={ay.baslik} className="block text-sm font-medium leading-snug" />
                                     <span className="block text-xs text-muted-foreground mt-0.5">
                                       {ay.yazar?.tamAd ?? ''}
                                       {ay.kategori ? ` · ${ay.kategori}` : ''}
                                     </span>
-                                  </button>
+                                  </a>
                                 </li>
                               ))}
                             </ul>
@@ -400,12 +461,13 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                             <ul className="divide-y divide-border/60">
                               {searchResults.yazarlar.map((yz) => (
                                 <li key={yz.id}>
-                                  <button
-                                    className="w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
-                                    onClick={() => { closeSearch(); onYazarAc?.(yz.id); }}
+                                  <a
+                                    href={`/yazar/${encodeURIComponent(yz.id)}`}
+                                    className="block w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
+                                    onClick={(e) => menuBaglantiTikla(e, () => { closeSearch(); onYazarAc?.(yz.id); })}
                                   >
                                     <span className="block text-sm font-medium">{yz.tamAd}</span>
-                                  </button>
+                                  </a>
                                 </li>
                               ))}
                             </ul>
@@ -420,13 +482,14 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                             <ul className="divide-y divide-border/60">
                               {searchResults.sayilar!.map((s) => (
                                 <li key={s.id}>
-                                  <button
-                                    className="w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
-                                    onClick={() => aramaNav(`sayi:${s.id}`)}
+                                  <a
+                                    href={navKodundanYol(`sayi:${s.id}`)}
+                                    className="block w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
+                                    onClick={(e) => menuBaglantiTikla(e, () => aramaNav(`sayi:${s.id}`))}
                                   >
                                     <span className="block text-sm font-medium">{s.menuEtiket?.trim() ? s.menuEtiket : (s.tamBaslik || `Sayı ${s.numara}`)}</span>
                                     <span className="block text-xs text-muted-foreground mt-0.5">{s.ay} {s.yil}</span>
-                                  </button>
+                                  </a>
                                 </li>
                               ))}
                             </ul>
@@ -441,12 +504,13 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                             <ul className="divide-y divide-border/60">
                               {searchResults.kategoriler!.map((k) => (
                                 <li key={k.slug || k.ad}>
-                                  <button
-                                    className="w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
-                                    onClick={() => aramaNav(`kategori:${k.ad}`)}
+                                  <a
+                                    href={navKodundanYol(`kategori:${k.ad}`)}
+                                    className="block w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
+                                    onClick={(e) => menuBaglantiTikla(e, () => aramaNav(`kategori:${k.ad}`))}
                                   >
                                     <span className="block text-sm font-medium">{k.ad}</span>
-                                  </button>
+                                  </a>
                                 </li>
                               ))}
                             </ul>
@@ -461,13 +525,14 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                             <ul className="divide-y divide-border/60">
                               {searchResults.sayfalar!.map((sf) => (
                                 <li key={sf.slug}>
-                                  <button
-                                    className="w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
-                                    onClick={() => aramaNav(`statik:${sf.slug}`)}
+                                  <a
+                                    href={navKodundanYol(`statik:${sf.slug}`)}
+                                    className="block w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
+                                    onClick={(e) => menuBaglantiTikla(e, () => aramaNav(`statik:${sf.slug}`))}
                                   >
                                     <span className="block text-sm font-medium">{sf.baslik}</span>
                                     {sf.kisaAciklama ? <span className="block text-xs text-muted-foreground mt-0.5 line-clamp-1">{sf.kisaAciklama}</span> : null}
-                                  </button>
+                                  </a>
                                 </li>
                               ))}
                             </ul>
@@ -501,64 +566,70 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                           </span>
                           <div className="pl-4 mt-2 space-y-2">
                             {entry.children.map((c) => (
-                              <button
+                              <a
                                 key={c.key}
-                                onClick={c.onClick}
+                                href={c.href}
+                                onClick={(e) => menuBaglantiTikla(e, c.onClick)}
                                 className={`text-sm block ${c.activePage && currentPage === c.activePage ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
                               >
                                 {c.label}
-                              </button>
+                              </a>
                             ))}
                           </div>
                         </div>
                       ) : entry.kind === 'sayilar' ? (
                         <div key={entry.key}>
-                          <button
-                            onClick={() => handleNavClick('sonsayi')}
-                            className={`text-left text-lg font-medium py-2 border-b border-border/50 transition-colors w-full ${
+                          <a
+                            href="/sayi"
+                            onClick={(e) => menuBaglantiTikla(e, () => handleNavClick('sonsayi'))}
+                            className={`block text-left text-lg font-medium py-2 border-b border-border/50 transition-colors w-full ${
                               currentPage === 'sonsayi'
                                 ? 'text-foreground'
                                 : 'text-muted-foreground hover:text-foreground'
                             }`}
                           >
                             {entry.label}
-                          </button>
+                          </a>
                           <div className="pl-4 mt-2 space-y-2">
-                            <button
-                              onClick={() => handleNavClick('sonsayi')}
+                            <a
+                              href={navKodundanYol(`sayi:${sonSayi.id}`)}
+                              onClick={(e) => menuBaglantiTikla(e, () => handleNavClick('sonsayi'))}
                               className="text-sm text-muted-foreground hover:text-foreground block"
                             >
                               Son Sayı ({sonSayi.numara})
-                            </button>
+                            </a>
                             {menuSayilari.slice(0, 3).map((sayi) => (
-                              <button
+                              <a
                                 key={sayi.id}
-                                onClick={() => { sayiAc(sayi.id); setMobileMenuOpen(false); }}
+                                href={navKodundanYol(`sayi:${sayi.id}`)}
+                                onClick={(e) => menuBaglantiTikla(e, () => { sayiAc(sayi.id); setMobileMenuOpen(false); })}
                                 className="text-sm text-muted-foreground hover:text-foreground block"
                               >
                                 {sayiEtiketi(sayi)}
-                              </button>
+                              </a>
                             ))}
-                            <button
-                              onClick={() => handleNavClick('arsiv')}
+                            <a
+                              href="/arsiv"
+                              onClick={(e) => menuBaglantiTikla(e, () => handleNavClick('arsiv'))}
                               className="text-sm text-blue-600 hover:text-blue-800 block"
                             >
                               Tüm Sayılar →
-                            </button>
+                            </a>
                           </div>
                         </div>
                       ) : (
-                        <button
+                        <a
                           key={entry.key}
-                          onClick={entry.onClick}
-                          className={`text-left text-lg font-medium py-2 border-b border-border/50 transition-colors ${
+                          href={entry.href}
+                          onClick={(e) => menuBaglantiTikla(e, entry.onClick)}
+                          className={`block text-left text-lg font-medium py-2 border-b border-border/50 transition-colors ${
                             entry.activePage && currentPage === entry.activePage
                               ? 'text-foreground'
                               : 'text-muted-foreground hover:text-foreground'
                           }`}
                         >
                           {entry.label}
-                        </button>
+                        </a>
                       )
                     ))}
                   </nav>

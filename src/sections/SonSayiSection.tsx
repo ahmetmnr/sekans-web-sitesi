@@ -59,7 +59,7 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
             )}
 
             {/* Künye — kapağın altında, sol kolonda, akordiyon panel içinde [7] */}
-            <KunyePanel kunye={sayi.kunye} />
+            <KunyePanel kunye={sayi.kunye} sayiAdi={adi} editorAd={sayi.editorAd} />
           </div>
 
           {/* Sağ Kolon — Ay/Yıl, sayı adı, içindekiler */}

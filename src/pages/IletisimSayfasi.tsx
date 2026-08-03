@@ -8,13 +8,20 @@ import { useState } from 'react';
 interface IletisimSayfasiProps {
   onBackClick: () => void;
   onYaziStandartlariClick?: () => void;
+  /**
+   * Ön dolu konu (?konu=…). Sayı künyesindeki "Sayı sorumlusuna yaz"
+   * bağlantısı buraya sayının adını taşır ([8]): okur yayın sorumlusuna
+   * ulaşabilsin ama e-posta adresi sitede AÇIK yazmasın, spam botlarına
+   * yem olmasın.
+   */
+  onDoluKonu?: string;
 }
 
-export default function IletisimSayfasi({ onBackClick, onYaziStandartlariClick }: IletisimSayfasiProps) {
+export default function IletisimSayfasi({ onBackClick, onYaziStandartlariClick, onDoluKonu }: IletisimSayfasiProps) {
   const [formData, setFormData] = useState({
     ad: '',
     email: '',
-    konu: '',
+    konu: onDoluKonu ?? '',
     mesaj: '',
   });
   const [gonderildi, setGonderildi] = useState(false);

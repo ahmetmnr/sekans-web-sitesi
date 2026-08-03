@@ -4,6 +4,7 @@ import { trBuyuk, yazarAdlari } from '@/lib/utils';
 import { GORSEL_ORAN_SINIFI } from '@/lib/gorselStandardi';
 import { ZenginMetin } from '@/components/ZenginMetin';
 import { duzMetin } from '@/lib/zenginMetin';
+import { uygulamaIciTiklama } from '@/lib/rotalar';
 
 /* ---------------------------------------------------------------------------
    İÇİNDEKİLER SATIRI — ana sayfa ve sayı sayfası için TEK düzen kaynağı.
@@ -92,11 +93,22 @@ export function IcindekilerSatiri({
 
       {/* Satır 2, sol kolon — başlık, yazar, spot, PDF */}
       <div className="min-w-0">
-        <ZenginMetin
-          as="h3"
-          html={yazi.baslik}
-          className={`block yazi-baslik leading-snug ${baslikSinifi} ${BASLIK_GIRINTI} group-hover:underline underline-offset-4`}
-        />
+        {/* Başlık GERÇEK bir bağlantıdır: sağ tık → "yeni sekmede aç" çalışır
+            ([12]). Sade sol tık satırın kendi tıklamasına düşer, sayfa yeniden
+            yüklenmez. Satırın tamamı <a> DEĞİL, çünkü içinde ayrıca PDF
+            bağlantısı var; iç içe <a> geçersiz HTML'dir. */}
+        <h3 className={`${BASLIK_GIRINTI}`}>
+          <a
+            href={`/yazi/${encodeURIComponent(yazi.id)}`}
+            onClick={(e) => {
+              if (!uygulamaIciTiklama(e)) { e.stopPropagation(); return; }
+              e.preventDefault();
+            }}
+            className={`block yazi-baslik leading-snug ${baslikSinifi} group-hover:underline underline-offset-4`}
+          >
+            <ZenginMetin html={yazi.baslik} />
+          </a>
+        </h3>
         <p className={`mt-1 icindekiler-yazar ${YAZAR_GIRINTI}`}>
           {yazarAdlari(yazi)}
         </p>

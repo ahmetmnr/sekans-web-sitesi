@@ -3,6 +3,7 @@
 //  editör atanır, yazıları yönetilir ve hazır olan "yayına alınır".
 import { useState } from 'react';
 import { useCMS } from '@/context/CMSContext';
+import { useAuth } from '@/context/AuthContext';
 import { FileUploadField } from '@/components/cms/FileUploadField';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -76,6 +77,14 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
   // [19] Silme onay kutusuna yazılan metin (dialog kapanınca sıfırlanır).
   const [silmeOnayi, setSilmeOnayi] = useState('');
 
+  /* [15] Sayının YAŞAM DÖNGÜSÜ yöneticinindir: yeni sayı açma, silme, yayına
+     alma, taslağa alma, sorumlu editör atama ve arşiv yönetimi. Editör kendi
+     sayısının İÇERİĞİNİ hazırlar (yazılar, künye, önsöz).
+     Aynı ayrım sunucuda da uygulanır; buradaki gizleme yalnızca editöre
+     yapamayacağı düğmeleri göstermemek içindir. */
+  const { user } = useAuth();
+  const yoneticiMi = user?.role === 'admin';
+
   const openNewIssue = () => {
     setEditingIssue(null);
     setIssueForm({ ay: 'Ocak', yil: new Date().getFullYear(), editorId: null });
@@ -95,19 +104,29 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
     }
     try {
       const tamBaslik = `${issueForm.ay ?? ''} ${issueForm.yil ?? ''} | Sayı ${issueForm.numara}`;
-      const payload = {
-        numara: issueForm.numara,
-        ay: issueForm.ay,
-        yil: issueForm.yil,
-        tamBaslik,
-        menuEtiket: issueForm.menuEtiket ?? null,
+
+      /* [15] Editörün gönderdiği gövdede YÖNETİCİ alanları BULUNMAZ.
+         Sunucu bu alanlar geldiğinde 403 döner; alanı hiç göndermemek, editörün
+         yalnızca içerik alanlarını (kapak, PDF, künye, önsöz) kaydedebilmesini
+         sağlar. Değiştirmediği bir alan yüzünden kaydı reddedilmez. */
+      const icerikAlanlari = {
         kapakGorseli: issueForm.kapakGorseli,
         pdfUrl: issueForm.pdfUrl,
         kunye: issueForm.kunye,
         onsoz: issueForm.onsoz,
-        yayinTarihi: issueForm.yayinTarihi,
-        editorId: issueForm.editorId ?? null,
       };
+      const payload = yoneticiMi
+        ? {
+            ...icerikAlanlari,
+            numara: issueForm.numara,
+            ay: issueForm.ay,
+            yil: issueForm.yil,
+            tamBaslik,
+            menuEtiket: issueForm.menuEtiket ?? null,
+            yayinTarihi: issueForm.yayinTarihi,
+            editorId: issueForm.editorId ?? null,
+          }
+        : icerikAlanlari;
       if (editingIssue) {
         await updateSayi(editingIssue.id, payload);
       } else {
@@ -241,6 +260,7 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
             <Select
               value={s.editorId ?? NONE}
               onValueChange={(v) => handleAssignEditor(s, v)}
+              disabled={!yoneticiMi}
             >
               <SelectTrigger className="h-8 w-52">
                 <SelectValue placeholder="Atanmadı" />
@@ -265,7 +285,7 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
             <FileText className="h-4 w-4 mr-1" /> Bu Sayıya Yazı Ekle
           </Button>
 
-          {s.durum !== 'yayinda' ? (
+          {!yoneticiMi ? null : s.durum !== 'yayinda' ? (
             <>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -374,7 +394,9 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Sayı Yönetimi</h1>
           <p className="text-gray-600 mt-1">
-            Birden çok sayıyı paralel hazırlayın; hazır olanı yayına alın.
+            {yoneticiMi
+              ? 'Birden çok sayıyı paralel hazırlayın; hazır olanı yayına alın.'
+              : 'Sorumlusu olduğunuz sayılar listelenir. Sayı açma, silme ve yayına alma yöneticidedir; siz sayının içeriğini hazırlarsınız.'}
           </p>
         </div>
       </div>
@@ -393,12 +415,14 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
 
         {/* Hazırlanan Sayılar — yalnızca TASLAKLAR [16] */}
         <TabsContent value="hazirlanan" className="mt-6 space-y-4">
-          <div className="flex justify-end">
-            <Button onClick={openNewIssue}>
-              <Plus className="h-4 w-4 mr-2" />
-              Yeni Sayı Oluştur
-            </Button>
-          </div>
+          {yoneticiMi && (
+            <div className="flex justify-end">
+              <Button onClick={openNewIssue}>
+                <Plus className="h-4 w-4 mr-2" />
+                Yeni Sayı Oluştur
+              </Button>
+            </div>
+          )}
 
           {taslakSayilar.length === 0 && (
             <Card>
@@ -438,10 +462,12 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
                     düzenleyebilir, sonra tekrar yayına alabilirsiniz.
                   </CardDescription>
                 </div>
-                <Button onClick={openNewArsiv}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Yeni Arşiv Sayısı
-                </Button>
+                {yoneticiMi && (
+                  <Button onClick={openNewArsiv}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Yeni Arşiv Sayısı
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -589,6 +615,7 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
                   id="i-numara"
                   value={issueForm.numara || ''}
                   onChange={(e) => setIssueForm({ ...issueForm, numara: e.target.value })}
+                  disabled={!yoneticiMi}
                   placeholder="e28"
                 />
               </div>
@@ -599,6 +626,7 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={issueForm.ay || ''}
                   onChange={(e) => setIssueForm({ ...issueForm, ay: e.target.value })}
+                  disabled={!yoneticiMi}
                 >
                   {aylar.map((ay) => <option key={ay} value={ay}>{ay}</option>)}
                 </select>
@@ -610,6 +638,7 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
                   type="number"
                   value={issueForm.yil || ''}
                   onChange={(e) => setIssueForm({ ...issueForm, yil: parseInt(e.target.value) })}
+                  disabled={!yoneticiMi}
                 />
               </div>
             </div>
@@ -619,6 +648,7 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
               <Select
                 value={issueForm.editorId ?? NONE}
                 onValueChange={(v) => setIssueForm({ ...issueForm, editorId: v === NONE ? null : v })}
+                disabled={!yoneticiMi}
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Atanmadı" />
@@ -657,6 +687,7 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
                 type="date"
                 value={issueForm.yayinTarihi || ''}
                 onChange={(e) => setIssueForm({ ...issueForm, yayinTarihi: e.target.value })}
+                disabled={!yoneticiMi}
               />
             </div>
             <div>
@@ -666,6 +697,7 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
                 value={issueForm.menuEtiket || ''}
                 onChange={(e) => setIssueForm({ ...issueForm, menuEtiket: e.target.value })}
                 placeholder='Boş: "Son Sayı" görünür (ör. Lynch Sayısı)'
+                disabled={!yoneticiMi}
               />
               <p className="text-xs text-gray-500 mt-1">
                 Bu sayı yayındayken üst menüde "Son Sayı" yerine bu ad görünür. Boş bırakılabilir.

@@ -25,14 +25,28 @@ interface KunyePanelProps {
   kunye?: string | null;
   /** Panel başlığı — varsayılan "Sayı künyesi". */
   baslik?: string;
+  /** Sayının adı — iletişim formunda konu satırını ön doldurmak için. */
+  sayiAdi?: string;
+  /** Sayının sorumlu editörü (varsa panelde adı görünür). */
+  editorAd?: string | null;
 }
 
-export function KunyePanel({ kunye, baslik = 'Sayı künyesi' }: KunyePanelProps) {
+export function KunyePanel({ kunye, baslik = 'Sayı künyesi', sayiAdi, editorAd }: KunyePanelProps) {
   const [acik, setAcik] = useState(false);
 
   if (!kunye?.trim() || zenginMetinBos(kunye)) return null;
 
   const duz = kunyeDuzMi(kunye);
+
+  /* [8] Yayın sorumlusuna ulaşma yolu.
+     E-posta adresi sayfada AÇIK yazılmaz: adres metin olarak durduğu anda
+     spam botları tarafından toplanır ve kutu dolar. Bunun yerine okur
+     İletişim formuna, konusu bu sayı olarak ön doldurulmuş biçimde
+     yönlendirilir. Form mesajı yayın sorumlusuna iletir; adres hiçbir yerde
+     görünmez. */
+  const iletisimYolu = `/iletisim?konu=${encodeURIComponent(
+    sayiAdi ? `${sayiAdi} — yayın sorumlusuna` : 'Yayın sorumlusuna'
+  )}`;
 
   return (
     <div className="mt-4 border-t border-border">
@@ -55,6 +69,14 @@ export function KunyePanel({ kunye, baslik = 'Sayı künyesi' }: KunyePanelProps
           ) : (
             <div dangerouslySetInnerHTML={{ __html: temizKunyeMetni(kunye) }} />
           )}
+
+          {/* Yayın sorumlusuna ulaşma — e-posta adresi açıkta yazmadan. */}
+          <p className="mt-3 pt-3 border-t border-border/60 text-left">
+            {editorAd ? <>Sayı sorumlusu: <span className="text-foreground">{editorAd}</span>. </> : null}
+            <a href={iletisimYolu} className="underline underline-offset-2 hover:text-foreground">
+              Sayı sorumlusuna yazın
+            </a>
+          </p>
         </div>
       )}
     </div>

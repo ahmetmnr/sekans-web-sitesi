@@ -4,6 +4,8 @@ import type { Yazar, AraYazi, Sayi } from '@/types';
 import { Button } from '@/components/ui/button';
 import { useCMS } from '@/context/CMSContext';
 
+import { uygulamaIciTiklama } from '@/lib/rotalar';
+
 interface YazarlarSayfasiProps {
   yazarlar: Yazar[];
   araYazilar: AraYazi[];
@@ -72,10 +74,15 @@ export default function YazarlarSayfasi({
         {/* Yazarlar Grid — sade: isim + yazı sayısı */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
           {siraliYazarlar.map(yazar => (
-            <button
+            <a
               key={yazar.id}
-              onClick={() => onYazarClick(yazar)}
-              className="text-left group bg-muted/30 hover:bg-muted/50 transition-all rounded-lg px-4 py-4 md:px-5"
+              href={`/yazar/${encodeURIComponent(yazar.id)}`}
+              onClick={(e) => {
+                if (!uygulamaIciTiklama(e)) return;
+                e.preventDefault();
+                onYazarClick(yazar);
+              }}
+              className="block text-left group bg-muted/30 hover:bg-muted/50 transition-all rounded-lg px-4 py-4 md:px-5"
             >
               <h3 className="font-serif text-base md:text-lg leading-snug group-hover:underline underline-offset-2">
                 {yazar.tamAd}
@@ -83,7 +90,7 @@ export default function YazarlarSayfasi({
               <p className="text-xs text-muted-foreground mt-1">
                 {yaziSayisi(yazar)} yazı
               </p>
-            </button>
+            </a>
           ))}
         </div>
       </div>

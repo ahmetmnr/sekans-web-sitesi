@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useCMS } from '@/context/CMSContext';
 import { araYaziKategorileri, trBuyuk, yazarAdlari } from '@/lib/utils';
 import { ZenginMetin } from '@/components/ZenginMetin';
+import { uygulamaIciTiklama } from '@/lib/rotalar';
 import { duzMetin } from '@/lib/zenginMetin';
 
 interface AraYazilarSayfasiProps {
@@ -151,11 +152,20 @@ export default function AraYazilarSayfasi({
                 </div>
 
                 {/* Başlık */}
-                <ZenginMetin
-                  as="h3"
-                  html={araYazi.baslik}
-                  className="block ara-yazi-baslik text-xl md:text-2xl leading-tight mb-3 font-serif"
-                />
+                {/* Başlık gerçek bağlantı: sağ tık "yeni sekmede aç" çalışsın ([12]).
+                    Sade sol tık kartın kendi tıklamasına düşer. */}
+                <h3>
+                  <a
+                    href={`/blog/${encodeURIComponent(araYazi.slug)}`}
+                    onClick={(e) => {
+                      if (!uygulamaIciTiklama(e)) { e.stopPropagation(); return; }
+                      e.preventDefault();
+                    }}
+                    className="block ara-yazi-baslik text-xl md:text-2xl leading-tight mb-3 font-serif"
+                  >
+                    <ZenginMetin html={araYazi.baslik} />
+                  </a>
+                </h3>
 
                 {/* Spot */}
                 <ZenginMetin

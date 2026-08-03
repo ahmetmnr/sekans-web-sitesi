@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { CMSLogin } from './CMSLogin';
 import { CMSLayout } from './CMSLayout';
 import type { CMSPage } from './CMSLayout';
+import { EDITOR_SAYFALARI } from './CMSLayout';
 import { CMSDashboard } from './CMSDashboard';
 import { CMSSayiYonetimi } from './CMSSayiYonetimi';
 import { CMSYaziListesi } from './CMSYaziListesi';
@@ -54,8 +55,16 @@ export interface YaziListeDurumu {
 const VARSAYILAN_YAZI_LISTE: YaziListeDurumu = { sayfa: 1, sayfaBasina: 10, arama: '', sayiId: '' };
 
 export function CMS({ onExitCMS }: CMSProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [currentPage, setCurrentPage] = useState<CMSPage>('dashboard');
+
+  /* [15] Editör, yönetici sayfalarını AÇAMAZ.
+     Menüde zaten görünmüyorlar; burası ikinci kapı — durum başka bir yoldan
+     (ör. bir yönlendirme) o sayfaya ayarlanırsa kontrol paneline düşülür.
+     Asıl kapı sunucudadır: yetkisiz istek 403 döner. */
+  const yoneticiMi = user?.role === 'admin';
+  const gorunenSayfa: CMSPage =
+    yoneticiMi || EDITOR_SAYFALARI.includes(currentPage) ? currentPage : 'dashboard';
   const [editorState, setEditorState] = useState<EditorState>({ type: 'none' });
   // "Sayı Yönetimi -> Yazıları Yönet" ile açılan yazı listesinin önseçili sayısı.
   const [yaziListSayiId, setYaziListSayiId] = useState<string | undefined>(undefined);
@@ -126,7 +135,7 @@ export function CMS({ onExitCMS }: CMSProps) {
   }
 
   const renderPage = () => {
-    switch (currentPage) {
+    switch (gorunenSayfa) {
       case 'dashboard':
         return <CMSDashboard onNavigate={setCurrentPage} />;
       case 'anasayfa':
@@ -188,7 +197,7 @@ export function CMS({ onExitCMS }: CMSProps) {
 
   return (
     <CMSLayout
-      currentPage={currentPage}
+      currentPage={gorunenSayfa}
       onNavigate={setCurrentPage}
       onExitCMS={onExitCMS}
     >

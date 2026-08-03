@@ -23,6 +23,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { araYaziKategorileri, sayiAdi } from '@/lib/utils';
+import { durumdanYol, yoldanHedef, BOLUM_SAYFALARI } from '@/lib/rotalar';
 
 import type { Yazi, AraYazi, Yazar, Sayi, AramaYaziSonuc } from '@/types';
 
@@ -77,61 +78,47 @@ interface PageState {
   statikSlug?: string;      // 'statik' sayfası için slug (dinamik menü: sabit_sayfa hedefi)
   statikBaslik?: string;    // içerik yüklenene kadar gösterilecek başlık
   filtreSlug?: string;      // 'filtre' sayfası için slug (dinamik menü: filtre_liste hedefi)
+  konu?: string;            // İletişim formunda ön dolu konu (?konu=… — [8])
   donus?: PageState;        // detaydan "Geri Dön" ile dönülecek sayfa (geldiğin yer)
 }
+
+/**
+ * Adresten DOĞRUDAN açılabilen sayfalar: ek kayıt yüklemesi gerektirmezler.
+ * Kalanlar (yazı, sayı, blog yazısı, yazar) API'den çekilir.
+ */
+const VERISIZ_SAYFALAR = new Set<string>([
+  'anasayfa', 'arsiv', 'arayazilar', 'yazarlar', 'hakkimizda', 'iletisim',
+  'yarisma', 'indeks', 'yazistandartlari', 'cms',
+  ...BOLUM_SAYFALARI,
+]);
 
 function AppContent() {
   useGlobalFootnotes();
 
-  // URL'den başlangıç sayfasını belirle
-  const getInitialPage = (): PageState => {
-    const path = window.location.pathname;
-    if (path === '/cms' || path === '/cms/') {
-      return { page: 'cms' };
-    }
-    return { page: 'anasayfa' };
+  // Adresten çözülebilen ilk sayfa (veri gerektirmeyenler). Yazı/sayı/blog gibi
+  // kayıt yüklemesi gereken adresler aşağıdaki effect'te tamamlanır.
+  const ilkSayfa = (): PageState => {
+    const h = yoldanHedef(window.location.pathname, window.location.search);
+    return VERISIZ_SAYFALAR.has(h.page)
+      ? ({ page: h.page as PageType, blogKategori: h.kategori, konu: h.konu })
+      : { page: 'anasayfa' };
   };
 
-  const [currentPage, setCurrentPage] = useState<PageState>(getInitialPage);
+  const [currentPage, setCurrentPage] = useState<PageState>(ilkSayfa);
 
   /* -------------------------------------------------------------------------
-     TARAYICI GERİ TUŞU
-     Eskiden yalnızca "/" ve "/cms" geçmişe yazılıyordu; diğer tüm gezinmeler
-     (yazı detayı, sayı sayfası, blog, yazar…) tarayıcı için AYNI adres
-     olduğundan geri tuşu ya hiçbir şey yapmıyor ya da beklenmedik bir yere
-     atlıyordu. Telefonda "back farklı farklı sonuçlar veriyor" şikâyeti
-     ([13]) bundandı — sunucuyla ilgisi yok.
+     ADRES <-> SAYFA
+     Artık her sayfanın gerçek bir adresi var (bkz. src/lib/rotalar.ts).
+     Bunun iki sonucu:
+       • [12] Menü ve başlık bağlantıları gerçek <a href> olduğu için sağ tık
+         "yeni sekmede aç" çalışır.
+       • [13] Geri/ileri tuşu doğru çalışır ve sayfa yenilenince aynı sayfada
+         kalınır (eskiden hep ana sayfaya dönülüyordu).
 
-     Çözüm: her gezinme geçmişe bir kayıt bırakır. Sayfa durumu (içinde tam
-     yazı/sayı nesneleri var) history.state'e KONMAZ — büyük olabilir ve
-     yapısal kopyalama sınırlarına takılır. Geçmişe yalnızca küçük bir sıra
-     numarası yazılır, durumun kendisi bellekteki yığında tutulur.
+     Sayfa durumu (içinde tam yazı/sayı nesneleri var) history.state'e KONMAZ:
+     büyük olabilir ve yapısal kopyalama sınırlarına takılır. Geri gelindiğinde
+     durum, adresten yeniden çözülür.
      ------------------------------------------------------------------------- */
-  const gecmisYigini = useRef<PageState[]>([getInitialPage()]);
-  const gecmisSira = useRef(0);
-
-  useEffect(() => {
-    // İlk kayıt: sıra numarasını mevcut geçmiş girdisine iliştir.
-    window.history.replaceState({ sekansSira: 0 }, '', window.location.pathname);
-
-    const handlePopState = (e: PopStateEvent) => {
-      const sira = (e.state as { sekansSira?: number } | null)?.sekansSira;
-      const hedef = typeof sira === 'number' ? gecmisYigini.current[sira] : undefined;
-      if (hedef) {
-        gecmisSira.current = sira as number;
-        setCurrentPage(hedef);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      }
-      // Yığın elde değilse (ör. sayfa yenilendikten sonra geri gelindi):
-      // adrese bakıp güvenli bir sayfaya düş.
-      const path = window.location.pathname;
-      setCurrentPage(path === '/cms' || path === '/cms/' ? { page: 'cms' } : { page: 'anasayfa' });
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
 
   // CMS'den verileri al
   const { sonSayi, anasayfaSayilari, arsivSayilari, araYazilar, yazarlar, kategoriler, hakkimizdaIcerik, yarismasiBilgi, anasayfaBloklar, isLoading, error, refresh } = useCMS();
@@ -171,19 +158,89 @@ function AppContent() {
     const hedef: PageState = { page, ...extra };
     setCurrentPage(hedef);
 
-    // Geçmişe yeni bir kayıt bırak: geri tuşu bir önceki sayfaya dönsün.
-    // İleri yönde kalan kayıtlar (geri gidip yeni bir yola sapıldıysa) atılır.
-    const sira = gecmisSira.current + 1;
-    gecmisYigini.current = [...gecmisYigini.current.slice(0, sira), hedef];
-    gecmisSira.current = sira;
-
-    // Adres yalnızca CMS ve ana sayfa için değişir (site tek adres üzerinden
-    // çalışıyor); geçmiş kaydı her gezinmede yine de oluşur.
-    const yol = page === 'cms' ? '/cms' : page === 'anasayfa' ? '/' : window.location.pathname;
-    window.history.pushState({ sekansSira: sira }, '', yol);
+    // Her gezinme geçmişe bir kayıt bırakır ve adres çubuğu güncellenir.
+    const yol = durumdanYol(hedef);
+    if (yol !== window.location.pathname + window.location.search) {
+      window.history.pushState(null, '', yol);
+    }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  /**
+   * Adres çubuğundaki yolu sayfa durumuna çevir (geçmiş kaydı EKLEMEDEN).
+   *
+   * Doğrudan bir adrese girildiğinde, sayfa yenilendiğinde ve geri/ileri
+   * tuşunda kullanılır. Kayıt gerektiren sayfalar (yazı, sayı, blog yazısı,
+   * yazar) için içerik API'den çekilir; bulunamazsa ana sayfaya düşülür.
+   */
+  const adresiUygula = useCallback(async (pathname: string, search: string) => {
+    const h = yoldanHedef(pathname, search);
+    const uygula = (s: PageState) => {
+      setCurrentPage(s);
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    };
+
+    // Veri gerektirmeyen sayfalar doğrudan açılır.
+    if (VERISIZ_SAYFALAR.has(h.page)) {
+      uygula({ page: h.page as PageType, blogKategori: h.kategori, konu: h.konu });
+      return;
+    }
+
+    try {
+      switch (h.page) {
+        case 'sonsayi': {
+          if (!h.id) { uygula({ page: 'sonsayi' }); return; }
+          const bilinen = [sonSayi, ...anasayfaSayilari].find((s) => s && s.id === h.id);
+          uygula({ page: 'sonsayi', selectedSayi: bilinen ?? await api.sayilar.get(h.id) });
+          return;
+        }
+        case 'yazidetay': {
+          const yazi = await api.yazi.get(h.id!);
+          const bilinen = [sonSayi, ...anasayfaSayilari].find((s) => s && s.id === yazi.sayiId);
+          const sayi = bilinen ?? await api.sayilar.get(yazi.sayiId).catch(() => undefined);
+          uygula({ page: 'yazidetay', selectedYazi: yazi, selectedSayi: sayi });
+          return;
+        }
+        case 'arayazidetay': {
+          const ay = await api.araYazi.getBySlug(h.slug!);
+          uygula({ page: 'arayazidetay', selectedAraYazi: ay });
+          return;
+        }
+        case 'yazardetay': {
+          const yazar = yazarlar.find((y) => y.id === h.id);
+          uygula(yazar ? { page: 'yazardetay', selectedYazar: yazar } : { page: 'yazarlar' });
+          return;
+        }
+        case 'statik':
+          uygula({ page: 'statik', statikSlug: h.slug });
+          return;
+        case 'filtre':
+          uygula({ page: 'filtre', filtreSlug: h.slug });
+          return;
+        default:
+          uygula({ page: 'anasayfa' });
+      }
+    } catch {
+      // Adres geçersiz ya da kayıt silinmiş: kullanıcıyı boş ekranda bırakma.
+      uygula({ page: 'anasayfa' });
+    }
+  }, [sonSayi, anasayfaSayilari, yazarlar]);
+
+  // İlk yükleme: adres çubuğundaki sayfayı aç (veri geldikten sonra).
+  const ilkAdresCozuldu = useRef(false);
+  useEffect(() => {
+    if (isLoading || ilkAdresCozuldu.current) return;
+    ilkAdresCozuldu.current = true;
+    void adresiUygula(window.location.pathname, window.location.search);
+  }, [isLoading, adresiUygula]);
+
+  // Geri/ileri tuşu: durumu adresten yeniden çöz.
+  useEffect(() => {
+    const onPop = () => { void adresiUygula(window.location.pathname, window.location.search); };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [adresiUygula]);
 
   // Ana sayfa navigasyonu
   const handleNavigate = useCallback((pageId: string) => {
@@ -295,12 +352,10 @@ function AppContent() {
 
   // Detay "Geri Dön": geldiğin sayfaya dön (yoksa Ana Sayfa).
   const handleAraYaziBack = useCallback(() => {
-    if (currentPage.donus) {
-      setCurrentPage(currentPage.donus);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      navigateTo('anasayfa');
-    }
+    // navigateTo üzerinden gider: adres çubuğu ve geçmiş de güncellensin.
+    const hedef = currentPage.donus;
+    if (hedef) navigateTo(hedef.page, hedef);
+    else navigateTo('anasayfa');
   }, [currentPage, navigateTo]);
 
   // Tüm ara yazılar sayfasına git
@@ -630,6 +685,7 @@ function AppContent() {
           <IletisimSayfasi
             onBackClick={handleBackClick}
             onYaziStandartlariClick={() => navigateTo('yazistandartlari')}
+            onDoluKonu={currentPage.konu}
           />
         );
 

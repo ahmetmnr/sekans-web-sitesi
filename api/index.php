@@ -93,70 +93,70 @@ $routes = [
     ['POST',   '#^/yazar$#',             'editor', fn($m) => handle_create_yazar(read_json_body())],
     ['PUT',    '#^/yazar/([^/]+)$#',     'editor', fn($m) => handle_update_yazar($m[1], read_json_body())],
     // DELETE gövdesi opsiyoneldir: {devirYazarId} varsa içerik önce o yazara aktarılır.
-    ['DELETE', '#^/yazar/([^/]+)$#',     'editor', fn($m) => handle_delete_yazar($m[1], read_json_body())],
+    ['DELETE', '#^/yazar/([^/]+)$#',     'admin' , fn($m) => handle_delete_yazar($m[1], read_json_body())],
 
     // ---- CMS writes: kategori ----
-    ['POST',   '#^/kategori$#',          'editor', fn($m) => handle_create_kategori(read_json_body())],
-    ['PUT',    '#^/kategori-sirala$#',   'editor', fn($m) => handle_reorder_kategori(read_json_body())],
-    ['PUT',    '#^/kategori/([^/]+)$#',  'editor', fn($m) => handle_update_kategori($m[1], read_json_body())],
+    ['POST',   '#^/kategori$#',          'admin' , fn($m) => handle_create_kategori(read_json_body())],
+    ['PUT',    '#^/kategori-sirala$#',   'admin' , fn($m) => handle_reorder_kategori(read_json_body())],
+    ['PUT',    '#^/kategori/([^/]+)$#',  'admin' , fn($m) => handle_update_kategori($m[1], read_json_body())],
     // DELETE gövdesi opsiyoneldir: {devirKategoriId} varsa içerik önce o kategoriye aktarılır.
-    ['DELETE', '#^/kategori/([^/]+)$#',  'editor', fn($m) => handle_delete_kategori($m[1], read_json_body())],
+    ['DELETE', '#^/kategori/([^/]+)$#',  'admin' , fn($m) => handle_delete_kategori($m[1], read_json_body())],
 
     // ---- CMS writes: arsiv ----
-    ['POST',   '#^/arsiv$#',             'editor', fn($m) => handle_create_arsiv(read_json_body())],
-    ['PUT',    '#^/arsiv/([^/]+)$#',     'editor', fn($m) => handle_update_arsiv($m[1], read_json_body())],
-    ['DELETE', '#^/arsiv/([^/]+)$#',     'editor', fn($m) => handle_delete_arsiv($m[1])],
+    ['POST',   '#^/arsiv$#',             'admin' , fn($m) => handle_create_arsiv(read_json_body())],
+    ['PUT',    '#^/arsiv/([^/]+)$#',     'admin' , fn($m) => handle_update_arsiv($m[1], read_json_body())],
+    ['DELETE', '#^/arsiv/([^/]+)$#',     'admin' , fn($m) => handle_delete_arsiv($m[1])],
 
     // ---- Sayılar (yaşam döngüsü: taslak/yayinda/arsiv) ----
     // NOT: 'current'/'publish'/'durum' rotaları GENEL '/sayi/{code}' rotasından ÖNCE gelmeli.
     ['GET',    '#^/cms/sayilar$#',        'editor', fn($m) => handle_cms_list_sayilar()],
     ['GET',    '#^/editorler$#',          'editor', fn($m) => handle_list_editorler()],
-    ['POST',   '#^/sayi$#',               'editor', fn($m) => handle_create_sayi(read_json_body())],
+    ['POST',   '#^/sayi$#',               'admin' , fn($m) => handle_create_sayi(read_json_body())],
     ['PUT',    '#^/sayi/current$#',       'editor', fn($m) => handle_update_current_sayi(read_json_body())],
     ['POST',   '#^/sayi/publish$#',       'admin',  fn($m) => handle_publish_sayi()],
-    ['PUT',    '#^/sayi/([^/]+)/durum$#', 'editor', fn($m) => handle_set_sayi_durum($m[1], read_json_body())],
+    ['PUT',    '#^/sayi/([^/]+)/durum$#', 'admin' , fn($m) => handle_set_sayi_durum($m[1], read_json_body())],
     ['PUT',    '#^/sayi/([^/]+)$#',       'editor', fn($m) => handle_update_sayi($m[1], read_json_body())],
-    ['DELETE', '#^/sayi/([^/]+)$#',       'editor', fn($m) => handle_delete_sayi($m[1])],
+    ['DELETE', '#^/sayi/([^/]+)$#',       'admin' , fn($m) => handle_delete_sayi($m[1])],
 
     // ---- CMS writes: menü (dinamik üst menü) ----
     // NOT: '/menu-sirala' ve '/cms/menu', genel '/menu/{id}' rotasından ayrıdır.
     ['GET',    '#^/cms/menu$#',          'editor', fn($m) => handle_cms_list_menu()],
-    ['POST',   '#^/menu$#',              'editor', fn($m) => handle_create_menu(read_json_body())],
-    ['PUT',    '#^/menu-sirala$#',       'editor', fn($m) => handle_reorder_menu(read_json_body())],
-    ['PUT',    '#^/menu/([^/]+)$#',      'editor', fn($m) => handle_update_menu($m[1], read_json_body())],
-    ['DELETE', '#^/menu/([^/]+)$#',      'editor', fn($m) => handle_delete_menu($m[1])],
+    ['POST',   '#^/menu$#',              'admin' , fn($m) => handle_create_menu(read_json_body())],
+    ['PUT',    '#^/menu-sirala$#',       'admin' , fn($m) => handle_reorder_menu(read_json_body())],
+    ['PUT',    '#^/menu/([^/]+)$#',      'admin' , fn($m) => handle_update_menu($m[1], read_json_body())],
+    ['DELETE', '#^/menu/([^/]+)$#',      'admin' , fn($m) => handle_delete_menu($m[1])],
 
     // ---- CMS writes: ana sayfa blokları (paneller) ----
     ['GET',    '#^/cms/anasayfa-bloklar$#',   'editor', fn($m) => handle_cms_list_bloklar()],
-    ['POST',   '#^/anasayfa-blok$#',          'editor', fn($m) => handle_create_blok(read_json_body())],
-    ['PUT',    '#^/anasayfa-blok-sirala$#',   'editor', fn($m) => handle_reorder_blok(read_json_body())],
-    ['PUT',    '#^/anasayfa-blok/([^/]+)$#',  'editor', fn($m) => handle_update_blok($m[1], read_json_body())],
-    ['DELETE', '#^/anasayfa-blok/([^/]+)$#',  'editor', fn($m) => handle_delete_blok($m[1])],
+    ['POST',   '#^/anasayfa-blok$#',          'admin' , fn($m) => handle_create_blok(read_json_body())],
+    ['PUT',    '#^/anasayfa-blok-sirala$#',   'admin' , fn($m) => handle_reorder_blok(read_json_body())],
+    ['PUT',    '#^/anasayfa-blok/([^/]+)$#',  'admin' , fn($m) => handle_update_blok($m[1], read_json_body())],
+    ['DELETE', '#^/anasayfa-blok/([^/]+)$#',  'admin' , fn($m) => handle_delete_blok($m[1])],
 
     // ---- Yarışma / Hakkımızda / Statik sayfalar ----
-    ['PUT',    '#^/yarisma$#',           'editor', fn($m) => handle_update_yarisma(read_json_body())],
-    ['PUT',    '#^/hakkimizda$#',        'editor', fn($m) => handle_update_hakkimizda(read_json_body())],
+    ['PUT',    '#^/yarisma$#',           'admin' , fn($m) => handle_update_yarisma(read_json_body())],
+    ['PUT',    '#^/hakkimizda$#',        'admin' , fn($m) => handle_update_hakkimizda(read_json_body())],
     ['GET',    '#^/cms/sayfalar$#',      'editor', fn($m) => handle_cms_list_sayfalar()],
-    ['POST',   '#^/sayfa$#',             'editor', fn($m) => handle_create_sayfa(read_json_body())],
-    ['PUT',    '#^/sayfa/([^/]+)$#',     'editor', fn($m) => handle_update_sayfa($m[1], read_json_body())],
-    ['DELETE', '#^/sayfa/([^/]+)$#',     'editor', fn($m) => handle_delete_sayfa($m[1])],
+    ['POST',   '#^/sayfa$#',             'admin' , fn($m) => handle_create_sayfa(read_json_body())],
+    ['PUT',    '#^/sayfa/([^/]+)$#',     'admin' , fn($m) => handle_update_sayfa($m[1], read_json_body())],
+    ['DELETE', '#^/sayfa/([^/]+)$#',     'admin' , fn($m) => handle_delete_sayfa($m[1])],
 
     // ---- CMS writes: filtre listeleme sayfaları ----
     ['GET',    '#^/cms/filtreler$#',     'editor', fn($m) => handle_cms_list_filtreler()],
-    ['POST',   '#^/filtre$#',            'editor', fn($m) => handle_create_filtre(read_json_body())],
-    ['PUT',    '#^/filtre/([^/]+)$#',    'editor', fn($m) => handle_update_filtre($m[1], read_json_body())],
-    ['DELETE', '#^/filtre/([^/]+)$#',    'editor', fn($m) => handle_delete_filtre($m[1])],
+    ['POST',   '#^/filtre$#',            'admin' , fn($m) => handle_create_filtre(read_json_body())],
+    ['PUT',    '#^/filtre/([^/]+)$#',    'admin' , fn($m) => handle_update_filtre($m[1], read_json_body())],
+    ['DELETE', '#^/filtre/([^/]+)$#',    'admin' , fn($m) => handle_delete_filtre($m[1])],
 
     // ---- CMS: yerleşik sayfa metinleri (Yazarlar / Blog) ----
     ['GET',    '#^/cms/sayfa-metinleri$#', 'editor', fn($m) => handle_cms_get_sayfa_metinleri()],
-    ['PUT',    '#^/sayfa-metinleri$#',     'editor', fn($m) => handle_update_sayfa_metinleri(read_json_body())],
+    ['PUT',    '#^/sayfa-metinleri$#',     'admin' , fn($m) => handle_update_sayfa_metinleri(read_json_body())],
 
     // ---- CMS: yazar/kategori kullanım sayaçları (silme & devir kararları) ----
     ['GET',    '#^/cms/kullanim$#',      'editor', fn($m) => handle_cms_kullanim()],
 
     // ---- CMS writes: Sekans İndeks kategori ayarı ----
     ['GET',    '#^/cms/indeks-kategoriler$#', 'editor', fn($m) => handle_cms_list_indeks_kategoriler()],
-    ['PUT',    '#^/indeks-kategoriler$#',     'editor', fn($m) => handle_update_indeks_kategoriler(read_json_body())],
+    ['PUT',    '#^/indeks-kategoriler$#',     'admin' , fn($m) => handle_update_indeks_kategoriler(read_json_body())],
 
     // ---- Admin: export / import / reset ----
     ['GET',    '#^/export$#',            'admin', fn($m) => handle_export()],

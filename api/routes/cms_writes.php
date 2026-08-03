@@ -51,6 +51,9 @@ function handle_create_yazi(array $b): void
         if ($sayiId === 0) fail('NO_CURRENT_ISSUE', 'Aktif sayı yok; önce sayı oluşturun.', 409);
     }
 
+    // [15] Editör yalnızca sorumlusu olduğu sayıya yazı ekleyebilir.
+    require_sayi_erisimi($sayiId);
+
     $code = trim((string)($b['id'] ?? '')) ?: gen_code('yazi');
     if (id_by_code('yazilar', $code)) $code = gen_code('yazi'); // çakışma varsa üret
     $slug = unique_slug(slugify($baslik), 'yazilar', 'slug');
@@ -89,6 +92,14 @@ function handle_create_yazi(array $b): void
 function handle_update_yazi(string $code, array $b): void
 {
     $id = require_id_by_code('yazilar', $code, 'Yazı');
+    // [15] Yazının BULUNDUĞU sayıya erişim şart; başka bir sayıya taşınıyorsa
+    // HEDEF sayıya da erişim aranır (editör yazıyı kendi kapsamı dışına
+    // taşıyamasın, dışarıdan da kendi kapsamına çekemesin).
+    $mevcutSayiId = (int)db()->query("SELECT sayi_id FROM yazilar WHERE id = " . (int)$id)->fetchColumn();
+    require_sayi_erisimi($mevcutSayiId);
+    if (array_key_exists('sayiId', $b) && (string)$b['sayiId'] !== '') {
+        require_sayi_erisimi(require_id_by_code('sayilar', (string)$b['sayiId'], 'Sayı'));
+    }
     $set = [];
     $params = [];
     if (array_key_exists('baslik', $b)) { $set[] = 'baslik = ?'; $params[] = (string)$b['baslik']; }
@@ -146,6 +157,8 @@ function handle_update_yazi(string $code, array $b): void
 function handle_delete_yazi(string $code): void
 {
     $id = require_id_by_code('yazilar', $code, 'Yazı');
+    // [15] Editör yalnızca kendi sayısındaki yazıyı silebilir.
+    require_sayi_erisimi((int)db()->query("SELECT sayi_id FROM yazilar WHERE id = " . (int)$id)->fetchColumn());
     db()->prepare("DELETE FROM yazilar WHERE id = ?")->execute([$id]);
     respond(['deleted' => $code]);
 }
@@ -677,6 +690,8 @@ function handle_update_current_sayi(array $b): void
     $row = db()->query("SELECT * FROM sayilar WHERE is_current = 1 ORDER BY id DESC LIMIT 1")->fetch();
     if (!$row) fail('NO_CURRENT_ISSUE', 'Aktif sayı yok.', 409);
     $id = (int)$row['id'];
+    // [15] Editör yalnızca sorumlusu olduğu sayıyı düzenleyebilir.
+    require_sayi_erisimi($id);
     $set = [];
     $params = [];
     foreach (['numara'=>'numara','ay'=>'ay','tamBaslik'=>'tam_baslik','kapakGorseli'=>'kapak_gorseli','pdfUrl'=>'pdf_url','kunye'=>'kunye','onsoz'=>'onsoz'] as $k=>$col) {
@@ -745,13 +760,21 @@ function cms_sayi_by_code(string $code): array
 /** GET /api/cms/sayilar — düzenlenebilir sayılar (taslak + yayında), yazılarıyla. editör+ */
 function handle_cms_list_sayilar(): void
 {
-    $rows = db()->query(
-        "SELECT s.*, k.name AS editor_ad
-         FROM sayilar s
-         LEFT JOIN kullanicilar k ON k.id = s.editor_id
-         WHERE s.durum IN ('taslak','yayinda')
-         ORDER BY FIELD(s.durum,'yayinda','taslak'), s.yayin_tarihi DESC, s.id DESC"
-    )->fetchAll();
+    // [15] Yönetici tüm sayıları görür. Editör yalnızca SORUMLUSU OLDUĞU
+    // sayıları ve henüz kimseye atanmamış sayıları görür.
+    $sql = "SELECT s.*, k.name AS editor_ad
+            FROM sayilar s
+            LEFT JOIN kullanicilar k ON k.id = s.editor_id
+            WHERE s.durum IN ('taslak','yayinda')";
+    $args = [];
+    if (!is_admin()) {
+        $sql .= " AND (s.editor_id IS NULL OR s.editor_id = ?)";
+        $args[] = current_uid();
+    }
+    $sql .= " ORDER BY FIELD(s.durum,'yayinda','taslak'), s.yayin_tarihi DESC, s.id DESC";
+    $st = db()->prepare($sql);
+    $st->execute($args);
+    $rows = $st->fetchAll();
     respond(array_map(fn($r) => build_sayi_payload($r), $rows));
 }
 
@@ -794,6 +817,19 @@ function handle_create_sayi(array $b): void
 function handle_update_sayi(string $code, array $b): void
 {
     $id = require_id_by_code('sayilar', $code, 'Sayı');
+    // [15] Editör kendi sayısının künye/önsöz gibi bilgilerini düzenleyebilir.
+    require_sayi_erisimi($id);
+    // Sorumlu editör ATAMASI yalnızca yöneticinindir: editör kendini başka bir
+    // sayıya atayıp kapsamını genişletemesin.
+    if (array_key_exists('editorId', $b) && !is_admin()) {
+        fail('FORBIDDEN', 'Sorumlu editör ataması yalnızca yönetici tarafından yapılır.', 403);
+    }
+    // Menü/ana sayfa görünürlüğü site YAPISIDIR: yalnızca yönetici.
+    foreach (['menuEtiket', 'menuGoster', 'anasayfaGoster'] as $yapiAlani) {
+        if (array_key_exists($yapiAlani, $b) && !is_admin()) {
+            fail('FORBIDDEN', 'Menü ve ana sayfa ayarları yalnızca yönetici tarafından değiştirilir.', 403);
+        }
+    }
     $set = [];
     $params = [];
     foreach (['numara'=>'numara','ay'=>'ay','tamBaslik'=>'tam_baslik','kapakGorseli'=>'kapak_gorseli','pdfUrl'=>'pdf_url','kunye'=>'kunye','onsoz'=>'onsoz'] as $k=>$col) {
