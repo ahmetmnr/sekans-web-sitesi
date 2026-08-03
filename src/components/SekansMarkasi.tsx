@@ -44,7 +44,9 @@ export function SekansMarkasi({ onClick }: SekansMarkasiProps) {
         />
       ) : (
         <>
-          <span className="sekans-logo notranslate text-3xl md:text-4xl tracking-[0.2em]" translate="no">
+          {/* [11] Bir kademe büyütüldü (3xl/4xl -> 4xl/5xl). Bundan ötesi
+              okurun ekran ölçeklemesine bağlıdır, bizim elimizde değildir. */}
+          <span className="sekans-logo notranslate text-4xl md:text-5xl tracking-[0.2em]" translate="no">
             sekans
           </span>
           <span className="sekans-logo-sub notranslate mt-0.5" translate="no">

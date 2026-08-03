@@ -528,6 +528,7 @@ function AppContent() {
         return (
           <ArsivSayfasi
             arsivSayilari={arsivSayilari}
+            onSayiAc={(sayiId) => handleNavigate(`sayi:${sayiId}`)}
           />
         );
 
