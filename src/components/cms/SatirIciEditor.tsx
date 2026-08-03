@@ -44,6 +44,71 @@ interface SatirIciEditorProps {
   className?: string;
   /** Çok satıra yayılabilir mi (spot) — yalnızca görsel yükseklik farkı. */
   cokSatir?: boolean;
+  /**
+   * KALIN düğmesi kapalı olsun mu (başlık alanları için).
+   *
+   * Neden: yazı başlığı sitede ZATEN kalındır (bkz. .yazi-baslik). Kalın bir
+   * metnin içinde ayrıca "kalın" işareti kullanmak görünür bir fark yaratmaz;
+   * editör bir yeri kalın yapınca geri alamadığını sanıyordu çünkü açık da
+   * kapalı da aynı görünüyordu. Düğme kaldırılınca sorun ortadan kalkıyor.
+   * Başlıkta editörün inisiyatifinde kalan biçim İTALİKtir (film/kitap adı).
+   */
+  kalinKapali?: boolean;
+  /**
+   * ÇOK PARAGRAFLI mod (sayı künyesi).
+   *
+   * Başlık ve spot tek satırdır; künye ise satır satır yazılır (yayın
+   * yönetmeni, koordinatör, tasarım…). Bu modda ENTER yeni paragraf açar ve
+   * değer dış <p> kabuğu SOYULMADAN, tam HTML olarak döner. Biçim yetkisi
+   * yine sınırlıdır: italik/kalın vb. geçer, font ve punto geçmez.
+   */
+  cokParagraf?: boolean;
+}
+
+/**
+ * Yapıştırılan HTML'i biçimden arındır.
+ *
+ * Word ve Google Docs; font ailesini, puntoyu ve rengi `style`, `class`, `font`
+ * ve sarmalayıcı `span` üzerinden taşır. Bunlar temizlenmezse başlık kaynağın
+ * fontunda (ör. Times New Roman) kalıyordu. Bu alanların tipografisi sitenin
+ * sabit başlık stilinden gelir; kalan tek şey anlamlı satır içi işaretlerdir.
+ */
+function yapistirmayiTemizle(html: string): string {
+  return html
+    .replace(/\sstyle="[^"]*"/gi, '')
+    .replace(/\sclass="[^"]*"/gi, '')
+    .replace(/\s(face|color|size)="[^"]*"/gi, '')
+    .replace(/<\/?(font|span|div)[^>]*>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '');
+}
+
+/** Kalın işaretlerini söker (başlık alanı: kalınlık stilden gelir). */
+function kalinlariSok(html: string): string {
+  return html.replace(/<\/?(strong|b)\b[^>]*>/gi, '');
+}
+
+/* Saklanan değer <-> düzenleyici içeriği dönüşümü.
+     tek paragraf modu : değer <p> kabuğu OLMADAN saklanır
+     çok paragraf modu : değer tam HTML olarak saklanır (<p>…</p><p>…</p>)
+
+   Bu iki işlev bileşenin DIŞINDA duruyor: her render'da yeniden üretilmedikleri
+   için içerik tazeleme effect'inin bağımlılıklarını kirletmezler. */
+function iceriUyarla(v: string, cokParagraf: boolean, kalinKapali: boolean): string {
+  if (!cokParagraf) {
+    const hazir = kalinKapali ? kalinlariSok(v) : v;
+    return hazir ? `<p>${hazir}</p>` : '';
+  }
+  if (!v) return '';
+  if (/<[a-zA-Z]/.test(v)) return v;
+  // Eski DÜZ METİN künyeler: satır sonları paragraflara çevrilir, kaybolmaz.
+  return v
+    .split(/\n/)
+    .map((satir) => `<p>${satir.trim() === '' ? '<br>' : satir}</p>`)
+    .join('');
+}
+
+function disariUyarla(html: string, cokParagraf: boolean): string {
+  return cokParagraf ? html : pKabugunuSoy(html);
 }
 
 function AracButonu({
@@ -79,18 +144,20 @@ function pKabugunuSoy(html: string): string {
 }
 
 export function SatirIciEditor({
-  value, onChange, placeholder, className, cokSatir = false,
+  value, onChange, placeholder, className, cokSatir = false, kalinKapali = false,
+  cokParagraf = false,
 }: SatirIciEditorProps) {
   const [linkAcik, setLinkAcik] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
 
   const editor = useEditor({
     extensions: [
-      TekParagraf,
+      // Çok paragraflı modda StarterKit'in kendi Document'i kullanılır.
+      ...(cokParagraf ? [] : [TekParagraf]),
       // StarterKit'ten yalnızca satır içi işaretler + paragraf/metin kalır;
       // tüm blok düğümleri (başlık, liste, alıntı, kod, çizgi) kapatılır.
       StarterKit.configure({
-        document: false,
+        document: cokParagraf ? undefined : false,
         blockquote: false,
         bulletList: false,
         orderedList: false,
@@ -100,12 +167,16 @@ export function SatirIciEditor({
         code: false,
         codeBlock: false,
         horizontalRule: false,
-        hardBreak: false,
+        // Künyede satır sonu (Shift+Enter) gerekebilir.
+        hardBreak: cokParagraf ? undefined : false,
         dropcursor: false,
         gapcursor: false,
         trailingNode: false,
         link: false,          // aşağıda kendi ayarımızla ekleniyor
         underline: false,     // aşağıda ayrıca ekleniyor
+        // Başlıkta kalın mark'ı TAMAMEN devre dışı: Ctrl+B de iş yapmaz,
+        // yapıştırılan <strong> de içeri girmez.
+        bold: kalinKapali ? false : undefined,
       }),
       Underline,
       Subscript,
@@ -116,27 +187,31 @@ export function SatirIciEditor({
       }),
       Placeholder.configure({ placeholder: placeholder ?? '' }),
     ],
-    content: value ? `<p>${value}</p>` : '',
+    content: iceriUyarla(value, cokParagraf, kalinKapali),
     editorProps: {
       attributes: {
         class: `focus:outline-none ${cokSatir ? 'min-h-[3.5rem]' : 'min-h-[2rem]'}`,
       },
       // Yapıştırılan başlık/spot kaynağın fontunu, puntosunu, rengini TAŞIMAZ:
       // bu alanların tipografisi sitenin sabit başlık stilinden gelir.
-      transformPastedHTML: (html) =>
-        html.replace(/\sstyle="[^"]*"/gi, '').replace(/<\/?(font|span)[^>]*>/gi, ''),
+      transformPastedHTML: (html) => {
+        const temiz = yapistirmayiTemizle(html);
+        return kalinKapali ? kalinlariSok(temiz) : temiz;
+      },
     },
-    onUpdate: ({ editor }) => onChange(pKabugunuSoy(editor.getHTML())),
+    onUpdate: ({ editor }) => onChange(disariUyarla(editor.getHTML(), cokParagraf)),
     shouldRerenderOnTransaction: true,
   });
 
   // Dışarıdan gelen değer değişirse (kayıt yükleme) editörü tazele.
   useEffect(() => {
     if (!editor) return;
-    const mevcut = pKabugunuSoy(editor.getHTML());
-    if (value !== mevcut) editor.commands.setContent(value ? `<p>${value}</p>` : '');
+    const mevcut = disariUyarla(editor.getHTML(), cokParagraf);
+    if (value !== mevcut) {
+      editor.commands.setContent(iceriUyarla(value, cokParagraf, kalinKapali));
+    }
     // value dışındaki bağımlılık editörün kendisi; içerik döngüsü olmasın.
-  }, [value, editor]);
+  }, [value, editor, cokParagraf, kalinKapali]);
 
   if (!editor) return null;
 
@@ -158,13 +233,16 @@ export function SatirIciEditor({
 
         {/* Biçimlendirme çubuğu — alan odaklanınca belirginleşir */}
         <div className="flex items-center gap-0.5 mt-1 opacity-60 group-focus-within:opacity-100 transition-opacity">
-          <AracButonu
-            aktif={editor.isActive('bold')}
-            onClick={() => editor.chain().focus().toggleBold().run()}
-            ipucu="Kalın (Ctrl+B)"
-          >
-            <BoldIcon className="h-3.5 w-3.5" />
-          </AracButonu>
+          {/* Başlık alanında KALIN düğmesi yok: başlık zaten kalın basılır. */}
+          {!kalinKapali && (
+            <AracButonu
+              aktif={editor.isActive('bold')}
+              onClick={() => editor.chain().focus().toggleBold().run()}
+              ipucu="Kalın (Ctrl+B)"
+            >
+              <BoldIcon className="h-3.5 w-3.5" />
+            </AracButonu>
+          )}
           <AracButonu
             aktif={editor.isActive('italic')}
             onClick={() => editor.chain().focus().toggleItalic().run()}

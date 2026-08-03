@@ -68,9 +68,9 @@ export default function PaylasimKutusu({ baslik, className }: PaylasimKutusuProp
 
   return (
     <div className={`bg-muted/30 rounded-lg p-4 ${className ?? ''}`}>
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+      <p className="text-xs font-medium text-muted-foreground tracking-wider mb-3 flex items-center gap-1.5">
         <Share2 className="w-3.5 h-3.5" />
-        Paylaş
+        PAYLAŞ
       </p>
       {/* 2x2 düzen */}
       <div className="grid grid-cols-2 gap-2">

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useFootnotes } from '@/hooks/useFootnotes';
 import ReadingIndicator from '@/components/ReadingIndicator';
 import PaylasimKutusu from '@/components/PaylasimKutusu';
-import { araYaziKategorileri, yaziYazarlari, yazarAdlari } from '@/lib/utils';
+import { araYaziKategorileri, trBuyuk, yaziYazarlari, yazarAdlari } from '@/lib/utils';
 import { GORSEL_ORAN_SINIFI } from '@/lib/gorselStandardi';
 import { ZenginMetin } from '@/components/ZenginMetin';
 import { duzMetin } from '@/lib/zenginMetin';
@@ -199,8 +199,8 @@ export default function AraYaziDetay({
                     />
                   </div>
                   <div className="p-4">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      {yazi.kategori}
+                    <span className="text-xs font-medium text-muted-foreground tracking-wide">
+                      {trBuyuk(yazi.kategori)}
                     </span>
                     <ZenginMetin
                       as="h4"

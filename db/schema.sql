@@ -117,6 +117,7 @@ CREATE TABLE yazilar (
   icerik        LONGTEXT        NULL,                   -- HTML body
   yazar_id      BIGINT UNSIGNED NOT NULL,               -- FK -> yazarlar.id (Yazi.yazar)
   kategori_id   BIGINT UNSIGNED NOT NULL,               -- FK -> kategoriler.id (Yazi.kategori)
+  kategori_goster TINYINT(1)    NOT NULL DEFAULT 1,     -- kategori adı içindekiler menüsünde görünsün mü
   sayi_id       BIGINT UNSIGNED NOT NULL,               -- FK -> sayilar.id (Yazi.sayiId)
   sira_no       INT             NOT NULL DEFAULT 0,     -- order within issue (siraNo)
   pdf_url       VARCHAR(512)    NULL,                   -- per-article PDF

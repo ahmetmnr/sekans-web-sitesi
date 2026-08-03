@@ -23,7 +23,10 @@ export const GORSEL_ORAN_SINIFI = 'aspect-[2/1]';
 
 /** Önerilen yükleme ölçüleri (piksel). */
 export const KAPAK_OLCU = { genislik: 1200, yukseklik: 600 } as const;
-export const DIZIN_OLCU = { genislik: 300, yukseklik: 150 } as const;
+// Dizin görseli büyütüldü (150→200 kademesi; müşteri maddesi [4] "görsel
+// doluluk" = imaj görünürlüğünü artırma). Oran 2:1 aynen korunur, yalnızca
+// ölçek büyür — bu yüzden eski görseller yeniden kırpılmaz.
+export const DIZIN_OLCU = { genislik: 400, yukseklik: 200 } as const;
 
 const olcuMetni = (o: { genislik: number; yukseklik: number }) =>
   `${o.genislik}×${o.yukseklik} px`;

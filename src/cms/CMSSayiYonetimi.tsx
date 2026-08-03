@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { SatirIciEditor } from '@/components/cms/SatirIciEditor';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -35,6 +36,13 @@ const aylar = [
 ];
 
 const NONE = '__none__'; // "atanmadı" sentinel (radix Select boş değere izin vermez)
+
+/**
+ * Sayı silmeden önce admin'in BİREBİR yazması gereken metin ([19]).
+ * Bilinçli olarak Türkçe karakter içermez: farklı klavye düzenlerinde
+ * "ı/i" ya da "ş" yüzünden takılıp kalınmasın.
+ */
+const SILME_ONAY_METNI = 'DELETE THIS ISSUE';
 
 interface CMSSayiYonetimiProps {
   onManageArticles: (sayiId: string) => void; // "Yazıları Yönet" -> yazı listesini o sayıya odakla
@@ -64,6 +72,9 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
   const [showArsivDialog, setShowArsivDialog] = useState(false);
   const [editingArsiv, setEditingArsiv] = useState<ArsivSayi | null>(null);
   const [arsivForm, setArsivForm] = useState<Partial<ArsivSayi>>({});
+
+  // [19] Silme onay kutusuna yazılan metin (dialog kapanınca sıfırlanır).
+  const [silmeOnayi, setSilmeOnayi] = useState('');
 
   const openNewIssue = () => {
     setEditingIssue(null);
@@ -181,12 +192,180 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
     setShowArsivDialog(true);
   };
 
+  /* [16] "Hazırlanan Sayılar" yalnızca TASLAKLARI listeler.
+     Yayına alınan sayı hazırlananların arasında kalmamalı; artık Arşiv
+     sekmesinin başında "Yayında olan sayı" olarak görünür ve oradan yönetilir. */
+  const taslakSayilar = sayilar.filter((s) => s.durum !== 'yayinda');
+  const yayindakiSayilar = sayilar.filter((s) => s.durum === 'yayinda');
+
   const durumBadge = (durum?: string) => {
     if (durum === 'yayinda') {
       return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">Yayında</span>;
     }
     return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-800">Taslak (hazırlanıyor)</span>;
   };
+
+  /**
+   * Bir sayının yönetim kartı. Hem "Hazırlanan Sayılar" hem de "Arşiv"
+   * sekmesinde kullanılır: yayına alınan sayı artık hazırlananların arasında
+   * DEĞİL, arşiv sekmesinin başında görünür ([16]). Yönetim işlemleri
+   * (editör atama, yazıları yönet, taslağa al) her iki yerde de aynıdır.
+   */
+  const sayiKarti = (s: Sayi) => (
+    <Card key={s.id}>
+      <CardHeader>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <CardTitle className="flex items-center gap-2 flex-wrap">
+              {s.tamBaslik || `${s.ay} ${s.yil} | Sayı ${s.numara}`}
+              {durumBadge(s.durum)}
+            </CardTitle>
+            <CardDescription className="mt-1">
+              {s.yayinTarihi ? `Yayın Tarihi: ${new Date(s.yayinTarihi).toLocaleDateString('tr-TR')} • ` : ''}
+              {s.yazilar.length} yazı
+            </CardDescription>
+          </div>
+          <div className="flex flex-shrink-0 gap-2">
+            <Button variant="outline" size="sm" onClick={() => openEditIssue(s)}>
+              <Pencil className="h-4 w-4 mr-1" /> Düzenle
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Sorumlu editör + hızlı işlemler */}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <UserCircle className="h-4 w-4 text-gray-400" />
+            <Label className="text-sm text-gray-600">Sorumlu editör:</Label>
+            <Select
+              value={s.editorId ?? NONE}
+              onValueChange={(v) => handleAssignEditor(s, v)}
+            >
+              <SelectTrigger className="h-8 w-52">
+                <SelectValue placeholder="Atanmadı" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>— Atanmadı —</SelectItem>
+                {editorler.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.name}{e.role === 'admin' ? ' (yönetici)' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" size="sm" onClick={() => onManageArticles(s.id)}>
+            <Files className="h-4 w-4 mr-1" /> Yazıları Yönet ({s.yazilar.length})
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => onNewYazi(s.id)}>
+            <FileText className="h-4 w-4 mr-1" /> Bu Sayıya Yazı Ekle
+          </Button>
+
+          {s.durum !== 'yayinda' ? (
+            <>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm">
+                    <Send className="h-4 w-4 mr-1" /> Yayına Al
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Sayıyı Yayına Al</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      "{s.tamBaslik || s.numara}" canlıya alınacak ve sitede güncel sayı olarak
+                      görünecek. O an yayında olan sayı otomatik olarak arşive taşınır. Onaylıyor musunuz?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>İptal</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleDurum(s, 'yayinda')}>
+                      Yayına Al
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              {/* [19] Sayı silme YAZARAK doğrulanır: yanlışlıkla tıklamayla
+                  bir sayı ve içindeki tüm yazılar silinemesin. Doğrulama metni
+                  Türkçe karakter içermez (klavye sorunu çıkmasın). */}
+              <AlertDialog
+                onOpenChange={(acik) => { if (!acik) setSilmeOnayi(''); }}
+              >
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                    <Trash2 className="h-4 w-4 mr-1" /> Sil
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Taslak Sayıyı Sil</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      "{s.tamBaslik || s.numara}" ve içindeki {s.yazilar.length} yazı
+                      silinecek. Bu işlem GERİ ALINAMAZ.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm">
+                      Onaylamak için aşağıdaki kutuya{' '}
+                      <span className="font-mono font-semibold">{SILME_ONAY_METNI}</span>{' '}
+                      yazın:
+                    </Label>
+                    <Input
+                      value={silmeOnayi}
+                      onChange={(e) => setSilmeOnayi(e.target.value)}
+                      placeholder={SILME_ONAY_METNI}
+                      autoComplete="off"
+                      className="font-mono"
+                    />
+                  </div>
+
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>İptal</AlertDialogCancel>
+                    <AlertDialogAction
+                      disabled={silmeOnayi.trim() !== SILME_ONAY_METNI}
+                      onClick={() => handleDeleteIssue(s)}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Sil
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
+          ) : (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Undo2 className="h-4 w-4 mr-1" /> Taslağa Al
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Yayından Kaldır</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    "{s.tamBaslik || s.numara}" tekrar taslağa alınacak ve siteden kaldırılacak.
+                    Site geçici olarak yayında sayısız kalabilir. Onaylıyor musunuz?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>İptal</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => handleDurum(s, 'taslak')}>
+                    Taslağa Al
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="space-y-8">
@@ -204,15 +383,15 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
         <TabsList>
           <TabsTrigger value="hazirlanan" className="flex items-center gap-2">
             <BookOpen className="h-4 w-4" />
-            Hazırlanan Sayılar ({sayilar.length})
+            Hazırlanan Sayılar ({taslakSayilar.length})
           </TabsTrigger>
           <TabsTrigger value="arsiv" className="flex items-center gap-2">
             <Archive className="h-4 w-4" />
-            Arşiv ({arsivSayilari.length})
+            Arşiv ({arsivSayilari.length + yayindakiSayilar.length})
           </TabsTrigger>
         </TabsList>
 
-        {/* Hazırlanan Sayılar (taslak + yayında) */}
+        {/* Hazırlanan Sayılar — yalnızca TASLAKLAR [16] */}
         <TabsContent value="hazirlanan" className="mt-6 space-y-4">
           <div className="flex justify-end">
             <Button onClick={openNewIssue}>
@@ -221,150 +400,33 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
             </Button>
           </div>
 
-          {sayilar.length === 0 && (
+          {taslakSayilar.length === 0 && (
             <Card>
               <CardContent className="py-10 text-center text-gray-500">
-                Henüz hazırlanan sayı yok. "Yeni Sayı Oluştur" ile bir taslak sayı açın.
+                Hazırlanan taslak sayı yok. "Yeni Sayı Oluştur" ile bir taslak sayı açın.
+                {yayindakiSayilar.length > 0 && ' Yayında olan sayı "Arşiv" sekmesinde.'}
               </CardContent>
             </Card>
           )}
 
-          {sayilar.map((s) => (
-            <Card key={s.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <CardTitle className="flex items-center gap-2 flex-wrap">
-                      {s.tamBaslik || `${s.ay} ${s.yil} | Sayı ${s.numara}`}
-                      {durumBadge(s.durum)}
-                    </CardTitle>
-                    <CardDescription className="mt-1">
-                      {s.yayinTarihi ? `Yayın Tarihi: ${new Date(s.yayinTarihi).toLocaleDateString('tr-TR')} • ` : ''}
-                      {s.yazilar.length} yazı
-                    </CardDescription>
-                  </div>
-                  <div className="flex flex-shrink-0 gap-2">
-                    <Button variant="outline" size="sm" onClick={() => openEditIssue(s)}>
-                      <Pencil className="h-4 w-4 mr-1" /> Düzenle
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Sorumlu editör + hızlı işlemler */}
-                <div className="flex flex-wrap items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <UserCircle className="h-4 w-4 text-gray-400" />
-                    <Label className="text-sm text-gray-600">Sorumlu editör:</Label>
-                    <Select
-                      value={s.editorId ?? NONE}
-                      onValueChange={(v) => handleAssignEditor(s, v)}
-                    >
-                      <SelectTrigger className="h-8 w-52">
-                        <SelectValue placeholder="Atanmadı" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={NONE}>— Atanmadı —</SelectItem>
-                        {editorler.map((e) => (
-                          <SelectItem key={e.id} value={e.id}>
-                            {e.name}{e.role === 'admin' ? ' (yönetici)' : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="secondary" size="sm" onClick={() => onManageArticles(s.id)}>
-                    <Files className="h-4 w-4 mr-1" /> Yazıları Yönet ({s.yazilar.length})
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => onNewYazi(s.id)}>
-                    <FileText className="h-4 w-4 mr-1" /> Bu Sayıya Yazı Ekle
-                  </Button>
-
-                  {s.durum !== 'yayinda' ? (
-                    <>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button size="sm">
-                            <Send className="h-4 w-4 mr-1" /> Yayına Al
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Sayıyı Yayına Al</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              "{s.tamBaslik || s.numara}" canlıya alınacak ve sitede güncel sayı olarak
-                              görünecek. O an yayında olan sayı otomatik olarak arşive taşınır. Onaylıyor musunuz?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>İptal</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDurum(s, 'yayinda')}>
-                              Yayına Al
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                            <Trash2 className="h-4 w-4 mr-1" /> Sil
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Taslak Sayıyı Sil</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              "{s.tamBaslik || s.numara}" ve içindeki tüm yazılar silinecek. Bu işlem geri alınamaz.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>İptal</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteIssue(s)}
-                              className="bg-red-600 hover:bg-red-700"
-                            >
-                              Sil
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </>
-                  ) : (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Undo2 className="h-4 w-4 mr-1" /> Taslağa Al
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Yayından Kaldır</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            "{s.tamBaslik || s.numara}" tekrar taslağa alınacak ve siteden kaldırılacak.
-                            Site geçici olarak yayında sayısız kalabilir. Onaylıyor musunuz?
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>İptal</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDurum(s, 'taslak')}>
-                            Taslağa Al
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {taslakSayilar.map((s) => sayiKarti(s))}
         </TabsContent>
 
-        {/* Arşiv */}
-        <TabsContent value="arsiv" className="mt-6">
+        {/* Arşiv — yayındaki sayı en başta, ardından geçmiş sayılar tablosu */}
+        <TabsContent value="arsiv" className="mt-6 space-y-6">
+          {yayindakiSayilar.length > 0 && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Yayında olan sayı</h2>
+                <p className="text-sm text-gray-600">
+                  Şu anda sitede güncel sayı olarak görünüyor. Buradan yönetebilir,
+                  gerekirse "Taslağa Al" ile yayından kaldırabilirsiniz.
+                </p>
+              </div>
+              {yayindakiSayilar.map((s) => sayiKarti(s))}
+            </div>
+          )}
+
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -609,14 +671,23 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
                 Bu sayı yayındayken üst menüde "Son Sayı" yerine bu ad görünür. Boş bırakılabilir.
               </p>
             </div>
+            {/* [7] Künye artık biçimlendirilebilir: İTALİK açıldı.
+                Sitede kapağın altında akordiyon panel içinde görünür. */}
             <div>
               <Label htmlFor="i-kunye">Künye</Label>
-              <Textarea
-                id="i-kunye"
+              <SatirIciEditor
                 value={issueForm.kunye || ''}
-                onChange={(e) => setIssueForm({ ...issueForm, kunye: e.target.value })}
-                rows={3}
+                onChange={(html) => setIssueForm({ ...issueForm, kunye: html })}
+                placeholder="Yayın yönetmeni, koordinatör, tasarım…"
+                className="text-sm"
+                cokSatir
+                cokParagraf
               />
+              <p className="text-xs text-gray-500 mt-1">
+                ENTER yeni satır açar. Film/kitap adı gibi yerleri italik
+                yapabilirsiniz. Punto, font ve renk sitenin künye stilinden
+                gelir; sitede iki yana yaslı olarak çıkar.
+              </p>
             </div>
             <div>
               <Label htmlFor="i-onsoz">Önsöz</Label>

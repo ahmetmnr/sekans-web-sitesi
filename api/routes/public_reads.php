@@ -36,6 +36,26 @@ function handle_get_current_sayi(): void
     respond(build_sayi_payload($row));
 }
 
+/**
+ * GET /api/sayi/{code} — belirli bir sayının İÇİNDEKİLERİ.
+ *
+ * Neden gerekli: eskiden yalnızca yayındaki sayının içindekiler menüsü vardı.
+ * Arşivdeki bir sayıya (ör. e28) gidildiğinde site içerik uçuna sahip olmadığı
+ * için doğrudan PDF'i açıyordu — oysa o sayının kendi sayfası da açılabilmeli.
+ *
+ * Taslak sayılar siteye ÇIKMAZ: yalnızca 'yayinda' ve 'arsiv' döner.
+ */
+function handle_get_sayi(string $code): void
+{
+    $st = db()->prepare("SELECT * FROM sayilar WHERE code = ? AND durum <> 'taslak' LIMIT 1");
+    $st->execute([$code]);
+    $row = $st->fetch();
+    if (!$row) {
+        fail('NOT_FOUND', 'Sayı bulunamadı.', 404);
+    }
+    respond(build_sayi_payload($row));
+}
+
 /** GET /api/arsiv  — arşiv sayıları (durum='arsiv'). Taslak sayılar siteye ÇIKMAZ. */
 function handle_get_arsiv(): void
 {

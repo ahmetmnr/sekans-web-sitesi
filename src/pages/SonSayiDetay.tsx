@@ -1,10 +1,9 @@
 import { ArrowLeft, FileText } from 'lucide-react';
 import type { Sayi, Yazi } from '@/types';
 import { Button } from '@/components/ui/button';
-import { sayiAdi, yazarAdlari } from '@/lib/utils';
-import { GORSEL_ORAN_SINIFI } from '@/lib/gorselStandardi';
-import { ZenginMetin } from '@/components/ZenginMetin';
-import { duzMetin } from '@/lib/zenginMetin';
+import { sayiAdi } from '@/lib/utils';
+import { IcindekilerSatiri } from '@/components/IcindekilerSatiri';
+import { KunyePanel } from '@/components/KunyePanel';
 
 interface SonSayiDetayProps {
   sayi: Sayi;
@@ -64,14 +63,8 @@ export default function SonSayiDetay({ sayi, onYaziClick, onBackClick }: SonSayi
               </a>
             )}
 
-            {/* Künye — kapağın altında */}
-            {sayi.kunye?.trim() && (
-              <div className="mt-4 pt-4 border-t border-border">
-                <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
-                  {sayi.kunye}
-                </p>
-              </div>
-            )}
+            {/* Künye — kapağın altında, akordiyon panel içinde [7] */}
+            <KunyePanel kunye={sayi.kunye} />
           </div>
 
           {/* Sağ Kolon — Sayı adı, önsöz, içindekiler */}
@@ -90,71 +83,20 @@ export default function SonSayiDetay({ sayi, onYaziClick, onBackClick }: SonSayi
               </div>
             )}
 
+            {/* İçindekiler — ana sayfayla AYNI düzen (IcindekilerSatiri).
+                Farkı: burada spot da görünür. Spot sol kolonda kalır; dizin
+                görselini sarmaz ve altına akmaz [6]. */}
             <ul className="space-y-6 md:space-y-7">
-              {sayi.yazilar.map((yazi) => {
-                // Dizin görseli yoksa kapak görselinin küçültülmüş hali kullanılır.
-                const kucukGorsel = yazi.dizinGorseli?.trim() || yazi.kapakGorseli?.trim() || '';
-                return (
-                  <li key={yazi.id} className="border-b border-border pb-6 last:border-0 last:pb-0">
-                    <article
-                      onClick={() => onYaziClick(yazi)}
-                      className="group cursor-pointer"
-                    >
-                      {/* Dizin görseli sağa yaslanır; metin etrafını sarar */}
-                      {kucukGorsel && (
-                        <div
-                          className={`float-right ml-4 mb-2 w-32 md:w-44 flex-shrink-0 bg-muted overflow-hidden ${GORSEL_ORAN_SINIFI}`}
-                        >
-                          <img
-                            src={kucukGorsel}
-                            alt={duzMetin(yazi.baslik)}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                            onError={(e) => {
-                              const kutu = (e.target as HTMLImageElement).parentElement;
-                              if (kutu) kutu.style.display = 'none';
-                            }}
-                          />
-                        </div>
-                      )}
-
-                      <span className="kategori-etiket block mb-1">
-                        {yazi.kategori?.ad ?? ''}
-                      </span>
-                      <ZenginMetin
-                        as="h3"
-                        html={yazi.baslik}
-                        className="block yazi-baslik text-lg md:text-xl leading-snug group-hover:underline underline-offset-4"
-                      />
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {yazarAdlari(yazi)}
-                      </p>
-
-                      {yazi.spot && (
-                        <ZenginMetin
-                          as="p"
-                          html={yazi.spot}
-                          className="mt-2 text-sm leading-relaxed text-muted-foreground text-justify"
-                        />
-                      )}
-
-                      {yazi.pdfUrl && (
-                        <a
-                          href={yazi.pdfUrl}
-                          className="pdf-link mt-2 inline-flex"
-                          onClick={(e) => e.stopPropagation()}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                          <span>PDF</span>
-                        </a>
-                      )}
-
-                      <div className="clear-both" />
-                    </article>
-                  </li>
-                );
-              })}
+              {sayi.yazilar.map((yazi) => (
+                <li key={yazi.id} className="border-b border-border pb-6 last:border-0 last:pb-0">
+                  <IcindekilerSatiri
+                    yazi={yazi}
+                    onClick={() => onYaziClick(yazi)}
+                    spotGoster
+                    baslikSinifi="text-xl md:text-2xl"
+                  />
+                </li>
+              ))}
             </ul>
           </div>
         </div>

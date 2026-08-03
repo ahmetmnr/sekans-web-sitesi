@@ -3,7 +3,7 @@ import { ArrowLeft, User, Calendar } from 'lucide-react';
 import type { AraYazi } from '@/types';
 import { Button } from '@/components/ui/button';
 import { useCMS } from '@/context/CMSContext';
-import { araYaziKategorileri, yazarAdlari } from '@/lib/utils';
+import { araYaziKategorileri, trBuyuk, yazarAdlari } from '@/lib/utils';
 import { ZenginMetin } from '@/components/ZenginMetin';
 import { duzMetin } from '@/lib/zenginMetin';
 
@@ -143,7 +143,7 @@ export default function AraYazilarSayfasi({
 
                 {/* Kategori ve Tarih */}
                 <div className="flex items-center gap-3 mb-2">
-                  <span className="kategori-etiket">{araYazi.kategori}</span>
+                  <span className="kategori-etiket">{trBuyuk(araYazi.kategori)}</span>
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
                     {araYazi.tarihEtiketi?.trim() ? araYazi.tarihEtiketi : formatDate(araYazi.yayinTarihi)}

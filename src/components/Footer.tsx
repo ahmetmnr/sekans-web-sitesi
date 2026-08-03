@@ -43,8 +43,8 @@ export default function Footer({ onNavigate }: FooterProps) {
 
           {/* Hızlı Linkler */}
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider mb-4">
-              Hızlı Linkler
+            <h3 className="text-sm font-semibold tracking-wider mb-4">
+              HIZLI LİNKLER
             </h3>
             <nav className="space-y-2">
               {[
@@ -73,8 +73,8 @@ export default function Footer({ onNavigate }: FooterProps) {
 
           {/* Sosyal Medya */}
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wider mb-4">
-              Sosyal Medya
+            <h3 className="text-sm font-semibold tracking-wider mb-4">
+              SOSYAL MEDYA
             </h3>
             <div className="space-y-2">
               <a

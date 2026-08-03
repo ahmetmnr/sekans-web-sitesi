@@ -169,10 +169,21 @@ else
   echo "    -> 'yazilar.baslik' zaten VARCHAR(1000), atlanıyor."
 fi
 
-echo ">>> 18/19 API konteyneri yeniden başlatılıyor..."
+echo ">>> 18/20 DB migration: yazilar.kategori_goster (içindekilerde kategori adını gizleme) (yalnızca yoksa)..."
+KAT_GOSTER="$($DC exec -T db mariadb -uroot -p"${DB_PASS}" -N -e \
+  "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='sekans' AND TABLE_NAME='yazilar' AND COLUMN_NAME='kategori_goster';" 2>/dev/null || echo "0")"
+if [ "${KAT_GOSTER//[!0-9]/}" != "1" ]; then
+  echo "    -> uygulanıyor: 2026-08-04_faz14_kategori_goster.sql"
+  $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans < "$REPO"/db/migrations/2026-08-04_faz14_kategori_goster.sql
+  echo "    -> tamam."
+else
+  echo "    -> 'yazilar.kategori_goster' kolonu zaten var, atlanıyor."
+fi
+
+echo ">>> 19/20 API konteyneri yeniden başlatılıyor..."
 $DC restart api
 
-echo ">>> 19/19 Kontrol — sayı durumları + filtre sayfaları + menü:"
+echo ">>> 20/20 Kontrol — sayı durumları + filtre sayfaları + menü:"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT durum, COUNT(*) FROM sayilar GROUP BY durum;" 2>/dev/null || echo "    (DB kontrolü atlandı)"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \

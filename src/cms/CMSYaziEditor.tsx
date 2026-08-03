@@ -164,6 +164,7 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
       kapakGorseli: formData.kapakGorseli,
       dizinGorseli: formData.dizinGorseli,
       kapakUstte: formData.kapakUstte !== false,
+      kategoriGoster: formData.kategoriGoster !== false,
       yayinTarihi: formData.yayinTarihi,
     };
 
@@ -240,7 +241,10 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
                   value={formData.baslik || ''}
                   onChange={(html) => setFormData({ ...formData, baslik: html })}
                   placeholder="Yazı başlığını girin..."
-                  className="text-3xl font-serif font-bold"
+                  // className: sitenin gerçek başlık fontu (.yazi-baslik) —
+                  // editörde görülen font yayında da aynıdır.
+                  className="text-3xl yazi-baslik"
+                  kalinKapali
                 />
 
                 {/* Spot — satır içi biçimlendirme */}
@@ -285,7 +289,11 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
                       <ZenginMetin
                         as="p"
                         html={formData.spot}
-                        className="text-xl text-gray-600 italic leading-relaxed"
+                        // Spot DÜZ fonttadır. Önizleme eskiden `italic`
+                        // uyguluyordu; editör düz yazdığı spotu italik görüp
+                        // yanılıyordu. İtalik artık yalnızca metnin kendisinde
+                        // <em> varsa görünür.
+                        className="text-xl text-gray-600 leading-relaxed"
                       />
                     )}
                   </header>
@@ -340,6 +348,27 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
                   ))}
                 </SelectContent>
               </Select>
+
+              {/* [1] Kategori adı içindekilerde görünsün mü.
+                  Aynı kategoriden ardışık yazılarda "DOSYA: … / DOSYA: …"
+                  tekrarını önlemek için: grubun İLK yazısında açık bırakın,
+                  sonrakilerde kapatın. */}
+              <div className="mt-3 flex items-center justify-between rounded-lg border p-3">
+                <div className="pr-3">
+                  <Label className="text-sm">Kategoriyi içindekilerde göster</Label>
+                  <p className="text-xs text-gray-500">
+                    Kapalıysa bu yazının üstünde kategori adı yazmaz. Aynı
+                    kategoriden art arda gelen yazılarda kapatın; kategori adı
+                    grubun ilk yazısında bir kez görünsün. Yazı başlığı ve yazar
+                    adının girintisi DEĞİŞMEZ, hizalar bozulmaz. Yazının
+                    kategorisi, filtreler, arama ve Sekans İndeks etkilenmez.
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.kategoriGoster !== false}
+                  onCheckedChange={(v) => setFormData({ ...formData, kategoriGoster: v })}
+                />
+              </div>
             </div>
 
             <hr />

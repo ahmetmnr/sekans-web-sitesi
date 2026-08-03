@@ -183,6 +183,11 @@ export const api = {
 
   // Sayılar (yaşam döngüsü — CMS): taslak + yayında sayıları yazılarıyla yönet.
   sayilar: {
+    /**
+     * Belirli bir sayının içindekiler menüsü (public).
+     * Arşivdeki sayıların kendi sayfası bununla açılır; taslak sayılar 404 döner.
+     */
+    get: (id: string) => get<Sayi>(`/sayi/${encodeURIComponent(id)}`),
     listCms: () => get<Sayi[]>('/cms/sayilar'),
     create: (s: Partial<Sayi> & { editorId?: string | null }) => post<Sayi>('/sayi', s),
     update: (id: string, patch: Partial<Sayi> & { editorId?: string | null }) =>

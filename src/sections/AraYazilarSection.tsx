@@ -1,6 +1,6 @@
 import { ArrowRight } from 'lucide-react';
 import type { AraYazi } from '@/types';
-import { yazarAdlari } from '@/lib/utils';
+import { trBuyuk, yazarAdlari } from '@/lib/utils';
 import { ZenginMetin } from '@/components/ZenginMetin';
 import { duzMetin } from '@/lib/zenginMetin';
 
@@ -61,7 +61,7 @@ export default function AraYazilarSection({
 
               {/* Kategori ve Tarih */}
               <div className="flex items-center gap-3 mb-2">
-                <span className="kategori-etiket">{araYazi.kategori}</span>
+                <span className="kategori-etiket">{trBuyuk(araYazi.kategori)}</span>
                 <span className="text-xs text-muted-foreground">
                   {araYazi.tarihEtiketi?.trim()
                     ? araYazi.tarihEtiketi

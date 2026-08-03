@@ -75,6 +75,11 @@ function handle_create_yazi(array $b): void
         db()->prepare("UPDATE yazilar SET kapak_ustte = ? WHERE id = ?")
             ->execute([$b['kapakUstte'] ? 1 : 0, $newId]);
     }
+    // Kategori adının içindekiler menüsünde görünürlüğü (kolon varsa).
+    if (array_key_exists('kategoriGoster', $b) && column_exists('yazilar', 'kategori_goster')) {
+        db()->prepare("UPDATE yazilar SET kategori_goster = ? WHERE id = ?")
+            ->execute([$b['kategoriGoster'] ? 1 : 0, $newId]);
+    }
     // Çoklu yazar: gönderilmediyse birincil yazar tek başına bağlanır.
     sync_yazar_baglari('yazi_yazarlari', 'yazi_id', $newId, yazar_ids_input($b, $yazarId) ?? [$yazarId]);
     respond(yazi_response_by_id($newId), null, 201);
@@ -97,6 +102,9 @@ function handle_update_yazi(string $code, array $b): void
     }
     if (array_key_exists('kapakUstte', $b) && column_exists('yazilar', 'kapak_ustte')) {
         $set[] = 'kapak_ustte = ?'; $params[] = $b['kapakUstte'] ? 1 : 0;
+    }
+    if (array_key_exists('kategoriGoster', $b) && column_exists('yazilar', 'kategori_goster')) {
+        $set[] = 'kategori_goster = ?'; $params[] = $b['kategoriGoster'] ? 1 : 0;
     }
     if (array_key_exists('yayinTarihi', $b))  { $set[] = 'yayin_tarihi = ?'; $params[] = norm_date($b['yayinTarihi']); }
     $birincilYazarId = null;

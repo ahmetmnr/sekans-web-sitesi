@@ -148,14 +148,37 @@
     @apply text-foreground;
   }
   
+  /* Yazı Başlığı (içindekiler menüleri)
+     Font, punto ve kalınlık SABİTTİR — Word'den yapıştırılan başlıklar kendi
+     fontunu (Times New Roman vb.) taşımasın diye satır içi bildirimler burada
+     bastırılır. Editörün elinde kalan tek biçim italiktir (film/kitap adı). */
   .yazi-baslik {
-    @apply text-foreground/90 transition-colors;
-    font-family: 'Cormorant Garamond', Georgia, serif;
+    @apply text-foreground transition-colors;
+    font-family: 'Cormorant Garamond', Georgia, serif !important;
+    font-weight: 600;   /* başlık varsayılan olarak kalın */
   }
-  
-  /* Kategori Etiketi */
+
+  /* Başlık içindeki her şey aynı fontta ve punto ölçeğinde kalır; yalnızca
+     italik ve alt/üst simge gibi ANLAMLI biçimler geçer. */
+  .yazi-baslik *,
+  .ara-yazi-baslik * {
+    font-family: inherit !important;
+    font-size: inherit !important;
+    color: inherit !important;
+    background: none !important;
+  }
+
+  /* İçindekiler yazar adı — gri değil SİYAH, kalın değil (müşteri talebi [4]). */
+  .icindekiler-yazar {
+    @apply text-sm text-foreground;
+    font-weight: 400;
+  }
+
+  /* Kategori Etiketi
+     NOT: `uppercase` bilinçli olarak YOK. Büyük harfe çevirme trBuyuk() ile
+     yapılır; CSS'in uppercase kuralı Türkçe "i -> İ" dönüşümünü bozuyordu. */
   .kategori-etiket {
-    @apply text-xs font-medium tracking-wider uppercase text-muted-foreground;
+    @apply text-xs font-medium tracking-wider text-muted-foreground;
   }
   
   /* Arşiv Grid */
@@ -212,6 +235,17 @@
     @apply text-base leading-relaxed text-foreground/80;
   }
   
+  /* Sayı künyesi (akordiyon panel içi)
+     İki yana yaslı; paragraflar arasında FAZLADAN satır boşluğu yok — künye
+     "… içeriği," gibi bir satırdan sonra kopuk görünmesin. */
+  .kunye-metni p {
+    margin: 0;
+    text-align: justify;
+  }
+  .kunye-metni p + p {
+    margin-top: 0.35em;
+  }
+
   /* PDF Link */
   .pdf-link {
     @apply inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground;
@@ -366,6 +400,18 @@
 .ProseMirror p:not([data-style]),
 .cms-content-preview p:not([data-style]) {
   text-align: justify;
+}
+
+/* --- Ana Metin HER ZAMAN SİYAH ---
+   Word/Docs'tan yapıştırılan metin rengi satır içinde taşıyabiliyordu; stil
+   "Ana Metin" seçili olsa bile bazı paragraflar koyu gri kalıyor, editör metni
+   elle siyaha çekmek zorunda kalıyordu. Renk artık stile bağlıdır.
+   Bağlantılar ve <mark> hariç tutulur: onların rengi anlam taşır. */
+.ProseMirror p:not([data-style]),
+.ProseMirror p:not([data-style]) *:not(a):not(mark):not(.footnote-ref),
+.cms-content-preview p:not([data-style]),
+.cms-content-preview p:not([data-style]) *:not(a):not(mark):not(.footnote-ref) {
+  color: #111827 !important;
 }
 
 /* --- Blok Alıntı ---

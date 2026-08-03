@@ -182,7 +182,9 @@ const highlightColors = [
    görünür; böylece imlecin bulunduğu kısmın hangi stilde olduğu her an bellidir.
    --------------------------------------------------------------------------- */
 type ParagrafStilAdi = 'title' | 'author' | 'section' | 'filmkunye' | 'epigraf' | 'kaynaklar';
-type StilAnahtari = ParagrafStilAdi | 'main' | 'blockquote' | 'h1' | 'h2';
+// 'dipnot' yalnızca DURUM ÇUBUĞUNDA görünür; stil menüsünden seçilen bir
+// paragraf stili değildir (dipnot metni kendi bölümünde yaşar).
+type StilAnahtari = ParagrafStilAdi | 'main' | 'blockquote' | 'h1' | 'h2' | 'dipnot';
 
 const STIL_BILGI: Record<StilAnahtari, { ad: string; punto: string }> = {
   main:       { ad: 'Ana Metin',     punto: 'gövde' },
@@ -195,6 +197,7 @@ const STIL_BILGI: Record<StilAnahtari, { ad: string; punto: string }> = {
   blockquote: { ad: 'Blok Alıntı',   punto: 'küçük' },
   h1:         { ad: 'Başlık 1',      punto: 'büyük' },
   h2:         { ad: 'Başlık 2',      punto: 'orta' },
+  dipnot:     { ad: 'Dipnot',        punto: 'küçük' },
 };
 
 // Dergi tipografisi stile bağlıdır: punto, font ve renk paragraf stilinden gelir.
@@ -257,8 +260,28 @@ function StilOgesi({
   );
 }
 
+/**
+ * İmleç dipnot metninin içinde mi?
+ *
+ * Dipnotlar belgenin sonundaki `footnotesSection` düğümünde yaşar ve içleri
+ * normal paragraftır. Bu yüzden durum çubuğu onları "Ana Metin / sola yaslı"
+ * diye gösteriyordu — oysa dipnot kendi stilindedir ve İKİ YANA YASLIdır
+ * (bkz. .footnote-item .footnote-text). Seçimin atalarına bakıp ayırt ederiz.
+ */
+function dipnotIcinde(editor: NonNullable<ReturnType<typeof useEditor>>): boolean {
+  const { $from } = editor.state.selection;
+  for (let derinlik = $from.depth; derinlik > 0; derinlik--) {
+    const ad = $from.node(derinlik).type.name;
+    if (ad === 'footnoteItem' || ad === 'footnotesSection') return true;
+  }
+  return false;
+}
+
 /** İmlecin bulunduğu bloğun stil anahtarı (menü işareti + durum çubuğu). */
 function stilAnahtari(editor: NonNullable<ReturnType<typeof useEditor>>): StilAnahtari {
+  // İmleç "Notlar" bölümündeki bir dipnot metninin içindeyse durum çubuğu
+  // "Ana Metin" değil "Dipnot" demeli. (Site editöre yanlış bilgi veriyordu.)
+  if (dipnotIcinde(editor)) return 'dipnot';
   if (editor.isActive('blockquote')) return 'blockquote';
   if (editor.isActive('heading', { level: 1 })) return 'h1';
   if (editor.isActive('heading', { level: 2 })) return 'h2';
@@ -1355,14 +1378,19 @@ function CharacterCounter({ editor }: { editor: ReturnType<typeof useEditor> }) 
 
   // İmlecin bulunduğu kısmın stili + hizalaması — "burası hangi stilde?" sorusu
   // için editörün her an görebileceği tek yer.
-  const stil = STIL_BILGI[stilAnahtari(editor)];
-  const hizalama = editor.isActive({ textAlign: 'center' })
-    ? 'ortalı'
-    : editor.isActive({ textAlign: 'right' })
-      ? 'sağa yaslı'
-      : editor.isActive({ textAlign: 'justify' })
-        ? 'iki yana yaslı'
-        : 'sola yaslı';
+  const anahtar = stilAnahtari(editor);
+  const stil = STIL_BILGI[anahtar];
+  // Dipnot metni her zaman iki yana yaslıdır (hizalama editöre bırakılmaz);
+  // textAlign bildirimi taşımadığı için varsayılan "sola yaslı" yanıltıcıydı.
+  const hizalama = anahtar === 'dipnot'
+    ? 'iki yana yaslı'
+    : editor.isActive({ textAlign: 'center' })
+      ? 'ortalı'
+      : editor.isActive({ textAlign: 'right' })
+        ? 'sağa yaslı'
+        : editor.isActive({ textAlign: 'justify' })
+          ? 'iki yana yaslı'
+          : 'sola yaslı';
 
   return (
     <div className="flex items-center gap-4 px-4 py-2 bg-gray-50 border-t text-xs text-gray-500">

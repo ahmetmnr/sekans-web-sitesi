@@ -49,6 +49,8 @@ $routes = [
     // ---- Public reads ----
     ['GET',  '#^/bootstrap$#',           null, fn($m) => handle_bootstrap()],
     ['GET',  '#^/sayi/current$#',        null, fn($m) => handle_get_current_sayi()],
+    // NOT: '/sayi/current' bu GENEL rotadan ÖNCE gelmeli.
+    ['GET',  '#^/sayi/([^/]+)$#',        null, fn($m) => handle_get_sayi($m[1])],
     ['GET',  '#^/arsiv$#',               null, fn($m) => handle_get_arsiv()],
     ['GET',  '#^/yazi/([^/]+)$#',        null, fn($m) => handle_get_yazi($m[1])],
     ['GET',  '#^/arayazi$#',             null, fn($m) => handle_list_arayazi()],

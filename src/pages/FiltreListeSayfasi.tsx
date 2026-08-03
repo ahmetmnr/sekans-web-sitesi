@@ -3,7 +3,7 @@ import { ArrowLeft, User, Calendar, Loader2, ChevronLeft, ChevronRight } from 'l
 import type { AraYazi, FiltreSayfa } from '@/types';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
-import { araYaziKategorileri, yazarAdlari } from '@/lib/utils';
+import { araYaziKategorileri, trBuyuk, yazarAdlari } from '@/lib/utils';
 import { ZenginMetin } from '@/components/ZenginMetin';
 import { duzMetin } from '@/lib/zenginMetin';
 
@@ -131,7 +131,7 @@ export default function FiltreListeSayfasi({ slug, araYazilar, onAraYaziClick, o
                   )}
 
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="kategori-etiket">{araYazi.kategori}</span>
+                    <span className="kategori-etiket">{trBuyuk(araYazi.kategori)}</span>
                     {config.yazarTarihGoster && (araYazi.tarihEtiketi?.trim() || araYazi.yayinTarihi) && (
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Calendar className="w-3 h-3" />

@@ -149,6 +149,9 @@ function yazi_out(array $r, ?array $yazar, ?array $kategori, string $sayiCode, ?
         'pdfUrl'       => $r['pdf_url'] ?? null,
         'kapakGorseli' => $r['kapak_gorseli'] ?? null,
         'dizinGorseli' => $r['dizin_gorseli'] ?? null,
+        // Kategori adı içindekiler menüsünde görünsün mü (kolon yoksa: evet).
+        // Yalnızca kategori SATIRINI gizler; yazının kategorisi değişmez.
+        'kategoriGoster' => isset($r['kategori_goster']) ? (bool)(int)$r['kategori_goster'] : true,
         // Kapak görseli yazı sayfasının üst bandında görünsün mü (kolon yoksa: evet)
         'kapakUstte'   => isset($r['kapak_ustte']) ? (bool)(int)$r['kapak_ustte'] : true,
         'yayinTarihi'  => $r['yayin_tarihi'] ?? null,

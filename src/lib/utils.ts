@@ -6,6 +6,27 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * TÜRKÇE büyük harf.
+ *
+ * CSS'in `text-transform: uppercase` kuralı sayfanın dil bilgisini güvenilir
+ * biçimde kullanmaz: Chrome'da "i" harfi Türkçe kuralına göre "İ" değil,
+ * İngilizce kuralına göre "I" olur. Bölüm başlıkları bu yüzden "ELEŞTIRI",
+ * "SÖYLEŞI", "SINEMANIN POLITIKASI" diye çıkıyordu.
+ *
+ * Çözüm: dönüşümü CSS'e bırakmayıp burada Türkçe yerel ayarıyla yapmak.
+ *   i -> İ,  ı -> I,  ve toLocaleUpperCase('tr') geri kalanını doğru işler
+ *   (ğ->Ğ, ü->Ü, ş->Ş, ö->Ö, ç->Ç).
+ *
+ * `.kategori-etiket` sınıfından `uppercase` kaldırıldı; büyütme artık BURADAN
+ * geçer. Yeni bir yerde kategori adı büyük harfle basılacaksa bu işlevi kullanın.
+ */
+export function trBuyuk(metin?: string | null): string {
+  if (!metin) return ''
+  // "i" ve "ı" açıkça eşlenir: bazı ortamlarda tr yerel verisi eksik olabilir.
+  return metin.replace(/i/g, 'İ').replace(/ı/g, 'I').toLocaleUpperCase('tr-TR')
+}
+
 /** Bir ara yazının tüm kategorileri (çoklu kategori; yoksa birincil kategoriye düşer). */
 export function araYaziKategorileri(y: AraYazi): string[] {
   if (y.kategoriler && y.kategoriler.length > 0) return y.kategoriler

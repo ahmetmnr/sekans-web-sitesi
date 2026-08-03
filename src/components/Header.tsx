@@ -14,6 +14,7 @@ import { useCMS } from '@/context/CMSContext';
 import { api } from '@/lib/api';
 import type { AraYazi, AramaSonuclari, AramaYaziSonuc, MenuOgesi } from '@/types';
 import { ZenginMetin } from '@/components/ZenginMetin';
+import { SekansMarkasi } from '@/components/SekansMarkasi';
 
 interface HeaderProps {
   onNavigate: (page: string) => void;
@@ -131,12 +132,12 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Belirli bir dergi sayısını aç: PDF varsa yeni sekmede, yoksa arşiv sayfası.
-  const sayiAc = (code: string) => {
-    const s = arsivSayilari.find((x) => x.id === code);
-    if (s?.pdfUrl) window.open(s.pdfUrl, '_blank', 'noopener,noreferrer');
-    else handleNavClick('arsiv');
-  };
+  // Belirli bir dergi sayısını aç: KENDİ SAYFASI (içindekiler menüsüyle).
+  //
+  // Eskiden PDF'i yeni sekmede açıyorduk; bu yüzden "Sayılar > e28" denince
+  // sayfa yerine PDF geliyordu. Artık sayı sayfasına gidilir; PDF'e o sayfadaki
+  // "Tüm sayıyı PDF olarak indir" bağlantısından ulaşılır.
+  const sayiAc = (code: string) => handleNavClick(`sayi:${code}`);
 
   // Dinamik menü öğesini onNavigate hedef koduna çevir (App.handleNavigate çözer).
   const menuHedefNav = (item: MenuOgesi): string => {
@@ -230,14 +231,8 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
       <div className="container mx-auto px-4 md:px-6">
         {/* Üst Bölüm - Logo */}
         <div className="flex items-center justify-between py-4 md:py-6">
-          {/* Logo */}
-          <button
-            onClick={() => handleNavClick('anasayfa')}
-            className="flex flex-col items-center text-center"
-          >
-            <span className="sekans-logo text-3xl md:text-4xl tracking-[0.2em]">sekans</span>
-            <span className="sekans-logo-sub mt-0.5">sinema kültürü dergisi</span>
-          </button>
+          {/* Logo — otomatik çeviriye karşı korumalı (bkz. SekansMarkasi) */}
+          <SekansMarkasi onClick={() => handleNavClick('anasayfa')} />
 
           {/* Desktop Menü */}
           <nav className="hidden lg:flex items-center gap-8">
@@ -280,13 +275,7 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                       <DropdownMenuItem
                         key={sayi.id}
                         className="cursor-pointer"
-                        onClick={() => {
-                          if (sayi.pdfUrl) {
-                            window.open(sayi.pdfUrl, '_blank', 'noopener,noreferrer');
-                          } else {
-                            handleNavClick('arsiv');
-                          }
-                        }}
+                        onClick={() => sayiAc(sayi.id)}
                       >
                         {sayiEtiketi(sayi)}
                         <span className="ml-auto text-xs text-muted-foreground">{sayi.ay} {sayi.yil}</span>
@@ -356,8 +345,8 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                       <div className="space-y-5">
                         {searchResults.yazilar.length > 0 && (
                           <div>
-                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
-                              <BookOpen className="w-3.5 h-3.5" /> Dergi Yazıları
+                            <h3 className="text-xs font-semibold tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                              <BookOpen className="w-3.5 h-3.5" /> DERGİ YAZILARI
                             </h3>
                             <ul className="divide-y divide-border/60">
                               {searchResults.yazilar.map((y) => (
@@ -381,8 +370,8 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
 
                         {searchResults.araYazilar.length > 0 && (
                           <div>
-                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
-                              <FileText className="w-3.5 h-3.5" /> Blog
+                            <h3 className="text-xs font-semibold tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                              <FileText className="w-3.5 h-3.5" /> BLOG
                             </h3>
                             <ul className="divide-y divide-border/60">
                               {searchResults.araYazilar.map((ay) => (
@@ -405,8 +394,8 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
 
                         {searchResults.yazarlar.length > 0 && (
                           <div>
-                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
-                              <User className="w-3.5 h-3.5" /> Yazarlar
+                            <h3 className="text-xs font-semibold tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                              <User className="w-3.5 h-3.5" /> YAZARLAR
                             </h3>
                             <ul className="divide-y divide-border/60">
                               {searchResults.yazarlar.map((yz) => (
@@ -425,19 +414,15 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
 
                         {(searchResults.sayilar?.length ?? 0) > 0 && (
                           <div>
-                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
-                              <Newspaper className="w-3.5 h-3.5" /> Dergi Sayıları
+                            <h3 className="text-xs font-semibold tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                              <Newspaper className="w-3.5 h-3.5" /> DERGİ SAYILARI
                             </h3>
                             <ul className="divide-y divide-border/60">
                               {searchResults.sayilar!.map((s) => (
                                 <li key={s.id}>
                                   <button
                                     className="w-full text-left py-2.5 px-2 hover:bg-muted/60 transition-colors rounded-sm"
-                                    onClick={() => {
-                                      closeSearch();
-                                      if (s.pdfUrl) window.open(s.pdfUrl, '_blank', 'noopener,noreferrer');
-                                      else onNavigate('arsiv');
-                                    }}
+                                    onClick={() => aramaNav(`sayi:${s.id}`)}
                                   >
                                     <span className="block text-sm font-medium">{s.menuEtiket?.trim() ? s.menuEtiket : (s.tamBaslik || `Sayı ${s.numara}`)}</span>
                                     <span className="block text-xs text-muted-foreground mt-0.5">{s.ay} {s.yil}</span>
@@ -450,8 +435,8 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
 
                         {(searchResults.kategoriler?.length ?? 0) > 0 && (
                           <div>
-                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
-                              <Folder className="w-3.5 h-3.5" /> Kategoriler
+                            <h3 className="text-xs font-semibold tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                              <Folder className="w-3.5 h-3.5" /> KATEGORİLER
                             </h3>
                             <ul className="divide-y divide-border/60">
                               {searchResults.kategoriler!.map((k) => (
@@ -470,8 +455,8 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
 
                         {(searchResults.sayfalar?.length ?? 0) > 0 && (
                           <div>
-                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
-                              <FileText className="w-3.5 h-3.5" /> Sayfalar
+                            <h3 className="text-xs font-semibold tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                              <FileText className="w-3.5 h-3.5" /> SAYFALAR
                             </h3>
                             <ul className="divide-y divide-border/60">
                               {searchResults.sayfalar!.map((sf) => (
@@ -548,14 +533,7 @@ export default function Header({ onNavigate, currentPage, onYaziAc, onAraYaziAc,
                             {menuSayilari.slice(0, 3).map((sayi) => (
                               <button
                                 key={sayi.id}
-                                onClick={() => {
-                                  if (sayi.pdfUrl) {
-                                    window.open(sayi.pdfUrl, '_blank', 'noopener,noreferrer');
-                                  } else {
-                                    handleNavClick('arsiv');
-                                  }
-                                  setMobileMenuOpen(false);
-                                }}
+                                onClick={() => { sayiAc(sayi.id); setMobileMenuOpen(false); }}
                                 className="text-sm text-muted-foreground hover:text-foreground block"
                               >
                                 {sayiEtiketi(sayi)}

@@ -249,7 +249,10 @@ export function CMSAraYaziEditor({ yaziId, onBack, onSave, initialTab = 'edit' }
                   value={formData.baslik || ''}
                   onChange={handleBaslikChange}
                   placeholder="Yazı başlığını girin..."
-                  className="text-3xl font-serif font-bold"
+                  // className: sitenin gerçek başlık fontu (.yazi-baslik) —
+                  // editörde görülen font yayında da aynıdır.
+                  className="text-3xl yazi-baslik"
+                  kalinKapali
                 />
 
                 {/* Spot — satır içi biçimlendirme */}

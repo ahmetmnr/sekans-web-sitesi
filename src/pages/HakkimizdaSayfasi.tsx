@@ -77,8 +77,8 @@ export default function HakkimizdaSayfasi({ hakkimizda, onBackClick }: Hakkimizd
 
           {/* Sosyal Medya */}
           <div className="mt-6 pt-6 border-t border-border">
-            <h3 className="text-sm font-semibold uppercase tracking-wider mb-4">
-              Sosyal Medya
+            <h3 className="text-sm font-semibold tracking-wider mb-4">
+              SOSYAL MEDYA
             </h3>
             <div className="flex flex-wrap gap-4">
               <a

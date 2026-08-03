@@ -1,9 +1,8 @@
 import { FileText } from 'lucide-react';
 import type { Sayi, Yazi } from '@/types';
-import { sayiAdi, yazarAdlari } from '@/lib/utils';
-import { GORSEL_ORAN_SINIFI } from '@/lib/gorselStandardi';
-import { ZenginMetin } from '@/components/ZenginMetin';
-import { duzMetin } from '@/lib/zenginMetin';
+import { sayiAdi } from '@/lib/utils';
+import { IcindekilerSatiri } from '@/components/IcindekilerSatiri';
+import { KunyePanel } from '@/components/KunyePanel';
 
 interface SonSayiSectionProps {
   sayi: Sayi;
@@ -59,14 +58,8 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
               </a>
             )}
 
-            {/* Künye — kapağın altında, sol kolonda */}
-            {sayi.kunye?.trim() && (
-              <div className="mt-4 pt-4 border-t border-border">
-                <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
-                  {sayi.kunye}
-                </p>
-              </div>
-            )}
+            {/* Künye — kapağın altında, sol kolonda, akordiyon panel içinde [7] */}
+            <KunyePanel kunye={sayi.kunye} />
           </div>
 
           {/* Sağ Kolon — Ay/Yıl, sayı adı, içindekiler */}
@@ -78,62 +71,19 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
               <h2 className="section-title">{adi}</h2>
             </div>
 
+            {/* İçindekiler — düzenin tamamı IcindekilerSatiri'ndan gelir:
+                kategori tam genişlikte, başlık/yazar kademeli girintili,
+                dizin görselinin üstü başlık satırıyla hizalı. */}
             <ul className="space-y-5 md:space-y-6">
-              {sayi.yazilar.map((yazi) => {
-                // Küçük görsel: önce dizin görseli, yoksa kapak görselinin küçüğü.
-                // İkisi de yoksa görsel gösterilmez (sayı kapağı satırlarda tekrar etmesin).
-                const kucukGorsel = yazi.dizinGorseli?.trim() || yazi.kapakGorseli?.trim() || '';
-                return (
+              {sayi.yazilar.map((yazi) => (
                 <li key={yazi.id}>
-                  <button
+                  <IcindekilerSatiri
+                    yazi={yazi}
                     onClick={() => onYaziClick(yazi)}
-                    className="yazi-kart w-full text-left group flex items-start gap-4"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <span className="kategori-etiket block mb-1">
-                        {yazi.kategori?.ad ?? ''}
-                      </span>
-                      <ZenginMetin
-                        as="h3"
-                        html={yazi.baslik}
-                        className="block yazi-baslik text-base md:text-lg leading-snug line-clamp-3"
-                      />
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {yazarAdlari(yazi)}
-                      </p>
-                      {yazi.pdfUrl && (
-                        <a
-                          href={yazi.pdfUrl}
-                          className="pdf-link mt-1.5 inline-flex"
-                          onClick={(e) => e.stopPropagation()}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                          <span>PDF</span>
-                        </a>
-                      )}
-                    </div>
-
-                    {/* Dizin görseli — satırın SAĞINDA, kapakla aynı oranda */}
-                    {kucukGorsel && (
-                      <div className={`w-28 md:w-36 flex-shrink-0 bg-muted overflow-hidden ${GORSEL_ORAN_SINIFI}`}>
-                        <img
-                          src={kucukGorsel}
-                          alt={duzMetin(yazi.baslik)}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          onError={(e) => {
-                            // Dosya bulunamazsa boş gri kutu kalmasın.
-                            const kutu = (e.target as HTMLImageElement).parentElement;
-                            if (kutu) kutu.style.display = 'none';
-                          }}
-                        />
-                      </div>
-                    )}
-                  </button>
+                    baslikSinifi="text-lg md:text-xl"
+                  />
                 </li>
-                );
-              })}
+              ))}
             </ul>
           </div>
         </div>

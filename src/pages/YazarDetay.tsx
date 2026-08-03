@@ -4,6 +4,7 @@ import type { Yazar, AraYazi, Sayi } from '@/types';
 import { Button } from '@/components/ui/button';
 import { ZenginMetin } from '@/components/ZenginMetin';
 import { duzMetin } from '@/lib/zenginMetin';
+import { trBuyuk } from '@/lib/utils';
 
 interface YazarDetayProps {
   yazar: Yazar;
@@ -124,7 +125,7 @@ export default function YazarDetay({
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <span className="kategori-etiket text-xs mb-1 inline-block">
-                        {yazi.kategori.ad}
+                        {trBuyuk(yazi.kategori.ad)}
                       </span>
                       <ZenginMetin
                         as="h3"
@@ -179,7 +180,7 @@ export default function YazarDetay({
 
                   {/* Kategori ve Tarih */}
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="kategori-etiket">{araYazi.kategori}</span>
+                    <span className="kategori-etiket">{trBuyuk(araYazi.kategori)}</span>
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       {new Date(araYazi.yayinTarihi).toLocaleDateString('tr-TR', {

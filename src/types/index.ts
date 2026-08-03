@@ -45,6 +45,10 @@ export interface Yazi {
   kapakGorseli?: string;  // detay sayfasının üstündeki geniş kapak
   dizinGorseli?: string;  // içindekiler listesindeki küçük görsel (boşsa kapakGorseli)
   kapakUstte?: boolean;   // kapak görseli yazı sayfasının üst bandında görünsün mü (varsayılan true)
+  // Kategori adı içindekiler menüsünde görünsün mü (varsayılan true).
+  // Aynı kategoriden ardışık yazılarda editör bunu kapatarak "DOSYA: ..."
+  // tekrarını önler. Girintileri ETKİLEMEZ; yazının kategorisi değişmez.
+  kategoriGoster?: boolean;
   yayinTarihi?: string;
 }
 

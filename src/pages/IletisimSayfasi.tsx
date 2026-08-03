@@ -89,8 +89,8 @@ export default function IletisimSayfasi({ onBackClick, onYaziStandartlariClick }
             {/* Yazı Göndermek İster misiniz? */}
             {onYaziStandartlariClick && (
               <div className="mt-10">
-                <h3 className="text-sm font-semibold uppercase tracking-wider mb-3">
-                  Bize Yazı Göndermek İster misiniz?
+                <h3 className="text-sm font-semibold tracking-wider mb-3">
+                  BİZE YAZI GÖNDERMEK İSTER MİSİNİZ?
                 </h3>
                 <button
                   onClick={onYaziStandartlariClick}
@@ -104,8 +104,8 @@ export default function IletisimSayfasi({ onBackClick, onYaziStandartlariClick }
 
             {/* Sosyal Medya */}
             <div className="mt-10">
-              <h3 className="text-sm font-semibold uppercase tracking-wider mb-4">
-                Sosyal Medya
+              <h3 className="text-sm font-semibold tracking-wider mb-4">
+                SOSYAL MEDYA
               </h3>
               <div className="flex flex-wrap gap-4">
                 <a

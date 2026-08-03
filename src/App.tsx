@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useGlobalFootnotes } from '@/hooks/useFootnotes';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -94,15 +94,39 @@ function AppContent() {
 
   const [currentPage, setCurrentPage] = useState<PageState>(getInitialPage);
 
-  // URL değişikliklerini dinle
+  /* -------------------------------------------------------------------------
+     TARAYICI GERİ TUŞU
+     Eskiden yalnızca "/" ve "/cms" geçmişe yazılıyordu; diğer tüm gezinmeler
+     (yazı detayı, sayı sayfası, blog, yazar…) tarayıcı için AYNI adres
+     olduğundan geri tuşu ya hiçbir şey yapmıyor ya da beklenmedik bir yere
+     atlıyordu. Telefonda "back farklı farklı sonuçlar veriyor" şikâyeti
+     ([13]) bundandı — sunucuyla ilgisi yok.
+
+     Çözüm: her gezinme geçmişe bir kayıt bırakır. Sayfa durumu (içinde tam
+     yazı/sayı nesneleri var) history.state'e KONMAZ — büyük olabilir ve
+     yapısal kopyalama sınırlarına takılır. Geçmişe yalnızca küçük bir sıra
+     numarası yazılır, durumun kendisi bellekteki yığında tutulur.
+     ------------------------------------------------------------------------- */
+  const gecmisYigini = useRef<PageState[]>([getInitialPage()]);
+  const gecmisSira = useRef(0);
+
   useEffect(() => {
-    const handlePopState = () => {
-      const path = window.location.pathname;
-      if (path === '/cms' || path === '/cms/') {
-        setCurrentPage({ page: 'cms' });
-      } else if (path === '/' || path === '') {
-        setCurrentPage({ page: 'anasayfa' });
+    // İlk kayıt: sıra numarasını mevcut geçmiş girdisine iliştir.
+    window.history.replaceState({ sekansSira: 0 }, '', window.location.pathname);
+
+    const handlePopState = (e: PopStateEvent) => {
+      const sira = (e.state as { sekansSira?: number } | null)?.sekansSira;
+      const hedef = typeof sira === 'number' ? gecmisYigini.current[sira] : undefined;
+      if (hedef) {
+        gecmisSira.current = sira as number;
+        setCurrentPage(hedef);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
       }
+      // Yığın elde değilse (ör. sayfa yenilendikten sonra geri gelindi):
+      // adrese bakıp güvenli bir sayfaya düş.
+      const path = window.location.pathname;
+      setCurrentPage(path === '/cms' || path === '/cms/' ? { page: 'cms' } : { page: 'anasayfa' });
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -144,14 +168,19 @@ function AppContent() {
 
   // Navigasyon handler'ları
   const navigateTo = useCallback((page: PageType, extra?: Partial<PageState>) => {
-    setCurrentPage({ page, ...extra });
+    const hedef: PageState = { page, ...extra };
+    setCurrentPage(hedef);
 
-    // URL'yi güncelle
-    if (page === 'cms') {
-      window.history.pushState({}, '', '/cms');
-    } else if (page === 'anasayfa') {
-      window.history.pushState({}, '', '/');
-    }
+    // Geçmişe yeni bir kayıt bırak: geri tuşu bir önceki sayfaya dönsün.
+    // İleri yönde kalan kayıtlar (geri gidip yeni bir yola sapıldıysa) atılır.
+    const sira = gecmisSira.current + 1;
+    gecmisYigini.current = [...gecmisYigini.current.slice(0, sira), hedef];
+    gecmisSira.current = sira;
+
+    // Adres yalnızca CMS ve ana sayfa için değişir (site tek adres üzerinden
+    // çalışıyor); geçmiş kaydı her gezinmede yine de oluşur.
+    const yol = page === 'cms' ? '/cms' : page === 'anasayfa' ? '/' : window.location.pathname;
+    window.history.pushState({ sekansSira: sira }, '', yol);
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
@@ -170,6 +199,22 @@ function AppContent() {
     }
     if (pageId.startsWith('filtre:')) {
       navigateTo('filtre', { filtreSlug: pageId.slice('filtre:'.length) });
+      return;
+    }
+    // Belirli bir dergi sayısının KENDİ SAYFASI (içindekiler menüsüyle).
+    // Sayı zaten belleğimizdeyse doğrudan açılır; değilse (arşiv sayısı)
+    // içindekiler API'den çekilir. İçerik gelmezse arşive düşülür — PDF
+    // otomatik açılmaz, kullanıcı sayfada kalır.
+    if (pageId.startsWith('sayi:')) {
+      const code = pageId.slice('sayi:'.length);
+      const bilinen = [sonSayi, ...anasayfaSayilari].find((s) => s && s.id === code);
+      if (bilinen) {
+        navigateTo('sonsayi', { selectedSayi: bilinen });
+        return;
+      }
+      api.sayilar.get(code)
+        .then((tam) => navigateTo('sonsayi', { selectedSayi: tam }))
+        .catch(() => navigateTo('arsiv'));
       return;
     }
     switch (pageId) {
@@ -198,7 +243,7 @@ function AppContent() {
       default:
         navigateTo('anasayfa');
     }
-  }, [navigateTo]);
+  }, [navigateTo, sonSayi, anasayfaSayilari]);
 
   // Yazı tıklama handler'ı — sayı bağlamıyla (çoklu sayı: ana sayfada 2 sayı olabilir)
   const handleYaziClick = useCallback((yazi: Yazi, sayi?: Sayi) => {

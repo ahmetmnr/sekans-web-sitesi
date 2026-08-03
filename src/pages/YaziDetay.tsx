@@ -4,7 +4,7 @@ import type { Yazi, Sayi, Yazar } from '@/types';
 import { useFootnotes } from '@/hooks/useFootnotes';
 import ReadingIndicator from '@/components/ReadingIndicator';
 import PaylasimKutusu from '@/components/PaylasimKutusu';
-import { sayiAdi, yaziYazarlari, yazarAdlari } from '@/lib/utils';
+import { sayiAdi, trBuyuk, yaziYazarlari, yazarAdlari } from '@/lib/utils';
 import { GORSEL_ORAN_SINIFI } from '@/lib/gorselStandardi';
 import { ZenginMetin } from '@/components/ZenginMetin';
 import { duzMetin } from '@/lib/zenginMetin';
@@ -80,7 +80,7 @@ export default function YaziDetay({
           </button>
 
           <span className="kategori-etiket block mb-3">
-            {yazi.kategori?.ad ?? ''}
+            {trBuyuk(yazi.kategori?.ad)}
           </span>
 
           <ZenginMetin
