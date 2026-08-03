@@ -427,7 +427,10 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
           {taslakSayilar.length === 0 && (
             <Card>
               <CardContent className="py-10 text-center text-gray-500">
-                Hazırlanan taslak sayı yok. "Yeni Sayı Oluştur" ile bir taslak sayı açın.
+                {/* Editöre "Yeni Sayı Oluştur" denmez: o düğme onda yok. */}
+                {yoneticiMi
+                  ? 'Hazırlanan taslak sayı yok. "Yeni Sayı Oluştur" ile bir taslak sayı açın.'
+                  : 'Size atanmış, hazırlanan bir taslak sayı yok. Yeni sayıyı yönetici açar ve size atar.'}
                 {yayindakiSayilar.length > 0 && ' Yayında olan sayı "Arşiv" sekmesinde.'}
               </CardContent>
             </Card>
@@ -443,8 +446,9 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Yayında olan sayı</h2>
                 <p className="text-sm text-gray-600">
-                  Şu anda sitede güncel sayı olarak görünüyor. Buradan yönetebilir,
-                  gerekirse "Taslağa Al" ile yayından kaldırabilirsiniz.
+                  {yoneticiMi
+                    ? 'Şu anda sitede güncel sayı olarak görünüyor. Buradan yönetebilir, gerekirse "Taslağa Al" ile yayından kaldırabilirsiniz.'
+                    : 'Şu anda sitede güncel sayı olarak görünüyor. İçeriğini (yazılar, künye, önsöz) buradan düzenleyebilirsiniz.'}
                 </p>
               </div>
               {yayindakiSayilar.map((s) => sayiKarti(s))}
@@ -457,9 +461,9 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
                 <div>
                   <CardTitle>Arşiv Sayıları</CardTitle>
                   <CardDescription>
-                    Geçmiş (yayımlanmış) sayıları yönetin. Bir arşiv sayısını
-                    "Taslağa Al" ile yeniden hazırlanan sayılara çekip içeriğini
-                    düzenleyebilir, sonra tekrar yayına alabilirsiniz.
+                    {yoneticiMi
+                      ? 'Geçmiş (yayımlanmış) sayıları yönetin. Bir arşiv sayısını "Taslağa Al" ile yeniden hazırlanan sayılara çekip içeriğini düzenleyebilir, sonra tekrar yayına alabilirsiniz.'
+                      : 'Geçmiş (yayımlanmış) sayılar. Arşiv düzenlemesi yöneticidedir; bir arşiv sayısında değişiklik gerekiyorsa yöneticiden onu taslağa almasını isteyin.'}
                   </CardDescription>
                 </div>
                 {yoneticiMi && (
@@ -509,15 +513,23 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
                         <Switch
                           checked={sayi.menuGoster !== false}
                           onCheckedChange={(v) => handleArsivToggle(sayi, 'menuGoster', v)}
+                          disabled={!yoneticiMi}
                         />
                       </TableCell>
                       <TableCell className="text-center">
                         <Switch
                           checked={sayi.anasayfaGoster === true}
                           onCheckedChange={(v) => handleArsivToggle(sayi, 'anasayfaGoster', v)}
+                          disabled={!yoneticiMi}
                         />
                       </TableCell>
                       <TableCell className="text-right">
+                        {/* [15] Arşiv yönetimi (taslağa alma, düzenleme, silme)
+                            site yapısına dokunur: yalnızca yönetici. Editör
+                            arşivi görür ama değiştiremez. */}
+                        {!yoneticiMi ? (
+                          <span className="text-xs text-gray-400">—</span>
+                        ) : (
                         <div className="flex justify-end gap-2">
                           {/* Arşivden geri çekme: sayı yeniden "hazırlanan" listesine
                               döner, yazıları düzenlenebilir ve tekrar yayına alınabilir. */}
@@ -581,6 +593,7 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
                             </AlertDialogContent>
                           </AlertDialog>
                         </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

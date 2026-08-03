@@ -1,6 +1,7 @@
 // CMS Yazar Yönetimi - Author Management
 import { useCallback, useEffect, useState } from 'react';
 import { useCMS } from '@/context/CMSContext';
+import { useAuth } from '@/context/AuthContext';
 import { api, type KullanimSayaci } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,10 @@ export function CMSYazarYonetimi() {
     updateYazar,
     deleteYazar
   } = useCMS();
+
+  // [15] Yazar silme yalnızca yöneticide (sunucuda da öyle).
+  const { user } = useAuth();
+  const yoneticiMi = user?.role === 'admin';
 
   const [showDialog, setShowDialog] = useState(false);
   const [editingYazar, setEditingYazar] = useState<Yazar | null>(null);
@@ -293,14 +298,20 @@ export function CMSYazarYonetimi() {
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openSilDialog(yazar)}
-                          title="Yazarı sil"
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
+                        {/* [15] Yazar SİLME yöneticinindir: silinen yazarın
+                            içeriği başka bir yazara devredilmek zorunda, bu da
+                            site genelini ilgilendiren bir karardır. Editör
+                            yazar ekleyip düzenleyebilir ama silemez. */}
+                        {yoneticiMi && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openSilDialog(yazar)}
+                            title="Yazarı sil"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
