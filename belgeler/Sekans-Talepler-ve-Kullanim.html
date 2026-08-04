@@ -1,0 +1,937 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Sekans Web Sitesi — Talepler ve Kullanım Kılavuzu</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 16mm 16mm; }
+
+  :root {
+    --metin: #1a1a1a;
+    --soluk: #5a5a5a;
+    --cizgi: #d8d8d8;
+    --talep-zemin: #f4f2ee;
+    --talep-cizgi: #9a8f7a;
+    --vurgu: #7a2f2f;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.55;
+    color: var(--metin);
+    margin: 0;
+  }
+
+  /* --- Kapak --- */
+  .kapak { text-align: center; padding: 60mm 0 0; page-break-after: always; }
+  .kapak h1 { font-family: Georgia, "Times New Roman", serif; font-size: 26pt; margin: 0 0 6mm; font-weight: 600; }
+  .kapak .alt { font-size: 12pt; color: var(--soluk); margin-bottom: 20mm; }
+  .kapak .kutu {
+    display: inline-block; text-align: left; border: 1px solid var(--cizgi);
+    padding: 8mm 10mm; font-size: 10pt; color: var(--soluk); line-height: 1.9;
+  }
+  .kapak .kutu b { color: var(--metin); }
+
+  h2 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 15pt; font-weight: 600;
+    margin: 0 0 4mm; padding-bottom: 2mm;
+    border-bottom: 2px solid var(--metin);
+    page-break-after: avoid;
+  }
+  h3 {
+    font-size: 11pt; font-weight: 700; margin: 6mm 0 2mm;
+    letter-spacing: .02em; page-break-after: avoid;
+  }
+  h3.nasil { color: var(--vurgu); }
+
+  p { margin: 0 0 3mm; }
+  ul { margin: 0 0 3mm; padding-left: 6mm; }
+  li { margin-bottom: 1.5mm; }
+
+  /* --- Madde bloğu --- */
+  .madde { page-break-inside: avoid; margin-bottom: 9mm; }
+  .madde.uzun { page-break-inside: auto; }
+
+  /* --- Talep alıntısı --- */
+  .talep {
+    background: var(--talep-zemin);
+    border-left: 4px solid var(--talep-cizgi);
+    padding: 4mm 5mm 3mm;
+    margin: 0 0 4mm;
+    font-size: 10pt;
+    page-break-inside: avoid;
+  }
+  .talep .etiket {
+    display: block; font-size: 7.5pt; font-weight: 700; letter-spacing: .12em;
+    color: var(--talep-cizgi); margin-bottom: 2mm;
+  }
+  .talep p:last-child { margin-bottom: 0; }
+  .talep ul { margin-bottom: 2mm; }
+
+  /* --- Tablolar --- */
+  table { width: 100%; border-collapse: collapse; margin: 0 0 4mm; font-size: 9.5pt; page-break-inside: avoid; }
+  th, td { border: 1px solid var(--cizgi); padding: 2mm 2.5mm; text-align: left; vertical-align: top; }
+  th { background: #f0f0f0; font-weight: 700; }
+  td.orta, th.orta { text-align: center; }
+
+  /* --- Şema kutuları --- */
+  pre {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 8.5pt; line-height: 1.45;
+    background: #fafafa; border: 1px solid var(--cizgi);
+    padding: 3mm 4mm; margin: 0 0 4mm;
+    white-space: pre; overflow: hidden;
+    page-break-inside: avoid;
+  }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 9pt; background: #f2f2f2; padding: 0 1mm; }
+
+  .not {
+    border-left: 3px solid var(--vurgu); padding: 2mm 4mm;
+    font-size: 9.5pt; color: #333; margin: 0 0 4mm; background: #fbf7f7;
+    page-break-inside: avoid;
+  }
+  .not b { color: var(--vurgu); }
+
+  .durum { font-size: 9pt; font-weight: 700; padding: .5mm 2mm; border-radius: 2mm; }
+  .tamam { background: #e3f2e3; color: #235c23; }
+  .kismi { background: #fdf3d8; color: #7a5c10; }
+
+  .bolum-basligi {
+    font-family: Georgia, serif; font-size: 17pt; font-weight: 600;
+    margin: 0 0 6mm; padding-bottom: 3mm; border-bottom: 3px double var(--metin);
+    page-break-before: always;
+  }
+  .bolum-basligi.ilk { page-break-before: auto; }
+
+  /* --- Maketler: ekran goruntusu yerine sema --- */
+  .mock {
+    border: 1px solid #bbb; background: #fff; padding: 3.5mm 4mm;
+    margin: 0 0 4mm; font-size: 9pt; page-break-inside: avoid;
+  }
+  .mock .alan-adi { font-size: 8.5pt; color: var(--soluk); margin-bottom: 1.5mm; }
+  .mock .secici {
+    border: 1px solid #ccc; padding: 1.5mm 2.5mm; background: #fbfbfb;
+    display: flex; justify-content: space-between; margin-bottom: 3mm;
+  }
+  .mock .anahtar-satir {
+    border: 1px solid #ccc; border-radius: 1.5mm; padding: 2.5mm 3mm;
+    display: flex; justify-content: space-between; align-items: center; gap: 4mm;
+  }
+  .mock .anahtar {
+    border: 1px solid #2f6b2f; background: #e3f2e3; color: #235c23;
+    border-radius: 3mm; padding: .6mm 3mm; font-size: 8pt; font-weight: 700;
+    white-space: nowrap;
+  }
+  .mock .isaret { color: var(--vurgu); font-size: 8pt; font-weight: 700; }
+
+  /* Icindekiler satiri semasi */
+  .sema-satir { display: flex; gap: 5mm; align-items: flex-start; }
+  .sema-metin { flex: 1 1 auto; min-width: 0; }
+  .sema-kategori {
+    font-size: 8pt; letter-spacing: .08em; color: #666;
+    border-bottom: 1px dashed #ccc; padding-bottom: 1mm; margin-bottom: 2mm;
+  }
+  .sema-baslik { font-family: Georgia, serif; font-size: 10.5pt; margin-left: 4mm; }
+  .sema-yazar  { font-size: 9pt; margin-left: 8mm; }
+  .sema-spot   { font-size: 8.5pt; color: #666; margin-left: 4mm; margin-top: 1.5mm; text-align: justify; }
+  .sema-gorsel {
+    width: 34mm; height: 17mm; background: #e8e8e8; border: 1px solid #ccc;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8pt; color: #777; flex: 0 0 auto;
+  }
+  .sema-bosluk {
+    flex: 0 0 auto; width: 8mm; align-self: stretch;
+    border-left: 1px dashed var(--vurgu); border-right: 1px dashed var(--vurgu);
+    background: #fbf2f2; position: relative;
+  }
+  .sema-aciklama { font-size: 8pt; color: var(--vurgu); margin-top: 2mm; }
+
+  /* Silme onayi diyalogu */
+  .mock-dialog { max-width: 105mm; }
+  .mock-dialog .baslik { font-weight: 700; font-size: 10.5pt; margin-bottom: 2mm; }
+  .mock-dialog .govde { font-size: 9pt; margin-bottom: 3mm; }
+  .mock-dialog .giris {
+    border: 1px solid #ccc; height: 7mm; background: #fbfbfb; margin-bottom: 3mm;
+  }
+  .mock-dialog .dugmeler { display: flex; gap: 2mm; justify-content: flex-end; }
+  .mock-dialog .dugme { border: 1px solid #bbb; padding: 1.2mm 4mm; font-size: 8.5pt; }
+  .mock-dialog .dugme.pasif { background: #efc9c9; color: #9c7676; border-color: #dfb4b4; }
+</style>
+</head>
+<body>
+
+<!-- ===================== KAPAK ===================== -->
+<div class="kapak">
+  <h1>Sekans Sinema Kültürü Dergisi</h1>
+  <div class="alt">Yeni Web Sitesi — Talepler ve Kullanım Kılavuzu</div>
+  <div class="kutu">
+    <b>Kaynak:</b> “Sekans Yeni Web Sitesi Ahmet Münir.pdf”<br>
+    <b>Kapsam:</b> 19 maddenin tamamı<br>
+    <b>Yapı:</b> Her maddede önce <b>talep aynen alıntılanır</b>,<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; hemen altına ne yapıldığı ve nasıl kullanılacağı yazılır.
+  </div>
+</div>
+
+<!-- ===================== ÖZET ===================== -->
+<div class="bolum-basligi ilk">Özet</div>
+
+<table>
+  <tr><th style="width:8mm">#</th><th>Konu</th><th style="width:38mm">Durum</th></tr>
+  <tr><td>1</td><td>Kategori gizleme ON/OFF anahtarı</td><td><span class="durum tamam">Yapıldı</span></td></tr>
+  <tr><td>2</td><td>“İ” harfinin “I” olması</td><td><span class="durum tamam">Yapıldı</span></td></tr>
+  <tr><td>3</td><td>Yazı başlığı fontu ve kalın sorunu</td><td><span class="durum tamam">Yapıldı</span></td></tr>
+  <tr><td>4</td><td>İçindekiler tasarımı (görsel, renk, girinti)</td><td><span class="durum tamam">Yapıldı</span></td></tr>
+  <tr><td>5</td><td>Dizin görselinin başlıkla hizalanması</td><td><span class="durum tamam">Yapıldı</span></td></tr>
+  <tr><td>6</td><td>Spotun dizin görselini sarmaması</td><td><span class="durum tamam">Yapıldı</span></td></tr>
+  <tr><td>7</td><td>Künye: italik + akordiyon panel</td><td><span class="durum tamam">Yapıldı</span></td></tr>
+  <tr><td>8</td><td>Künyede e-posta / spam riski</td><td><span class="durum tamam">Çözüm uygulandı</span></td></tr>
+  <tr><td>9</td><td>Ana Metin her zaman siyah mı</td><td><span class="durum tamam">Yapıldı</span></td></tr>
+  <tr><td>10</td><td>Sekans markası görsel olsun</td><td><span class="durum kismi">Kod hazır — logo dosyası bekleniyor</span></td></tr>
+  <tr><td>11</td><td>Marka küçük görünüyor</td><td><span class="durum kismi">Büyütüldü (teknik sınır var)</span></td></tr>
+  <tr><td>12</td><td>Sağ tık → yeni sekmede aç</td><td><span class="durum tamam">Yapıldı</span></td></tr>
+  <tr><td>13</td><td>Geri (back) tuşu tutarsızlığı</td><td><span class="durum tamam">Yapıldı</span></td></tr>
+  <tr><td>14</td><td>Sayının kendi sayfası yerine PDF açılması</td><td><span class="durum tamam">Yapıldı</span></td></tr>
+  <tr><td>15</td><td>Admin / editör ayrımı</td><td><span class="durum tamam">Yapıldı</span></td></tr>
+  <tr><td>16</td><td>Yayındaki sayı “hazırlananlar”da görünüyor</td><td><span class="durum tamam">Yapıldı</span></td></tr>
+  <tr><td>17</td><td>Spot önizlemede italik görünüyor</td><td><span class="durum tamam">Yapıldı</span></td></tr>
+  <tr><td>18</td><td>Dipnot stili yanlış bilgi veriyor</td><td><span class="durum tamam">Yapıldı</span></td></tr>
+  <tr><td>19</td><td>Sayı silmeyi zorlaştırma</td><td><span class="durum tamam">Yapıldı</span></td></tr>
+</table>
+
+<!-- ===================== MADDELER ===================== -->
+<div class="bolum-basligi">Maddeler</div>
+
+<!-- ---------- 1 ---------- -->
+<div class="madde uzun">
+<h2>[1] Kategorileri göstermeme opsiyonunu tanımlamak</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p><b>Önemli: Kategorileri göstermeme opsiyonunu tanımlamak.</b>
+  Arkadaşlarımız şu durumdan hoşnut kalmadı: DOSYA - DOSYA - DOSYA… diye alt alta
+  çıkması. Sayfayı kalabalıklaştırıyor.</p>
+  <p><b>Çözüm önerim:</b> Editör penceresinde, editörün yazı kategorisi belirlediği
+  yerin altına ON/OFF switch koyalım. Default: ON = Yazı kategorisi İçindekiler
+  menülerinde görünür. OFF = Yazı kategorisi İçindekiler menülerinde görünmez.</p>
+</div>
+
+<h3>Ne yapıldı</h3>
+<p>Her yazı için ayrı bir anahtar tanımlanmıştır ve talep edildiği konuma —
+kategori seçicisinin hemen altına — yerleştirilmiştir. Varsayılan değer
+<b>AÇIK</b>’tır; herhangi bir değişiklik yapılmadığında mevcut görünüm korunur.</p>
+
+<h3 class="nasil">Nasıl kullanılır</h3>
+<p>CMS → <b>Yazı Yönetimi</b> → yazının kalem ikonu → <b>sağ sütun</b>:</p>
+<div class="mock" style="max-width:95mm">
+  <div class="alan-adi">Kategori *</div>
+  <div class="secici"><span>Dosya: Sinemanın Politikası…</span><span>▾</span></div>
+  <div class="anahtar-satir">
+    <span>Kategoriyi içindekilerde göster</span>
+    <span class="anahtar">AÇIK</span>
+  </div>
+  <div class="isaret" style="margin-top:2mm">▲ Aranan anahtar bu satırdadır.</div>
+</div>
+
+<p>Bir kategoride A, B, C yazıları varsa:</p>
+<table>
+  <tr><th style="width:30mm">Yazı</th><th style="width:30mm">Anahtar</th><th>Sonuç</th></tr>
+  <tr><td><b>A</b> (grubun ilki)</td><td>AÇIK bırakın</td><td>Üstünde <code>DOSYA: …</code> yazar</td></tr>
+  <tr><td><b>B</b></td><td>KAPATIN</td><td>Kategori satırı çıkmaz</td></tr>
+  <tr><td><b>C</b></td><td>KAPATIN</td><td>Kategori satırı çıkmaz</td></tr>
+</table>
+
+<pre>DOSYA: SİNEMANIN POLİTİKASI - POLİTİKANIN SİNEMASI      ← bir kez
+    Zor Zamanlarda Toplumsal Mücadeleye Dair…
+        Alper Şen
+
+    Bir Karşılaşma Alanı Olarak Görüntü…                ← kategori yok
+        Özgür Çiçek</pre>
+
+<h3>Dikkat edilecekler</h3>
+<ul>
+  <li><b>Girintiler değişmez.</b> Kategorisi gizli yazının başlığı ve yazar adı,
+      açık olanla aynı hizada durur.</li>
+  <li><b>Boşluk bırakmaz.</b> Gizlenen kategori satırının yeri boş kalmaz.</li>
+  <li><b>Yazının kategorisi değişmez.</b> Filtreler, arama, Sekans İndeks ve
+      kategori sayfaları etkilenmez — sadece o satırın görünürlüğü kapanır.</li>
+  <li><b>Sıralama önemli.</b> Aynı kategorinin yazılarını <i>Sıra Numarası</i> ile
+      art arda tutun. Araya başka kategoriden yazı girerse, sonraki yazıda
+      anahtarı <b>tekrar açın</b>.</li>
+  <li>Hem ana sayfada hem sayı sayfasında geçerlidir.</li>
+</ul>
+
+<div class="not"><b>Not:</b> Kategori satırı otomatik olarak gizlenmez (“bir
+önceki yazıyla aynı kategori” denetimi yapılmaz). Talep doğrultusunda görünürlük
+kararı editöre bırakılmıştır.</div>
+</div>
+
+<!-- ---------- 2 ---------- -->
+<div class="madde">
+<h2>[2] Bölüm başlıklarında “İ”lerin “I” olması</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p><b>Önemli:</b> Bölüm başlıklarında “İ”ler “I” oluyor. Yukarıdaki görsele bkz.
+  “SINEMANIN POLITIKASI - POLITIKANIN SINEMASI”. Başka örnekler: “ELEŞTIRI”,
+  “SÖYLEŞI”, vs. (Ö, Ü, Ç, Ş: sorunsuz. Ğ: bilmiyorum)</p>
+</div>
+
+<h3>Sorunun sebebi</h3>
+<p>Başlıklar büyük harfe <b>tarayıcının</b> bir kuralıyla çevriliyordu. Chrome bu
+kuralda Türkçe bilmez: “i” harfini “İ” değil “I” yapar.</p>
+
+<h3>Ne yapıldı</h3>
+<p>Büyük harfe çevirme işi tarayıcıdan alındı, Türkçe kuralıyla yapılıyor. Menü ve
+alt bilgi başlıkları da düzeltildi (<code>Dergi Yazıları → DERGİ YAZILARI</code>).</p>
+
+<h3 class="nasil">Nasıl kullanılır</h3>
+<p>Bir şey yapmanıza gerek yok. Kategori adını panelde nasıl yazarsanız sitede
+doğru büyük harfle çıkar. <b>Ğ, Ü, Ş, Ö, Ç, ı harflerinin hepsi doğru</b> — merak
+ettiğiniz Ğ dahil.</p>
+</div>
+
+<!-- ---------- 3 ---------- -->
+<div class="madde uzun">
+<h2>[3] Yazı başlığı fontu sorunu</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p><b>Önemli: Yazı başlığı fontu sorunu.</b> Son güncellemede bunu editör
+  değiştirebiliyor. Ama çalışmayan kısmı var ve sonuç iyi değil.</p>
+  <ul>
+    <li><b>Çalışmayan kısım:</b> Bir şeyi bold yaptığımda onu tekrar düz
+        yapamıyoruz. (İtalikler ise geri alınabiliyor)</li>
+    <li><b>Çalışmayan kısım:</b> Font sabit değil. Kimi örneklerde word’den
+        çekilmiş font kalıyor (Times New Roman mesela). … Onun fontu bizim
+        fontumuz değil.</li>
+  </ul>
+  <p><b>Talebimiz:</b> Font sabit olsun. Yazı başlığı default bold olsun. Belli
+  yerlerini italik yapmak - yapmamak editör inisiyatifinde kalsın. Ve yazı başlığı
+  fontunu bir gıdım büyütelim.</p>
+</div>
+
+<h3>Sorunun sebebi</h3>
+<ul>
+  <li><i>“Bold’u geri alamıyoruz”</i> — Başlık zaten kalın basılıyordu; “kalın”
+      işaretini açmak da kapatmak da aynı görünüyordu.</li>
+  <li><i>“Word fontu kalıyor”</i> — Yapıştırılan metnin içindeki font bildirimi
+      temizlenmiyordu.</li>
+</ul>
+
+<h3>Ne yapıldı</h3>
+<ul>
+  <li>Başlık fontu <b>kilitlendi</b>. Nereden yapıştırırsanız yapıştırın sitenin
+      fontunda çıkar.</li>
+  <li>Başlık <b>varsayılan kalın</b>.</li>
+  <li><b>Kalın düğmesi başlık alanından kaldırıldı</b> — bir işe yaramadığı ve kafa
+      karıştırdığı için. <code>Ctrl+B</code> de başlıkta iş yapmaz.</li>
+  <li>Punto bir kademe büyüdü.</li>
+  <li>Editördeki başlık kutusu artık <b>sitenin gerçek fontunu</b> gösteriyor:
+      yazarken gördüğünüz, yayında göreceğiniz.</li>
+</ul>
+
+<h3 class="nasil">Nasıl kullanılır</h3>
+<p>Başlıkta elinizde kalan tek biçim <b>italik</b>. Film/kitap adını seçip
+<code>Ctrl+I</code> yapın; geri almak için tekrar <code>Ctrl+I</code>.</p>
+<div class="not">Word’den yapıştırma artık güvenli: renk, punto ve font
+temizleniyor; italik ile alt/üst simge gibi <b>anlamlı</b> biçimler korunuyor.</div>
+</div>
+
+<!-- ---------- 4 ---------- -->
+<div class="madde uzun">
+<h2>[4] İçindekiler menüsünün tasarımı</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p><b>Önemli: İçindekiler menüsünün tasarımında değişiklikler gerekiyor.</b></p>
+  <ul>
+    <li>Görsel doluluğun artırılması talebi geldi. Bunun için dizin görseli
+        büyüklüğünü 150x300’den 200x400’e çıkaralım ve bakalım sonuç nasıl oluyor.</li>
+    <li>İçindekiler kısmında yazar adlarını bir çeşit gri yazıyoruz. Bunu
+        değiştirelim. <b>Yazar adları siyah olsun.</b> Font büyüklüğünden memnunuz.
+        Yazar adını <b>bold yapmayalım</b>.</li>
+    <li>Yazı başlıkları ve yazar adlarının yazıldığı yeri de biraz değiştirelim.
+        <b>Yazı başlığı ve yazar adını, kategori adına göre biraz daha içeriden
+        alalım.</b> … <b>adım adım içeri alınıyor</b> (yazar adı, yazı başlığından
+        da bir gıdım içeride). <b>Yeni sitede de böyle yapalım.</b></li>
+  </ul>
+  <p>… yazı adları ile dizin görselleri arasındaki aralık çok büyük kalmış …
+  <b>Bu fark niye oluyor olabilir?</b> Not: Gökhan da ben de bu sayfayı
+  tarayıcımızda %100’de görüyoruz.</p>
+</div>
+
+<h3>Ne yapıldı</h3>
+<ul>
+  <li>Dizin görseli <b>%33 büyütüldü</b>. Önerilen yükleme ölçüsü artık
+      <b>400×200 px</b>; oran 2:1 aynen korundu, eski görseller yeniden kırpılmaz.</li>
+  <li>Yazar adı <b>siyah</b>, kalın değil, punto aynı.</li>
+  <li>Kademeli girinti uygulandı:</li>
+</ul>
+<pre>DOSYA: SİNEMANIN POLİTİKASI…          ← kategori: en solda
+    Zor Zamanlarda Toplumsal…         ← başlık: 1 kademe içeride
+        Alper Şen                     ← yazar: 2 kademe içeride</pre>
+
+<h3 class="nasil">Nasıl kullanılır</h3>
+<p>Görsel yüklerken <b>400×200 px</b> hedefleyin. Farklı ölçüde yüklerseniz site
+sadece büyütür/küçültür — oran aynı olduğu sürece kırpma olmaz. Panelde alanın
+altında bu bilgi yazılı.</p>
+
+<h3>“Bu fark niye oluyor?” — cevap</h3>
+<p>Sebep tarayıcı yakınlaştırması <b>değil</b>. <b>Windows ekran ölçeklemesi</b>
+(Ayarlar → Sistem → Ekran → Ölçek; genelde %100 / %125 / %150) ve ekran
+çözünürlüğü. Aynı sayfa farklı DPI’da farklı genişlikte görünür. Bu web’in
+doğasıdır, kapatılamaz. Görselin büyümesi ve başlık puntosunun artması farkı
+<b>azaltır</b>. Aynı sebep <b>[11]</b> maddesindeki “marka küçük görünüyor”
+durumunu da açıklıyor.</p>
+</div>
+
+<!-- ---------- 5 ---------- -->
+<div class="madde uzun">
+<h2>[5] Dizin görsellerinin konumu</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p><b>Önemli: Dizin görsellerinin konumlarında değişiklik.</b> … Telefondan
+  baktığımızda sorunun kaynağını daha iyi anladık. Dizin görsellerinin üst
+  sınırları, yazı başlığı satırına göre değil, kategori satırına göre belirlenmiş
+  gibi görünüyor.</p>
+  <p><b>Dizin görsellerinin üst sınırlarını -kategoriyle değil- yazı başlığı
+  satırıyla eşleyelim.</b> … “Dosya: Sinemanın Politikası…” kategori adı dizin
+  görseline takılmamalı, mümkünse alt satıra akmamalı. Kendi satırında düz
+  gidebilmeli (olabildiğince). Dizin görseliyse bunun altında yer almalı (yazı
+  başlığının ilk satırıyla eşlenecek).</p>
+  <p><b>Ek sorular:</b> Gösterilmeyen kategoriler sayfada yok sayılacak, değil mi?
+  … Kategoriler de dizin görseli bloğu sınırına tabi, değil mi?</p>
+</div>
+
+<h3>Ne yapıldı</h3>
+<p>İçindekiler düzeni ızgaraya (grid) çevrildi:</p>
+<div class="mock">
+  <div class="sema-kategori">DOSYA: SİNEMANIN POLİTİKASI - POLİTİKANIN SİNEMASI
+    &nbsp;&nbsp;<span class="isaret">← tam genişlik, görsele takılmaz</span></div>
+  <div class="sema-satir">
+    <div class="sema-metin">
+      <div class="sema-baslik">Zor Zamanlarda Toplumsal Mücadeleye Dair Film Yapmak Üzerine</div>
+      <div class="sema-yazar">Alper Şen</div>
+      <div class="sema-spot">(spot — yalnızca sayı sayfasında görünür)</div>
+    </div>
+    <div class="sema-gorsel">dizin görseli</div>
+  </div>
+  <div class="sema-aciklama">▲ Görselin üst sınırı, kategori satırıyla değil <b>yazı başlığı satırıyla</b> hizalıdır.</div>
+</div>
+
+<h3>Sorularınızın cevabı</h3>
+<ul>
+  <li><i>“Gösterilmeyen kategoriler sayfada yok sayılacak, değil mi?”</i> —
+      <b>Evet.</b> Satır tamamen yok sayılır, boşluk bırakmaz.</li>
+  <li><i>“Kategoriler de dizin görseli bloğu sınırına tabi mi?”</i> —
+      <b>Artık değil.</b> Kategori satırı iki sütunu birden kaplar; sağ tarafı
+      serbesttir ve kendi satırında kesintisiz devam eder. Telefonda da görsel
+      bloğuna takılmaz.</li>
+</ul>
+
+<h3 class="nasil">Nasıl kullanılır</h3>
+<p>Bir şey yapmanıza gerek yok, otomatik.</p>
+</div>
+
+<!-- ---------- 6 ---------- -->
+<div class="madde uzun">
+<h2>[6] Spotun dizin görselini sarmaması</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p><b>Önemli: Sayı sayfasında spotun dizin görselini sarması.</b> … Bunlar
+  yapılınca herhalde sayı sayfası - içindekiler menüsü de etkilenecek. Güzel,
+  etkilensin. Devamında, sayı sayfasındaki <b>spotlar dizin görselini sarmasın.
+  Spot metinleri dizin görselinin sol dikey sınırına belli bir uzaklıkta
+  sınırlansın (iki yana yaslı)</b>, paragraf bu sınıra dayandığında alt satırdan
+  devam etsin. <b>Dizin görselinin altına metin girmesin.</b></p>
+  <p><b>Sonraki açıklama:</b> Soldaki ilk kırmızı çizgi, spotun sağdan
+  yaslanacağı marjini oluyor. İki kırmızı çizgi arasında sabit bir güvenlik
+  mesafesi koyuyoruz. Bütün spotlarda bu böyle. … <b>Azami satır uzunluğu bu
+  olacak.</b> … “İki yana yaslı” derken sağdaki, yukarıdaki elle çizdiğim soldaki
+  kırmızı dikey çizgi.</p>
+</div>
+
+<h3>Ne yapıldı</h3>
+<p>Sarmalama kaldırıldı; metin sol sütunda kalıyor:</p>
+<div class="mock">
+  <div class="sema-satir">
+    <div class="sema-metin">
+      <div class="sema-spot" style="margin-left:0">
+        Politik sinema, artık ideolojik ajitasyonun ya da kolektif devrimci
+        çağrıların alanı olmaktan öteye geçmiş; duygulanım, beden, mekân ve
+        deneyim düzeyinde işleyen mikropolitik süreçlerin sinemasal ifadesi
+        hâline gelmiştir.
+      </div>
+    </div>
+    <div class="sema-bosluk"></div>
+    <div class="sema-gorsel">dizin görseli</div>
+  </div>
+  <div class="sema-aciklama">
+    ▲ Taralı şerit <b>sabit güvenlik boşluğudur</b>. Spotun sağ sınırı bu şeridin
+    solunda biter; hiçbir satır görselin altına geçmez. Azami satır uzunluğu
+    içindekilerin tamamında aynıdır.
+  </div>
+</div>
+<p>Sonradan netleştirdiğiniz nokta da karşılandı: <b>azami satır uzunluğu bütün
+satırlarda aynı.</b> Dizin görseli olmayan bir yazının satırları da aynı yerde
+biter — görsel sütunu, görselsiz satırlarda da yerini korur.</p>
+<p>“İki yana yaslı” ifadesindeki sağ yan, sayfanın kenarı değil bu sınırdır;
+uygulama bu şekilde yapılmıştır.</p>
+
+<h3 class="nasil">Nasıl kullanılır</h3>
+<p>Otomatik. Spotu panelde normal yazın.</p>
+</div>
+
+<!-- ---------- 7 ---------- -->
+<div class="madde uzun">
+<h2>[7] Sayı künyesiyle ilgili düzenleme</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <ul>
+    <li>Sayı Yönetimi &gt; Düzenle kısmında Künye penceresinde <b>italik yapabilme
+        seçeneğini editöre açalım.</b> Bize bu gerekiyor. (Bold’un açılmasına gerek
+        yok, olsa da olur olmasa da olur.)</li>
+    <li>Hem ana sayfada hem de sayı sayfasında künye metni <b>accordion/collapsible
+        panel içinde</b> çıksın. Yani künye metni <b>direkt sayfada görünmesin</b>,
+        bakmak isteyen bakar. (Sayfa kalabalığını azaltmak için.)</li>
+    <li>“Moods and Themes” yerinde <b>“Sayı künyesi”</b> yazacak. Minimalist
+        olabiliriz, … özel bir arka plan rengi <b>koymasak iyi olur</b>. Yanındaki
+        işarete tıklandığında panel, <b>sayı kapağının altında (sağ tarafa
+        taşmadan, kendi bloğunda) aşağı doğru açılsın.</b></li>
+    <li>Sayı künyesi metninin font rengi ve büyüklüğü güzel. <b>İki yana yaslı</b>
+        olmasını garanti altına alalım. “… içeriği,”den sonra satır boşluğu
+        olmasın.</li>
+  </ul>
+</div>
+
+<h3>Ne yapıldı</h3>
+<ul>
+  <li>Künye alanı artık biçimlendirilebilir bir editör — <b>italik açık</b>.</li>
+  <li>Sitede kapağın altında <b>kapalı akordiyon</b>; başlığı “Sayı künyesi”.
+      Tıklayınca aşağı açılır, ok işareti döner.</li>
+  <li>Renkli bant <b>konmadı</b> (minimalist istemiştiniz).</li>
+  <li>Panel sağa taşmıyor, kapağın altında kendi bloğunda açılıyor.</li>
+  <li>Metin iki yana yaslı; paragraflar arası fazla boşluk yok.</li>
+</ul>
+
+<h3 class="nasil">Nasıl kullanılır</h3>
+<p>CMS → <b>Sayı Yönetimi</b> → sayının <b>Düzenle</b> düğmesi → <b>Künye</b> alanı</p>
+<ul>
+  <li><b>ENTER</b> yeni satır açar.</li>
+  <li>Bir yeri seçip <b>italik</b> yapabilirsiniz (film/kitap adları için).</li>
+  <li>Punto, font ve renk sitenin künye stilinden gelir, değiştirilemez.</li>
+</ul>
+<div class="not">Eski künyeleriniz kaybolmadı; ilk kez düzenleyip kaydettiğinizde
+biçimli hâle geçer.<br>
+<b>İptal edilen madde:</b> “Sayı künyesi ana sayfada çıkmıyor” maddesini PDF’te
+kendiniz iptal etmiştiniz — doğru, ana sayfada da çıkıyor.</div>
+</div>
+
+<!-- ---------- 8 ---------- -->
+<div class="madde">
+<h2>[8] Künyede yayın sorumlusunun e-posta adresi</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p><b>Önemlice bir soru:</b> Sayı künyesinde normalde yayın sorumlusunun
+  (editörünün) e-posta adresini yazardık. Şu anda sitede bunu açık şekilde
+  yazmanın bizi botlara ve spam postalara boğabileceğinden çekindim. <b>Bu konuda
+  görüşün nedir?</b> Bir sayının yayın sorumlusu/sorumlularının iletişim bilgisini
+  okurun bir yerden bulabilmesini isteriz. <b>Bunu nasıl yapabiliriz?</b></p>
+</div>
+
+<h3>Değerlendirme</h3>
+<p>Çekince yerindedir. Bir e-posta adresi sayfada düz metin olarak yer aldığı anda
+otomatik toplayıcılar tarafından alınabilir. <b>Adresi açıkta yayımlamak ile
+spam’den korunmak aynı anda mümkün değildir</b>; iki seçenekten biri tercih
+edilmelidir.</p>
+
+<h3>Ne yapıldı</h3>
+<p>Künye panelinin altına <b>“Sayı sorumlusuna yazın”</b> bağlantısı kondu.
+Tıklayan okur, konusu o sayı olarak <b>ön doldurulmuş</b> İletişim formuna gider.
+Sorumlu editör atanmışsa adı da görünür. <b>E-posta adresi hiçbir yerde yazmaz.</b></p>
+
+<h3 class="nasil">Nasıl kullanılır</h3>
+<p>Sayı Yönetimi’nde sayıya <b>Sorumlu editör</b> atarsanız adı künyede görünür.
+Atamazsanız yalnızca bağlantı çıkar; o da yeterlidir.</p>
+</div>
+
+<!-- ---------- 9 ---------- -->
+<div class="madde">
+<h2>[9] Ana Metin stili her zaman siyah mı?</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p>Ana Metin stili her zaman siyah yazıyor mu, <b>teyit edebilir miyiz?</b> Böyle
+  olmadığını düşündüren örneklerle karşılaştım ve stili seçmenin yanı sıra metni
+  <b>elle siyah fonta çekmem icap etti.</b></p>
+</div>
+
+<h3>Sorunun sebebi</h3>
+<p>Word/Docs’tan yapıştırılan metin kendi rengini satır içinde taşıyordu. Stil
+“Ana Metin” seçili olsa bile bazı paragraflar koyu gri kalıyordu; tespit
+doğrudur.</p>
+
+<h3>Ne yapıldı</h3>
+<p>Renk artık stile bağlı. Ana Metin <b>her zaman siyah</b> basılır; yapıştırılan
+renk bastırılır. Bağlantılar hariç (onların rengi anlam taşır).</p>
+
+<h3 class="nasil">Nasıl kullanılır</h3>
+<p>Artık metni elle siyaha çekmenize gerek yok. <b>Eski yazılarda da geçerli</b> —
+yeniden kaydetmeniz gerekmez.</p>
+</div>
+
+<!-- ---------- 10 ---------- -->
+<div class="madde">
+<h2>[10] Sekans markasının görsel olması</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p>Sekans markası (sol köşe) <b>görsel yapılacaktı.</b> (Hatırlarsın:
+  auto-translate’le bakanlar “Sekans” adını da yanlış görebiliyordu.)</p>
+</div>
+
+<h3>Ne yapıldı — iki katman</h3>
+<ol>
+  <li><b>Şimdi çalışan koruma:</b> Markaya “çevirme” işareti kondu. Google
+      Translate ve Edge çevirici artık markaya dokunmuyor.
+      <b>Bildirdiğiniz sorun çözüldü.</b></li>
+  <li><b>Görsel katman — logo dosyası bekleniyor:</b> Kod tarafı hazırdır.
+      <code>public/images/</code> klasörüne <b><code>sekans-logo.svg</code></b>
+      adıyla tasarlanmış logoyu koyduğunuz anda site otomatik olarak onu kullanır.
+      Kod değişikliği gerekmez.</li>
+</ol>
+
+<div class="not"><b>Logo dosyası neden yazılım tarafında üretilmedi:</b> Marka
+fontu (Cormorant Garamond) harici bir kaynaktan yüklenmektedir; harflerin vektör
+çizimleri proje dosyaları arasında bulunmamaktadır. Yaklaşık bir yeniden çizim,
+dergi logosu için uygun bir sonuç vermez. Logonun <b>tasarım tarafından
+hazırlanıp</b> belirtilen dosya adıyla teslim edilmesi gerekmektedir.</div>
+</div>
+
+<!-- ---------- 11 ---------- -->
+<div class="madde">
+<h2>[11] Markanın küçük görünmesi</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p>Sol köşedeki markayı küçük bulan arkadaşlar oldu. Bendeyse doğrusu küçük
+  değil. <b>Laptopumda 3 santim, yan ekranımda 6 santim</b> eninde çıkıyor ve ben
+  bu büyüklükten memnunum. Ama … Gökhan’ın gördüğü marka (sol üst köşe) küçük
+  imiş.</p>
+</div>
+
+<h3>Ne yapıldı</h3>
+<p>Marka bir kademe büyütüldü.</p>
+
+<h3>Bilinmesi gereken sınır</h3>
+<p><b>“Herkeste 3 santim” diye bir şey web’de mümkün değildir.</b> Fiziksel boyut
+okurun ekran çözünürlüğüne ve işletim sistemi ölçeklemesine bağlıdır; tarayıcı
+%100’de olsa bile değişir. Gökhan’ın ekranında küçük görünmesinin sebebi budur —
+<b>[4]</b>’teki aralık farkıyla aynı sebep.</p>
+<p>Uygulanabilir olan, bir piksel ölçüsü belirleyip sabitlemektir. Farklı bir
+ölçü tercih edilmesi hâlinde ayarlanabilir.</p>
+</div>
+
+<!-- ---------- 12 ---------- -->
+<div class="madde uzun">
+<h2>[12] Sağ tık → “yeni sekmede aç”</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p>Arkadaşlarımız <b>“sağa tıklayınca bir şeyi yeni sekmede açamıyoruz”</b>
+  dediler. Bu, sitenin şu anki haliyle, <b>durduğu sunucuyla vb. alakalıdır diye
+  varsayıyorum. Haklı mıyım?</b></p>
+</div>
+
+<h3>Cevap: Hayır, sunucuyla ilgisi yoktu</h3>
+<p>Sitenin sayfalarının <b>adresi yoktu</b>; hangi sayfada olursanız olun
+tarayıcının adresi tek bir adresti. Menü öğeleri de bağlantı değil düğmeydi.
+Gidilecek bir adres olmayınca “yeni sekmede aç” da olmaz. Sunucu değiştirmek
+bunu çözmezdi.</p>
+
+<h3>Ne yapıldı</h3>
+<p>Her sayfaya gerçek adres verildi:</p>
+<pre>/sayi/e29          bir sayının içindekiler sayfası
+/yazi/e29-01       dergi yazısı
+/blog/{yazi-adi}   blog yazısı
+/yazar/{id}        yazar sayfası
+/arsiv  /yazarlar  /indeks  /iletisim  /hakkimizda  /yarisma
+/sayfa/{slug}      sabit sayfalar
+/liste/{slug}      filtre listeleri</pre>
+<p>Bağlantı olan her şey artık gerçek bağlantı: üst menü, açılır menüler, mobil
+menü, arama sonuçları, <b>içindekiler başlıkları</b>, blog ve yazar kartları, alt
+bilgi.</p>
+
+<h3 class="nasil">Nasıl kullanılır</h3>
+<ul>
+  <li><b>Sağ tık → Yeni sekmede aç</b> çalışır.</li>
+  <li><b>Orta tık</b> (tekerlek) yeni sekmede açar.</li>
+  <li><b>Ctrl + tık</b> (Mac’te Cmd) yeni sekmede açar.</li>
+  <li>Normal sol tıkta sayfa yeniden yüklenmez, eskisi gibi hızlı geçer.</li>
+  <li><b>Bir yazının adresini kopyalayıp paylaşabilirsiniz</b> — artık her yazının
+      kendi adresi var. Bu arama motorları için de kazanç.</li>
+</ul>
+</div>
+
+<!-- ---------- 13 ---------- -->
+<div class="madde">
+<h2>[13] Telefonda geri (back) tuşunun tutarsızlığı</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p>Telefondan bakan bir arkadaş sayfaları back’lemiş. <b>Back’i tıklamak farklı
+  farklı sonuçlar veriyormuş.</b> Yine bu da (madde [12]’deki gibi) <b>gerçek
+  sunucuya geçtiğimizde doğal yoldan çözülecek bir şey midir?</b></p>
+</div>
+
+<h3>Cevap: Hayır</h3>
+<p>[12] ile aynı kök sebep: gezinmeler tarayıcının geçmiş defterine yazılmıyordu.
+Sunucu değiştirmek bunu çözmezdi.</p>
+
+<h3>Ne yapıldı</h3>
+<p>Artık her gezinme geçmişe kayıt bırakıyor ve sayfa durumu adresten çözülüyor.</p>
+
+<h3 class="nasil">Nasıl kullanılır</h3>
+<ul>
+  <li><b>Geri</b> tuşu bir önceki sayfaya döner.</li>
+  <li><b>İleri</b> tuşu çalışır.</li>
+  <li><b>Sayfa yenilendiğinde (F5) aynı sayfada kalırsınız</b> — eskiden ana
+      sayfaya dönüyordu.</li>
+</ul>
+</div>
+
+<!-- ---------- 14 ---------- -->
+<div class="madde">
+<h2>[14] Sayının kendi sayfası yerine PDF’inin açılması</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p>Sayı e28’i anasayfaya çekersem gördüğüm hali <b>neden kendi sayı sayfasında
+  çıkmıyor</b>, anlayamadım. Yani e28 özelinde “Anasayfada göster” dersem çıkan
+  İçindekiler menüsü, eskiden e28’in kendi sayfasında da çıkardı.
+  <b>Sayılar &gt; e28 dediğimde şimdi olan şeyse şu: e28’in pdf’si açılıyor.</b></p>
+</div>
+
+<h3>Sorunun sebebi</h3>
+<p>Arşivdeki sayıların içeriğini verecek bir uç nokta yoktu. Site de mecburen
+PDF’e yönlendiriyordu.</p>
+
+<h3>Ne yapıldı</h3>
+<ul>
+  <li>Arşiv sayıları için içerik uç noktası eklendi.</li>
+  <li><b>Sayılar menüsünden</b> bir sayı seçince artık kendi sayfası açılıyor.</li>
+  <li><b>Arşiv sayfasında</b> kapağa (ve sayı adına) tıklayınca da kendi sayfası
+      açılıyor — eskiden doğrudan PDF’e gidiyordu.</li>
+  <li>PDF, her iki yerde de <b>ayrı bir bağlantı</b> olarak duruyor.</li>
+</ul>
+
+<h3 class="nasil">Nasıl kullanılır</h3>
+<p>Bir şey yapmanıza gerek yok. Arşiv sayfasındaki açıklama metni de güncellendi.</p>
+</div>
+
+<!-- ---------- 15 ---------- -->
+<div class="madde uzun">
+<h2>[15] Admin / editör ayrımı</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p><b>Çok önemli ama site taşıma işi sonrasına bırakılabilir:</b> Adminin editör
+  ataması, editöre açık kısım ile admine açık kısmın birbirinden ayrılması ve
+  bunlarla ilgili şeylere daha bakmadım. <b>Bunların nasıl işleyeceğini senden
+  duymam gerekecek.</b> Burada daha yapılacak iş var mı? Konuşalım.</p>
+</div>
+
+<h3>Kurulan model</h3>
+<p><b>Kural:</b> Yönetici sitenin <b>yapısını</b> kurar, editör <b>içerik</b> üretir.</p>
+<table>
+  <tr><th>İş</th><th class="orta" style="width:24mm">Yönetici</th><th class="orta" style="width:24mm">Editör</th></tr>
+  <tr><td>Menü yönetimi</td><td class="orta">✓</td><td class="orta">—</td></tr>
+  <tr><td>Ana sayfa panelleri</td><td class="orta">✓</td><td class="orta">—</td></tr>
+  <tr><td>Kategoriler</td><td class="orta">✓</td><td class="orta">—</td></tr>
+  <tr><td>Sabit sayfalar, sayfa metinleri</td><td class="orta">✓</td><td class="orta">—</td></tr>
+  <tr><td>Filtre listeleri, Sekans İndeks</td><td class="orta">✓</td><td class="orta">—</td></tr>
+  <tr><td>Arşiv yönetimi</td><td class="orta">✓</td><td class="orta">—</td></tr>
+  <tr><td>Kullanıcılar, Ayarlar</td><td class="orta">✓</td><td class="orta">—</td></tr>
+  <tr><td>Yarışma, Hakkımızda</td><td class="orta">✓</td><td class="orta">—</td></tr>
+  <tr><td><b>Sayı açma / silme / yayına alma</b></td><td class="orta">✓</td><td class="orta">—</td></tr>
+  <tr><td><b>Sorumlu editör atama</b></td><td class="orta">✓</td><td class="orta">—</td></tr>
+  <tr><td>Yazar <b>silme</b></td><td class="orta">✓</td><td class="orta">—</td></tr>
+  <tr><td>Kendi sayısının yazıları</td><td class="orta">✓</td><td class="orta">✓</td></tr>
+  <tr><td>Kendi sayısının kapak / PDF / künye / önsöz</td><td class="orta">✓</td><td class="orta">✓</td></tr>
+  <tr><td>Blog yazıları (Ara Yazılar vd.)</td><td class="orta">✓</td><td class="orta">✓</td></tr>
+  <tr><td>Yazar ekleme / düzenleme</td><td class="orta">✓</td><td class="orta">✓</td></tr>
+</table>
+
+<p><b>Editörün gördüğü sayılar:</b> Yalnızca kendisine atanmış olanlar + henüz
+kimseye atanmamış olanlar. (Atanmamışlar açık bırakıldı ki atama yapılmadan da
+sayı hazırlanabilsin.)</p>
+
+<h3 class="nasil">Nasıl kullanılır</h3>
+<p><b>Editör hesabı açmak:</b></p>
+<pre>CMS → Kullanıcılar → Yeni kullanıcı
+   Kullanıcı adı, İsim, Şifre (en az 6 karakter)
+   Rol: Editör</pre>
+<p><b>Bir sayıyı editöre atamak:</b></p>
+<pre>CMS → Sayı Yönetimi → sayının kartında "Sorumlu editör" açılır menüsü</pre>
+<p>Atadıktan sonra o editör panele girdiğinde yalnızca o sayıyı görür.</p>
+
+<div class="not"><b>Önemli:</b> Bu ayrım sadece menüyü gizlemekle yapılmadı.
+Sunucu tarafında da uygulanıyor — yetkisiz bir istek doğrudan atılsa bile
+reddedilir. Menü gizlemek tek başına güvenlik değildir.</div>
+</div>
+
+<!-- ---------- 16 ---------- -->
+<div class="madde">
+<h2>[16] Yayındaki sayının “Hazırlanan Sayılar” altında görünmesi</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p><b>Daha az kritik bir şey:</b> Sana whatsapp’tan yazdığım sorun. <b>Yayında
+  olan sayı hâlâ hazırlanan sayılar altında çıkıyor. Oysa Arşiv altında
+  çıkmalı.</b></p>
+</div>
+
+<h3>Ne yapıldı</h3>
+<ul>
+  <li><b>Hazırlanan Sayılar</b> sekmesi artık yalnızca <b>taslakları</b> listeler.</li>
+  <li>Yayındaki sayı <b>Arşiv</b> sekmesinin başında, “Yayında olan sayı” başlığı
+      altında duruyor.</li>
+  <li>Yönetimi kaybolmadı: aynı kart, aynı düğmeler (yazıları yönet, düzenle,
+      taslağa al) orada.</li>
+</ul>
+
+<h3 class="nasil">Nasıl kullanılır</h3>
+<p>Yayındaki sayıyı düzenlemek için artık <b>Arşiv</b> sekmesine bakın.</p>
+</div>
+
+<!-- ---------- 17 ---------- -->
+<div class="madde">
+<h2>[17] Düz spot metninin önizlemede italik görünmesi</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p><b>Daha az kritik bir şey:</b> Düz fontta olan spot metni editör-önizleme
+  penceresinde <b>italik görünüyor</b>.</p>
+</div>
+
+<h3>Ne yapıldı</h3>
+<p>Önizleme spotu zorla italik gösteriyordu; kaldırıldı.</p>
+
+<h3 class="nasil">Nasıl kullanılır</h3>
+<p>Artık önizlemede ne görüyorsanız yayında da o. Bir yeri italik istiyorsanız
+spot alanında elle italik yapın.</p>
+</div>
+
+<!-- ---------- 18 ---------- -->
+<div class="madde">
+<h2>[18] Dipnot stilinin yanlış görünmesi</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p><b>Daha az kritik bir şey:</b> Dipnot olarak yazılan şeyin stili pencere
+  altında <b>“Ana metin” olarak görünüyor</b>. Site dipnotun stili hakkında editöre
+  <b>yanlış bilgi veriyor</b>. Dipnot metni iki yana yaslı olduğu halde <b>“sola
+  yaslı”</b> diyor.</p>
+</div>
+
+<h3>Ne yapıldı</h3>
+<p>İmleç “Notlar” bölümündeki bir dipnotun içindeyken alt çubuk artık şunu
+yazıyor:</p>
+<pre>Dipnot · küçük punto · iki yana yaslı</pre>
+
+<h3 class="nasil">Nasıl kullanılır</h3>
+<p>Bir şey yapmanıza gerek yok. Alt çubuğa güvenebilirsiniz — imlecin bulunduğu
+yerin stilini doğru söylüyor.</p>
+</div>
+
+<!-- ---------- 19 ---------- -->
+<div class="madde uzun">
+<h2>[19] Sayı silmeyi zorlaştırma</h2>
+
+<div class="talep">
+  <span class="etiket">TALEP (PDF’ten aynen)</span>
+  <p><b>Daha az kritik bir şey:</b> Dergi sayısını silmeyi biraz daha
+  zorlaştıralım. <b>Admin hatasına izin vermeyelim.</b> Mesela admin, klavyesinden
+  “Bu sayıyı sil” cümlesi gibi bir şeyi birebir yazsın, sayı ancak o zaman
+  silinebilsin. <b>Alternatif (Türkçe karakterden kurtarmak için): “DELETE THIS
+  ISSUE”</b> yazmak zorunda olsun. Veya sayıyı silmek için (16*17)-(6^2)
+  işleminin sonucunu yazmak zorunda olsun. 🙂</p>
+</div>
+
+<h3>Ne yapıldı</h3>
+<div class="mock mock-dialog">
+  <div class="baslik">Taslak Sayıyı Sil</div>
+  <div class="govde">
+    “Sayı e30” ve içindeki 12 yazı silinecek. Bu işlem <b>GERİ ALINAMAZ</b>.<br><br>
+    Onaylamak için aşağıdaki kutuya <code>DELETE THIS ISSUE</code> yazın:
+  </div>
+  <div class="giris"></div>
+  <div class="dugmeler">
+    <span class="dugme">İptal</span>
+    <span class="dugme pasif">Sil</span>
+  </div>
+  <div class="isaret" style="margin-top:2.5mm">▲ Metin birebir yazılmadan “Sil” düğmesi pasiftir.</div>
+</div>
+<p><code>DELETE THIS ISSUE</code> birebir yazılmadan <b>Sil düğmesi pasif</b>
+kalır. Metin bilinçli olarak Türkçe karakter içermiyor. Silme zaten yalnızca
+yöneticide (<b>[15]</b>).</p>
+
+<div class="not"><b>Matematik işlemi seçeneği uygulanmamıştır.</b> İşlemin sonucu
+sabit olduğundan (236) bir kez hesaplanıp not edilebilir; bu nedenle yanlışlıkla
+silme riskini azaltmaz. Metin yazdırma yöntemi bu tür onaylarda yaygın kullanılan
+çözümdür.</div>
+</div>
+
+<!-- ===================== EK ===================== -->
+<div class="bolum-basligi">Ek Bilgiler</div>
+
+<h2>Hesaplar</h2>
+<table>
+  <tr><th style="width:35mm">Rol</th><th style="width:45mm">Kullanıcı</th><th>Şifre</th></tr>
+  <tr><td>Yönetici</td><td><code>admin</code></td><td><code>Sekans.Test.2026</code></td></tr>
+  <tr><td>Editör</td><td colspan="2"><i>Kullanıcılar sayfasından siz oluşturacaksınız</i></td></tr>
+</table>
+<p>Panel adresi: <code>&lt;site-adresi&gt;/cms</code></p>
+<div class="not">Test bitince oluşturduğunuz test hesaplarını <b>silin</b>.
+Canlıya geçerken sabit parolalı hesap kalmasın.</div>
+
+<h2>Bilinmesi gereken sınırlar</h2>
+<ol>
+  <li><b>“Herkeste aynı santim” mümkün değil</b> — [11]. Ekran ölçeklemesi okurun
+      makinesinde, bizim elimizde değil.</li>
+  <li><b>Açık e-posta + spam koruması aynı anda olmaz</b> — [8]. Form çözümü
+      seçildi.</li>
+  <li><b>Sekans logosu görsel dosyası bekleniyor</b> — [10]. Kod hazır.</li>
+</ol>
+
+<h2>Deploy sonrası kontrol listesi</h2>
+<table>
+  <tr><th style="width:55mm">Ne</th><th>Nasıl bakılır</th></tr>
+  <tr><td>Yeni adresler</td><td><code>/sayi/e29</code>, <code>/blog</code>, <code>/arsiv</code> adreslerini doğrudan yazın</td></tr>
+  <tr><td>Sağ tık</td><td>Menüde “Yazarlar”a sağ tık → “Yeni sekmede aç”</td></tr>
+  <tr><td>Geri tuşu</td><td>Ana sayfa → yazı → geri; sonra F5 → aynı sayfada kal</td></tr>
+  <tr><td>“İ” sorunu</td><td>ELEŞTİRİ, SÖYLEŞİ, SİNEMANIN POLİTİKASI</td></tr>
+  <tr><td>Kategori gizleme</td><td>Bir yazıda anahtarı kapatın, ana sayfaya bakın</td></tr>
+  <tr><td>Künye</td><td>Kapağın altında kapalı akordiyon; açınca iki yana yaslı</td></tr>
+  <tr><td>Spot</td><td>Görseli sarmıyor; satır sonları hepsinde aynı hizada</td></tr>
+  <tr><td>e28</td><td>Menüden ve Arşiv’den → PDF değil, içindekiler sayfası</td></tr>
+  <tr><td>Sayı silme</td><td><code>DELETE THIS ISSUE</code> yazmadan Sil pasif</td></tr>
+  <tr><td>Editör</td><td>Editör hesabıyla girin; menüde 5 öğe olmalı</td></tr>
+</table>
+
+<p style="margin-top:8mm; font-size:9.5pt; color:var(--soluk); border-top:1px solid var(--cizgi); padding-top:3mm;">
+Bu belge, “Sekans Yeni Web Sitesi Ahmet Münir.pdf” içindeki 19 maddenin tamamını
+kapsamaktadır. Eksik veya farklı yorumlanmış bir madde tespit edilmesi hâlinde
+ilgili madde numarasının bildirilmesi yeterlidir.
+</p>
+
+</body>
+</html>
