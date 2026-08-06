@@ -24,7 +24,15 @@ import { useState } from 'react';
    sabitlemektir — aşağıdaki ölçü öncekinden bir kademe büyüktür.
    --------------------------------------------------------------------------- */
 
-const LOGO_YOLU = '/images/sekans-logo.svg';
+/**
+ * Marka görseli. Kaynak dosya src/sekans.png'den üretildi:
+ * beyaz zemin saydamlaştırıldı (site zemininde beyaz kutu durmasın), çevresindeki
+ * boşluk kırpıldı (menüde yazı küçücük kalmasın), retina için 4x çözünürlükte
+ * (500×256) kaydedildi.
+ *
+ * Dosya bulunamazsa aşağıdaki metin katmanına düşülür; site kırılmaz.
+ */
+const LOGO_YOLU = '/images/sekans-logo.png';
 
 interface SekansMarkasiProps {
   onClick: () => void;
