@@ -6,6 +6,18 @@
 //
 // Kademeler HAZIRDIR, serbest değer girilmez (bkz. lib/icindekilerGorunum):
 // her kademe masaüstü ve mobilde denenmiştir, bozuk sonuç üretilemez.
+//
+// ÖNİZLEME GERÇEKTİR, TAKLİT DEĞİLDİR:
+//   • Sitenin KENDİ bölümleri render edilir: ana sayfa için <SonSayiSection>,
+//     sayı sayfası için <SonSayiDetay>. Panelde ayrı bir kopya markup yoktur,
+//     dolayısıyla ikisi zamanla birbirinden ayrışamaz. Kapak, künye paneli,
+//     ayırıcı çizgiler, spot — hepsi yayındaki hâliyle görünür.
+//   • Önizleme bir <iframe> içindedir; çerçeveye gerçek görüntü alanı genişliği
+//     verilir (1280 / 390). Medya sorguları böylece gerçek cihazdaki gibi
+//     çalışır. Panelin içine dar bir kutu koyup "mobil" demek YANLIŞ sonuç
+//     verirdi: panel masaüstü genişliğinde açıldığı için masaüstü kuralları
+//     devreye girer, dizin görseli 1,5 kat büyük çıkar ve başlıklar gerçekte
+//     olmayacağı kadar çok satıra bölünürdü.
 import { useEffect, useMemo, useState } from 'react';
 import { useCMS } from '@/context/CMSContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -14,13 +26,33 @@ import { Label } from '@/components/ui/label';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, RotateCcw, Save, Eye } from 'lucide-react';
+import { Loader2, RotateCcw, Save, Monitor, Smartphone } from 'lucide-react';
+import SonSayiSection from '@/sections/SonSayiSection';
+import SonSayiDetay from '@/pages/SonSayiDetay';
+import { OnizlemeCercevesi } from './OnizlemeCercevesi';
+import type { Sayi, Yazi } from '@/types';
 import {
   AYAR_BOLUMLERI,
   VARSAYILAN_GORUNUM,
   gorunumDegiskenleri,
   type IcindekilerGorunum,
 } from '@/lib/icindekilerGorunum';
+
+/* --------------------------------------------------------------------------
+   ÖNİZLEME GÖRÜNTÜ ALANLARI
+
+   Bunlar sütun genişliği değil, TARAYICI GÖRÜNTÜ ALANI genişliğidir: önizleme
+   bir <iframe> içinde açılır ve çerçeveye bu genişlik verilir. Böylece medya
+   sorguları (`md:` kuralları) gerçek cihazdaki gibi çalışır; sütun genişliği,
+   girintiler ve dizin görseli ölçüsü sitenin kendi hesabından çıkar.
+
+   1280 : yaygın masaüstü genişliği (Tailwind container'ın xl kademesi)
+    390 : yaygın telefon genişliği
+   -------------------------------------------------------------------------- */
+const GORUNUM_GENISLIGI = { masaustu: 1280, mobil: 390 } as const;
+
+type Cihaz = 'masaustu' | 'mobil';
+type Sayfa = 'anasayfa' | 'sayi';
 
 export function CMSDergiGorunumu() {
   const { icindekilerGorunum, updateIcindekilerGorunum } = useCMS();
@@ -29,8 +61,8 @@ export function CMSDergiGorunumu() {
   const [taslak, setTaslak] = useState<IcindekilerGorunum>(icindekilerGorunum);
   const [kaydediliyor, setKaydediliyor] = useState(false);
   const [mesaj, setMesaj] = useState<string | null>(null);
+  const [sayfa, setSayfa] = useState<Sayfa>('anasayfa');
 
-  // Sunucudan yeni ayar gelirse (ilk yükleme) taslağı tazele.
   useEffect(() => { setTaslak(icindekilerGorunum); }, [icindekilerGorunum]);
 
   const degisti = useMemo(
@@ -38,8 +70,7 @@ export function CMSDergiGorunumu() {
     [taslak, icindekilerGorunum]
   );
 
-  // Önizleme kutusuna uygulanacak CSS değişkenleri — site ile AYNI işlevden
-  // geldiği için önizlemede görülen, yayında çıkanla birebir aynıdır.
+  // Önizlemeye uygulanacak CSS değişkenleri — site ile AYNI işlevden gelir.
   const onizlemeStili = useMemo(
     () => gorunumDegiskenleri(taslak) as React.CSSProperties,
     [taslak]
@@ -70,11 +101,7 @@ export function CMSDergiGorunumu() {
           </p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
-          <Button
-            variant="outline"
-            onClick={() => setTaslak(VARSAYILAN_GORUNUM)}
-            disabled={kaydediliyor}
-          >
+          <Button variant="outline" onClick={() => setTaslak(VARSAYILAN_GORUNUM)} disabled={kaydediliyor}>
             <RotateCcw className="h-4 w-4 mr-2" />
             Varsayılana dön
           </Button>
@@ -93,7 +120,8 @@ export function CMSDergiGorunumu() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,560px)] gap-6 items-start">
+      {/* Ayarlar dar sütunda; kalan genişliğin tamamı önizlemeye ayrılır. */}
+      <div className="grid grid-cols-1 xl:grid-cols-[340px_minmax(0,1fr)] gap-6 items-start">
         {/* --- Sol: ayarlar --- */}
         <div className="space-y-4">
           {AYAR_BOLUMLERI.map((bolum) => (
@@ -102,19 +130,15 @@ export function CMSDergiGorunumu() {
                 <CardTitle className="text-base">{bolum.bolum}</CardTitle>
                 <CardDescription>{bolum.aciklama}</CardDescription>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <CardContent className="space-y-3">
                 {bolum.alanlar.map((alan) => (
                   <div key={alan.alan}>
                     <Label className="text-sm">{alan.etiket}</Label>
                     <Select
                       value={taslak[alan.alan]}
-                      onValueChange={(v) =>
-                        setTaslak((t) => ({ ...t, [alan.alan]: v }))
-                      }
+                      onValueChange={(v) => setTaslak((t) => ({ ...t, [alan.alan]: v }))}
                     >
-                      <SelectTrigger className="mt-1.5">
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {Object.entries(alan.tablo).map(([kademe, { ad }]) => (
                           <SelectItem key={kademe} value={kademe}>{ad}</SelectItem>
@@ -128,47 +152,64 @@ export function CMSDergiGorunumu() {
           ))}
         </div>
 
-        {/* --- Sağ: canlı önizleme (masaüstünde yapışkan) --- */}
-        <div className="xl:sticky xl:top-6">
+        {/* --- Sağ: gerçek ölçekli önizlemeler --- */}
+        <div className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Eye className="h-4 w-4" /> Önizleme
-              </CardTitle>
-              <CardDescription>
-                Sayı sayfasındaki içindekiler görünümü (spot dahil). Ana sayfada
-                spot çıkmaz, başlık bir tık küçüktür.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Önizleme, sitenin .ic-* sınıflarını ve aynı CSS değişkenlerini
-                  kullanır; ayrı bir taklit düzen DEĞİLDİR. */}
-              <div style={onizlemeStili} className="bg-white border rounded-lg p-5 space-y-6">
-                {ORNEK_SATIRLAR.map((o, i) => (
-                  <div key={i} className="ic-satir pb-5 border-b last:border-0 last:pb-0">
-                    {o.kategori && (
-                      <span className="ic-kategori col-span-2 block mb-1">{o.kategori}</span>
-                    )}
-                    <div className="min-w-0">
-                      <h3 className="ic-girinti-1">
-                        <span
-                          className="block yazi-baslik ic-baslik-buyuk leading-snug"
-                          dangerouslySetInnerHTML={{ __html: o.baslik }}
-                        />
-                      </h3>
-                      <p className="mt-1 ic-yazar ic-girinti-2">{o.yazar}</p>
-                      {o.spot && (
-                        <p className="mt-2 ic-spot leading-relaxed text-justify ic-girinti-1">
-                          {o.spot}
-                        </p>
-                      )}
-                    </div>
-                    <div className="w-full bg-gray-200 aspect-[2/1] self-start flex items-center justify-center text-[10px] text-gray-500">
-                      dizin görseli
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <CardTitle className="text-base">Önizleme</CardTitle>
+                  <CardDescription>
+                    Sitedeki gerçek genişlikte hesaplanır, panele sığması için
+                    küçültülür. Satır sonları ve girintiler yayındakiyle aynıdır.
+                  </CardDescription>
+                </div>
+                {/* Ana sayfa / sayı sayfası: düzenleri FARKLIDIR. */}
+                <div className="flex rounded-lg border overflow-hidden flex-shrink-0">
+                  {([
+                    ['anasayfa', 'Ana sayfa'],
+                    ['sayi', 'Sayı sayfası'],
+                  ] as const).map(([deger, ad]) => (
+                    <button
+                      key={deger}
+                      onClick={() => setSayfa(deger)}
+                      className={`px-3 py-1.5 text-sm transition-colors ${
+                        sayfa === deger ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {ad}
+                    </button>
+                  ))}
+                </div>
               </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {[
+                { cihaz: 'masaustu' as Cihaz, ad: 'Masaüstü', ikon: <Monitor className="h-4 w-4" /> },
+                { cihaz: 'mobil' as Cihaz, ad: 'Mobil', ikon: <Smartphone className="h-4 w-4" /> },
+              ].map(({ cihaz, ad, ikon }) => (
+                <div key={cihaz}>
+                  <div className="flex items-center gap-2 mb-2 text-sm">
+                    {ikon}
+                    <span className="font-medium text-gray-800">{ad}</span>
+                    <span className="text-xs text-gray-500">
+                      {GORUNUM_GENISLIGI[cihaz]} px görüntü alanı
+                    </span>
+                  </div>
+                  <div className="border rounded-lg overflow-hidden bg-white">
+                    <OnizlemeCercevesi
+                      gorunumGenisligi={GORUNUM_GENISLIGI[cihaz]}
+                      degiskenler={onizlemeStili}
+                    >
+                      {sayfa === 'anasayfa' ? (
+                        <SonSayiSection sayi={ORNEK_SAYI} onYaziClick={() => {}} onSayiClick={() => {}} />
+                      ) : (
+                        <SonSayiDetay sayi={ORNEK_SAYI} onYaziClick={() => {}} onBackClick={() => {}} />
+                      )}
+                    </OnizlemeCercevesi>
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </div>
@@ -177,30 +218,67 @@ export function CMSDergiGorunumu() {
   );
 }
 
-/**
- * Önizleme içeriği — gerçek e29 başlıklarından. Biri italik film adı içerir
- * (kalınlık ayarının italik kısımda da doğru çalıştığı görülsün), biri
- * kategorisi gizli bir satırdır (girintilerin kaymadığı görülsün).
- */
-const ORNEK_SATIRLAR: { kategori?: string; baslik: string; yazar: string; spot?: string }[] = [
+/* --------------------------------------------------------------------------
+   ÖRNEK SAYI — gerçek e29 yazılarından kurulmuş bir Sayi nesnesi.
+
+   Site bölümleri gerçek veriyle çalıştığı için önizlemeye de gerçekçi bir sayı
+   verilir. Seçilen üç yazı bilinçlidir:
+     • biri italik film adı içerir  → kalınlık ayarının italik kısımda da doğru
+       çalıştığı görülsün (font italik kademeleriyle birlikte yüklenir),
+     • biri KATEGORİSİ GİZLİ satırdır → kategori kapalıyken girintilerin
+       kaymadığı görülsün,
+     • biri uzun başlıklıdır → kaç satıra bölündüğü gerçek genişlikte görülsün.
+   -------------------------------------------------------------------------- */
+const yazarYap = (tamAd: string) => {
+  const p = tamAd.split(' ');
+  return { id: tamAd, tamAd, ad: p.slice(0, -1).join(' '), soyad: p[p.length - 1] };
+};
+const kategoriYap = (ad: string) => ({ id: ad, ad, slug: ad.toLowerCase() });
+const DIZIN_GORSELI = '/images/altyazilar/A_Single_Spark_302x415.jpg';
+
+const ORNEK_YAZILAR: Yazi[] = [
   {
-    kategori: 'DOSYA: SİNEMANIN POLİTİKASI - POLİTİKANIN SİNEMASI',
+    id: 'onizleme-1',
     baslik: '<em>WR: Mysteries of the Organism</em>: Libidinal Montaj',
-    yazar: 'Hasan Cem Çal',
     spot: 'Makavejev’in filminin siyasiliğini biçiminde arıyoruz, fakat mümkün en radikal anlamıyla: Filmin biçiminin içeriğinden ayırt edilememesiyle ortaya çıkan bir siyasilik.',
+    yazar: yazarYap('Hasan Cem Çal'),
+    kategori: kategoriYap('Dosya: Sinemanın Politikası - Politikanın Sineması'),
+    sayiId: 'onizleme', siraNo: 1, dizinGorseli: DIZIN_GORSELI,
   },
   {
-    // Kategori kapalı: aynı gruptaki ikinci yazı ([1] anahtarı).
+    id: 'onizleme-2',
     baslik: 'Fırat’ın Doğusu: Cenazeler, Düğünler ve (Olmayan) Bir Sınır',
-    yazar: 'Tayfun Luxembourgeus',
-    spot: 'Kazım Öz’ün sinematik evreni, temelde hem anlatıya hem görselliğe yaslanan bir sınır anlatısı kurar.',
+    spot: 'Kazım Öz’ün sinematik evreni, temelde hem anlatıya hem görselliğe yaslanan bir sınır anlatısı kurar; bu anlatı coğrafyayı da belleği de birlikte taşır.',
+    yazar: yazarYap('Tayfun Luxembourgeus'),
+    kategori: kategoriYap('Dosya: Sinemanın Politikası - Politikanın Sineması'),
+    kategoriGoster: false,   // aynı gruptaki ikinci yazı ([1] anahtarı)
+    sayiId: 'onizleme', siraNo: 2, dizinGorseli: DIZIN_GORSELI,
   },
   {
-    kategori: 'SÖYLEŞİ',
+    id: 'onizleme-3',
     baslik: 'Sessizliğin Estetiği: Angelopoulos Sinemasında Politik Biçim ve <em>’36 Günleri</em>',
-    yazar: 'Akın Tunç',
     spot: 'Sinema slogan atarak, propaganda yaparak bir ideolojiyi kitlelere taşımaz; biçimin kendisi politik bir tutumdur.',
+    yazar: yazarYap('Akın Tunç'),
+    kategori: kategoriYap('Söyleşi'),
+    sayiId: 'onizleme', siraNo: 3, dizinGorseli: DIZIN_GORSELI,
   },
 ];
+
+const ORNEK_SAYI: Sayi = {
+  id: 'onizleme',
+  numara: 'e29',
+  ay: 'Ağustos',
+  yil: 2026,
+  tamBaslik: 'Ağustos 2026 | Sayı e29',
+  menuEtiket: 'Sekans e29 - Politik Sinema Özel Sayısı',
+  kapakGorseli: '/images/dergi/SEKANS_10_KAPAK.jpg',
+  pdfUrl: '',
+  // Künye akordiyon panelinin önizlemede de görünmesi için kısa bir metin.
+  kunye: `Sekans Sinema Kültürü Dergisi
+© Sekans Sinema Grubu
+Tüm hakları saklıdır.`,
+  yazilar: ORNEK_YAZILAR,
+  yayinTarihi: '2026-08-01',
+};
 
 export default CMSDergiGorunumu;
