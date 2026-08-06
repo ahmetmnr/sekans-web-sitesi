@@ -93,7 +93,7 @@ export default function SonSayiDetay({ sayi, onYaziClick, onBackClick }: SonSayi
                     yazi={yazi}
                     onClick={() => onYaziClick(yazi)}
                     spotGoster
-                    baslikSinifi="text-xl md:text-2xl"
+                    baslikSinifi="ic-baslik-buyuk"
                   />
                 </li>
               ))}

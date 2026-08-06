@@ -147,6 +147,10 @@ $routes = [
     ['PUT',    '#^/filtre/([^/]+)$#',    'admin' , fn($m) => handle_update_filtre($m[1], read_json_body())],
     ['DELETE', '#^/filtre/([^/]+)$#',    'admin' , fn($m) => handle_delete_filtre($m[1])],
 
+    // ---- CMS: içindekiler görünüm ayarları (punto/renk/kalınlık) ----
+    ['GET',    '#^/cms/icindekiler-gorunum$#', 'admin', fn($m) => handle_cms_get_icindekiler_gorunum()],
+    ['PUT',    '#^/icindekiler-gorunum$#',     'admin', fn($m) => handle_update_icindekiler_gorunum(read_json_body())],
+
     // ---- CMS: yerleşik sayfa metinleri (Yazarlar / Blog) ----
     ['GET',    '#^/cms/sayfa-metinleri$#', 'editor', fn($m) => handle_cms_get_sayfa_metinleri()],
     ['PUT',    '#^/sayfa-metinleri$#',     'admin' , fn($m) => handle_update_sayfa_metinleri(read_json_body())],

@@ -188,6 +188,71 @@
     font-weight: 400;
   }
 
+  /* ---------------------------------------------------------------------
+     İÇİNDEKİLER GÖRÜNÜMÜ — panelden ayarlanan kademeler.
+
+     Değerler CSS değişkeni olarak :root'a yazılır (bkz. lib/icindekilerGorunum).
+     Buradaki fallback'ler bugünkü görünümdür: ayar hiç kaydedilmemişse ya da
+     sunucudan gelmezse site aynen eskisi gibi çalışır.
+
+     Punto değişkenleri MOBİL tabandır; masaüstünde sabit bir çarpanla büyür.
+     Böylece tek ayar iki ekranı birden yönetir ve duyarlı davranış korunur.
+     --------------------------------------------------------------------- */
+  .ic-kategori {
+    font-size: var(--ic-kategori-punto, 0.75rem);
+    color: var(--ic-kategori-renk, hsl(var(--muted-foreground)));
+    font-weight: var(--ic-kategori-kalinlik, 500);
+    letter-spacing: var(--ic-kategori-aralik, 0.05em);
+  }
+
+  .ic-baslik {
+    font-size: var(--ic-baslik-punto, 1.125rem);
+    color: var(--ic-baslik-renk, hsl(var(--foreground)));
+    font-weight: var(--ic-baslik-kalinlik, 600);
+  }
+
+  .ic-yazar {
+    font-size: var(--ic-yazar-punto, 0.875rem);
+    color: var(--ic-yazar-renk, hsl(var(--foreground)));
+    font-weight: var(--ic-yazar-kalinlik, 400);
+  }
+
+  .ic-spot {
+    font-size: var(--ic-spot-punto, 0.875rem);
+    color: var(--ic-spot-renk, hsl(var(--muted-foreground)));
+    font-weight: var(--ic-spot-kalinlik, 400);
+  }
+
+  /* Satır ızgarası: [ metin | güvenlik boşluğu | dizin görseli ].
+     Görsel kolonu SABİT genişliktedir — görseli olmayan satırlarda da yer
+     kaplar, böylece azami satır uzunluğu listenin tamamında aynı kalır ([6]). */
+  .ic-satir {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--ic-gorsel-genislik, 8rem);
+    column-gap: 1.25rem;
+  }
+
+  /* Girinti: başlık 1 birim, yazar adı 2 birim ("adım adım içeri"). */
+  .ic-girinti-1 { padding-left: var(--ic-girinti, 0.75rem); }
+  .ic-girinti-2 { padding-left: calc(var(--ic-girinti, 0.75rem) * 2); }
+
+  /* Sayı sayfasındaki başlık, ana sayfadakinden bir tık büyüktür; bu oran
+     ayardan bağımsız korunur. */
+  .ic-baslik-buyuk { font-size: calc(var(--ic-baslik-punto, 1.125rem) * 1.11); }
+
+  @media (min-width: 768px) {
+    .ic-kategori     { font-size: calc(var(--ic-kategori-punto, 0.75rem) * 1.05); }
+    .ic-baslik       { font-size: calc(var(--ic-baslik-punto, 1.125rem) * 1.11); }
+    .ic-baslik-buyuk { font-size: calc(var(--ic-baslik-punto, 1.125rem) * 1.33); }
+    .ic-yazar        { font-size: calc(var(--ic-yazar-punto, 0.875rem) * 1.05); }
+    .ic-girinti-1    { padding-left: calc(var(--ic-girinti, 0.75rem) * 1.33); }
+    .ic-girinti-2    { padding-left: calc(var(--ic-girinti, 0.75rem) * 2.66); }
+    .ic-satir {
+      grid-template-columns: minmax(0, 1fr) calc(var(--ic-gorsel-genislik, 8rem) * 1.5);
+      column-gap: 2rem;
+    }
+  }
+
   /* Kategori Etiketi
      NOT: `uppercase` bilinçli olarak YOK. Büyük harfe çevirme trBuyuk() ile
      yapılır; CSS'in uppercase kuralı Türkçe "i -> İ" dönüşümünü bozuyordu. */

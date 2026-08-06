@@ -20,7 +20,8 @@ import {
   Files,
   Filter,
   ListOrdered,
-  Type
+  Type,
+  Palette
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -35,6 +36,7 @@ export type CMSPage =
   | 'menu'
   | 'sayfalar'
   | 'sayfa-metinleri'
+  | 'dergi-gorunumu'
   | 'filtreler'
   | 'indeks'
   | 'kullanicilar'
@@ -73,6 +75,7 @@ const menuItems: { id: CMSPage; label: string; icon: React.ReactNode; adminOnly?
 
   // --- Buradan aşağısı sitenin YAPISI: yalnızca yönetici ---
   { id: 'anasayfa', label: 'Ana Sayfa', icon: <Home className="h-5 w-5" />, adminOnly: true },
+  { id: 'dergi-gorunumu', label: 'Dergi Görünümü', icon: <Palette className="h-5 w-5" />, adminOnly: true },
   { id: 'kategoriler', label: 'Kategoriler', icon: <FolderOpen className="h-5 w-5" />, adminOnly: true },
   { id: 'menu', label: 'Menü Yönetimi', icon: <MenuIcon className="h-5 w-5" />, adminOnly: true },
   { id: 'sayfalar', label: 'Sabit Sayfalar', icon: <Files className="h-5 w-5" />, adminOnly: true },

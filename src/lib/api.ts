@@ -151,6 +151,9 @@ export interface BootstrapData {
   menu?: MenuOgesi[];             // dinamik üst menü (boş/eksikse Header sabit menüye düşer)
   anasayfaBloklar?: AnasayfaBlok[]; // ana sayfa panelleri (boş/eksikse AnaSayfa sabit düzene düşer)
   sayfaMetinleri?: SayfaMetinleri;  // yerleşik sayfa başlık/açıklamaları (eski API'de yoksa varsayılan)
+  // İçindekiler görünüm ayarları — KADEME ADLARI taşır ("lg", "kalin"), piksel değil.
+  // Eski API'de yoksa site varsayılan görünümde kalır.
+  icindekilerGorunum?: Record<string, string>;
   yarismasiBilgi: YarismaBilgi;
   hakkimizdaIcerik: HakkimizdaIcerik;
 }
@@ -280,6 +283,16 @@ export const api = {
     getCms: () => get<{ sayfaMetinleri: SayfaMetinleri }>('/cms/sayfa-metinleri').then((r) => r.sayfaMetinleri),
     update: (sayfaMetinleri: SayfaMetinleri) =>
       put<{ sayfaMetinleri: SayfaMetinleri }>('/sayfa-metinleri', { sayfaMetinleri }).then((r) => r.sayfaMetinleri),
+  },
+
+  // İçindekiler görünüm ayarları (punto/renk/kalınlık/düzen) — yalnızca yönetici
+  icindekilerGorunum: {
+    getCms: () =>
+      get<{ icindekilerGorunum: Record<string, string> }>('/cms/icindekiler-gorunum')
+        .then((r) => r.icindekilerGorunum),
+    update: (icindekilerGorunum: Record<string, string>) =>
+      put<{ icindekilerGorunum: Record<string, string> }>('/icindekiler-gorunum', { icindekilerGorunum })
+        .then((r) => r.icindekilerGorunum),
   },
 
   // Yarışma / Hakkımızda

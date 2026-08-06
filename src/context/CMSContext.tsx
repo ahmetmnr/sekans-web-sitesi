@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { Sayi, AraYazi, Yazar, Kategori, ArsivSayi, Yazi, SayiDurum, EditorOzet, MenuOgesi, AnasayfaBlok, SayfaMetinleri } from '@/types';
 import { api, type YarismaBilgi, type HakkimizdaIcerik } from '@/lib/api';
+import { gorunumuDogrula, gorunumuUygula, type IcindekilerGorunum } from '@/lib/icindekilerGorunum';
 import { useAuth } from '@/context/AuthContext';
 
 // Sayı listesini sırala: yayındaki en üstte, sonra yayın tarihine göre yeni->eski.
@@ -94,6 +95,8 @@ interface CMSContextType {
 
   // Yerleşik sayfa metinleri
   updateSayfaMetinleri: (metinler: SayfaMetinleri) => Promise<void>;
+  icindekilerGorunum: IcindekilerGorunum;
+  updateIcindekilerGorunum: (g: IcindekilerGorunum) => Promise<void>;
 
   // Yarışma işlemleri
   updateYarismasiBilgi: (bilgi: Partial<YarismaBilgi>) => Promise<void>;
@@ -123,6 +126,7 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
   const [menu, setMenu] = useState<MenuOgesi[]>([]);
   const [anasayfaBloklar, setAnasayfaBloklar] = useState<AnasayfaBlok[]>([]);
   const [sayfaMetinleri, setSayfaMetinleri] = useState<SayfaMetinleri>(VARSAYILAN_SAYFA_METINLERI);
+  const [icindekilerGorunum, setIcindekilerGorunum] = useState<IcindekilerGorunum>(() => gorunumuDogrula(null));
   const [yarismasiBilgi, setYarismasiBilgi] = useState<YarismaBilgi>(EMPTY_YARISMA);
   const [hakkimizdaIcerik, setHakkimizdaIcerik] = useState<HakkimizdaIcerik>(EMPTY_HAKKIMIZDA);
 
@@ -150,6 +154,12 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
         yazarlar: d.sayfaMetinleri?.yazarlar ?? VARSAYILAN_SAYFA_METINLERI.yazarlar,
         blog: d.sayfaMetinleri?.blog ?? VARSAYILAN_SAYFA_METINLERI.blog,
       });
+      // İçindekiler görünümü: kademe adları doğrulanır (tanınmayan varsayılana
+      // düşer) ve CSS değişkeni olarak :root'a yazılır. Ayar hiç yoksa site
+      // index.css'teki fallback'lerle bugünkü görünümde kalır.
+      const gorunum = gorunumuDogrula(d.icindekilerGorunum);
+      setIcindekilerGorunum(gorunum);
+      gorunumuUygula(gorunum);
       setYarismasiBilgi(d.yarismasiBilgi ?? EMPTY_YARISMA);
       setHakkimizdaIcerik(d.hakkimizdaIcerik ?? EMPTY_HAKKIMIZDA);
     } catch (e) {
@@ -333,6 +343,15 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     setSayfaMetinleri(saved);
   }, []);
 
+  // --- İçindekiler görünümü (punto/renk/kalınlık/düzen) ---
+  // Kaydedilen ayar hemen :root'a uygulanır: yönetici siteye döndüğünde
+  // sonucu sayfayı yenilemeden görür.
+  const updateIcindekilerGorunum = useCallback(async (g: IcindekilerGorunum) => {
+    const saved = gorunumuDogrula(await api.icindekilerGorunum.update(g as unknown as Record<string, string>));
+    setIcindekilerGorunum(saved);
+    gorunumuUygula(saved);
+  }, []);
+
   // --- Yarışma ---
   const updateYarismasiBilgi = useCallback(async (updates: Partial<YarismaBilgi>) => {
     const next: YarismaBilgi = { ...yarismasiBilgi, ...updates };
@@ -388,6 +407,8 @@ export function CMSProvider({ children }: { children: React.ReactNode }) {
     addYazar, updateYazar, deleteYazar,
     addKategori, updateKategori, deleteKategori, reorderKategori,
     updateSayfaMetinleri,
+    icindekilerGorunum,
+    updateIcindekilerGorunum,
     updateYarismasiBilgi, addYarismaKazanan,
     updateHakkimizdaIcerik,
     resetToDefaults, exportData, importData,

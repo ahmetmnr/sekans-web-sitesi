@@ -15,6 +15,7 @@ import { CMSYazarYonetimi } from './CMSYazarYonetimi';
 import { CMSKategoriYonetimi } from './CMSKategoriYonetimi';
 import { CMSMenuYonetimi } from './CMSMenuYonetimi';
 import { CMSAnasayfaYonetimi } from './CMSAnasayfaYonetimi';
+import { CMSDergiGorunumu } from './CMSDergiGorunumu';
 import { CMSSayfaYonetimi } from './CMSSayfaYonetimi';
 import { CMSSayfaMetinleri } from './CMSSayfaMetinleri';
 import { CMSFiltreYonetimi } from './CMSFiltreYonetimi';
@@ -140,6 +141,8 @@ export function CMS({ onExitCMS }: CMSProps) {
         return <CMSDashboard onNavigate={setCurrentPage} />;
       case 'anasayfa':
         return <CMSAnasayfaYonetimi />;
+      case 'dergi-gorunumu':
+        return <CMSDergiGorunumu />;
       case 'sayilar':
         return (
           <CMSSayiYonetimi

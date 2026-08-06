@@ -80,7 +80,7 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
                   <IcindekilerSatiri
                     yazi={yazi}
                     onClick={() => onYaziClick(yazi)}
-                    baslikSinifi="text-lg md:text-xl"
+                    baslikSinifi="ic-baslik"
                   />
                 </li>
               ))}

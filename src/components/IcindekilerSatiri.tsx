@@ -39,9 +39,12 @@ import { uygulamaIciTiklama } from '@/lib/rotalar';
      Eski float düzeni kaldırıldı.
    --------------------------------------------------------------------------- */
 
-/** Girinti kademeleri — "adım adım içeri" (eski sitedeki anlayış). */
-const BASLIK_GIRINTI = 'pl-3 md:pl-4';
-const YAZAR_GIRINTI = 'pl-6 md:pl-8';
+/* Girinti, punto, renk, kalınlık ve görsel genişliği artık YÖNETİM PANELİNDEN
+   ayarlanır (CMS → Dergi Görünümü). Değerler CSS değişkeni olarak :root'a
+   yazılır; buradaki .ic-* sınıfları onları okur (bkz. lib/icindekilerGorunum).
+   Ayar yoksa index.css'teki fallback'ler bugünkü görünümü verir. */
+const BASLIK_GIRINTI = 'ic-girinti-1';
+const YAZAR_GIRINTI = 'ic-girinti-2';
 
 /* --- METİN SÜTUNUNUN SAĞ SINIRI ([6] netleştirmesi) -------------------------
 
@@ -65,18 +68,16 @@ const YAZAR_GIRINTI = 'pl-6 md:pl-8';
    (bkz. [5] — "kategori adı dizin görseline takılmamalı").
    --------------------------------------------------------------------------- */
 
-/** Dizin görseli kolonunun SABİT genişliği. 150→200 büyütmesi ([4]). */
-const GORSEL_KOLONU = 'grid-cols-[minmax(0,1fr)_8rem] md:grid-cols-[minmax(0,1fr)_12rem]';
-
-/** Metin ile görsel arasındaki sabit güvenlik boşluğu. */
-const GUVENLIK_BOSLUGU = 'gap-x-5 md:gap-x-8';
+/** Izgara + güvenlik boşluğu; kolon genişliği ayardan gelir (bkz. .ic-satir). */
+const IZGARA = 'ic-satir';
 
 interface IcindekilerSatiriProps {
   yazi: Yazi;
   onClick: () => void;
   /** Spot gösterilsin mi (sayı sayfasında evet, ana sayfada hayır). */
   spotGoster?: boolean;
-  /** Başlık punto sınıfı — sayı sayfasında bir kademe büyük. */
+  /** Başlık punto sınıfı. Sayı sayfası bir kademe büyüğünü ('ic-baslik-buyuk')
+      geçer; ikisi de aynı ayardan türer. */
   baslikSinifi?: string;
 }
 
@@ -84,7 +85,7 @@ export function IcindekilerSatiri({
   yazi,
   onClick,
   spotGoster = false,
-  baslikSinifi = 'text-lg md:text-xl',
+  baslikSinifi = 'ic-baslik',
 }: IcindekilerSatiriProps) {
   // Dizin görseli yoksa kapak görselinin küçültülmüş hali kullanılır; ikisi de
   // yoksa görsel kolonu hiç açılmaz (sayı kapağı satırlarda tekrar etmesin).
@@ -107,11 +108,11 @@ export function IcindekilerSatiri({
           onClick();
         }
       }}
-      className={`yazi-kart group cursor-pointer grid ${GORSEL_KOLONU} ${GUVENLIK_BOSLUGU}`}
+      className={`yazi-kart group cursor-pointer ${IZGARA}`}
     >
       {/* Satır 1 — kategori. İki kolonu da kaplar: sağı serbest, görsele takılmaz. */}
       {kategoriGorunur && (
-        <span className="kategori-etiket col-span-2 block mb-1">
+        <span className="ic-kategori col-span-2 block mb-1">
           {trBuyuk(kategoriAdi)}
         </span>
       )}
@@ -134,7 +135,7 @@ export function IcindekilerSatiri({
             <ZenginMetin html={yazi.baslik} />
           </a>
         </h3>
-        <p className={`mt-1 icindekiler-yazar ${YAZAR_GIRINTI}`}>
+        <p className={`mt-1 ic-yazar ${YAZAR_GIRINTI}`}>
           {yazarAdlari(yazi)}
         </p>
 
@@ -143,7 +144,7 @@ export function IcindekilerSatiri({
           <ZenginMetin
             as="p"
             html={yazi.spot}
-            className={`mt-2 text-sm leading-relaxed text-muted-foreground text-justify ${BASLIK_GIRINTI}`}
+            className={`mt-2 ic-spot leading-relaxed text-justify ${BASLIK_GIRINTI}`}
           />
         )}
 

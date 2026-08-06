@@ -1172,6 +1172,43 @@ function handle_update_indeks_kategoriler(array $b): void
 /* ====================== YERLEŞİK SAYFA METİNLERİ ========================= */
 
 /** GET /api/cms/sayfa-metinleri — Yazarlar/Blog başlık + açıklama metinleri. editör+ */
+/** GET /api/cms/icindekiler-gorunum — kayıtlı görünüm ayarları. yönetici */
+function handle_cms_get_icindekiler_gorunum(): void
+{
+    respond(['icindekilerGorunum' => icindekiler_gorunum_payload()]);
+}
+
+/**
+ * PUT /api/icindekiler-gorunum — body {icindekilerGorunum:{kategoriPunto:"lg",…}}
+ *
+ * Yalnızca KADEME ADLARI saklanır; piksel/renk değeri sunucuya hiç gelmez.
+ * Değerler dizge olmak zorundadır ve makul uzunlukla sınırlanır — geçersiz
+ * kademe istemcide varsayılana düşer, siteyi bozmaz. yönetici
+ */
+function handle_update_icindekiler_gorunum(array $b): void
+{
+    $in = (isset($b['icindekilerGorunum']) && is_array($b['icindekilerGorunum']))
+        ? $b['icindekilerGorunum'] : $b;
+    if (!is_array($in)) fail('VALIDATION', 'icindekilerGorunum gerekli.', 400);
+
+    $norm = [];
+    foreach ($in as $anahtar => $deger) {
+        if (!is_string($anahtar) || !is_string($deger)) continue;
+        if ($anahtar === '' || strlen($anahtar) > 40 || strlen($deger) > 20) continue;
+        // Kademe adları yalnızca harf: "lg", "kalin", "cokBuyuk" gibi.
+        if (!preg_match('/^[A-Za-z]+$/', $anahtar) || !preg_match('/^[A-Za-z]+$/', $deger)) continue;
+        $norm[$anahtar] = $deger;
+    }
+    if (!$norm) fail('VALIDATION', 'Kaydedilecek görünüm ayarı yok.', 400);
+
+    db()->prepare(
+        "INSERT INTO ayarlar (anahtar, deger) VALUES ('icindekiler_gorunum', ?)
+         ON DUPLICATE KEY UPDATE deger = VALUES(deger)"
+    )->execute([json_encode($norm, JSON_UNESCAPED_UNICODE)]);
+
+    respond(['icindekilerGorunum' => icindekiler_gorunum_payload()]);
+}
+
 function handle_cms_get_sayfa_metinleri(): void
 {
     respond(['sayfaMetinleri' => sayfa_metinleri_payload()]);

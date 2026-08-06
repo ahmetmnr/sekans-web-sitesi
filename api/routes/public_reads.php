@@ -438,6 +438,36 @@ function indeks_kategori_ayar(): array
 }
 
 /**
+ * İÇİNDEKİLER GÖRÜNÜM AYARLARI (punto / renk / kalınlık / düzen).
+ *
+ * ayarlar.icindekiler_gorunum JSON'unda tutulur. Sunucu KADEME ADI saklar
+ * (ör. "lg", "kalin"), CSS değerini değil — böylece ölçek tek yerden
+ * (src/lib/icindekilerGorunum.ts) değiştirilebilir ve veritabanına piksel
+ * değeri sızmaz.
+ *
+ * Doğrulama istemcide yapılır: tanınmayan kademe varsayılana düşer. Burada
+ * yalnızca dizge olan alanlar geçirilir; kayıt yoksa boş nesne döner ve site
+ * varsayılan görünümde kalır.
+ */
+function icindekiler_gorunum_payload(): array
+{
+    try {
+        $st = db()->prepare("SELECT deger FROM ayarlar WHERE anahtar = 'icindekiler_gorunum' LIMIT 1");
+        $st->execute();
+        $v = $st->fetchColumn();
+        if ($v !== false && $v !== null && $v !== '') {
+            $d = json_decode((string)$v, true);
+            if (is_array($d)) {
+                return array_filter($d, static fn($x) => is_string($x));
+            }
+        }
+    } catch (PDOException $e) {
+        // ayarlar tablosu yok — varsayılan görünüm.
+    }
+    return [];
+}
+
+/**
  * Yerleşik sayfa metinleri (Yazarlar / Blog başlık + açıklama).
  * ayarlar.sayfa_metinleri JSON'unda tutulur; eksik alanlar varsayılana düşer.
  */
@@ -722,6 +752,7 @@ function handle_bootstrap(): void
         'menu'             => menu_tree(true),           // dinamik üst menü (tablo yoksa [] -> Header sabit menüye düşer)
         'anasayfaBloklar'  => anasayfa_bloklar_list(true), // ana sayfa panelleri (tablo yoksa [] -> sabit düzen)
         'sayfaMetinleri'   => sayfa_metinleri_payload(),  // yerleşik sayfa başlık/açıklamaları (Yazarlar, Blog)
+        'icindekilerGorunum' => icindekiler_gorunum_payload(),  // içindekiler punto/renk/kalınlık ayarları
         'yarismasiBilgi'   => $yarismasiBilgi,
         'hakkimizdaIcerik' => $hakkimizdaIcerik,
     ]);
