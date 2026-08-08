@@ -212,12 +212,79 @@ PHP sürümü ve eklentiler, HTTPS/AutoSSL, `config.php`, veritabanı + kullanı
    `mysql -u KULLANICI -p VERITABANI < sekans-db.sql`, yoksa hosting
    desteğinden içe aktarma isteyin.
 
+### T3b. CANLI Joomla sitesinin üzerine kuruyorsanız (sekans.org)
+
+Hedef cPanel şu anda sekans.org'u çalıştırıyorsa `public_html` dolu demektir.
+İki şeyi **ayırmak** gerekir:
+
+| Kalacak | Gidecek |
+|---|---|
+| `docs/` — 1245 sayı PDF'i (~467 MB) | `index.php`, `configuration.php` |
+| `images/` — görseller (~49 MB) | `administrator/`, `components/`, `modules/`, `plugins/`, `templates/`, `libraries/`, `cache/`, `language/`, `media/`, `tmp/` |
+| `cgi-bin/` (cPanel'e ait) | Joomla'nın `.htaccess` dosyası |
+
+Veritabanı `/docs/...` ve `/images/...` yollarına **mutlak** referans verir; bu iki
+klasör yerinde kaldığı için yeniden yüklemenize gerek yoktur (~511 MB tasarruf).
+
+**Sıra önemlidir — önce yedek:**
+
+1. **Tam yedek alın.** cPanel > *Yedekleme Sihirbazı* > *Yedekle* > *Tam Yedek*.
+   Ayrıca File Manager'da `public_html`'i seçip *Compress* → indirin.
+   Joomla veritabanının da dökümünü alın (phpMyAdmin > Export).
+
+2. **Joomla dosyalarını SİLMEYİN, TAŞIYIN.** File Manager'da `public_html` içinde
+   `_joomla_eski/` klasörü açın; `docs/`, `images/` ve `cgi-bin/` DIŞINDAKİ her şeyi
+   (gizli `.htaccess` dahil — *Settings > Show Hidden Files* açık olsun) oraya taşıyın.
+
+   > Taşımak silmekten iyidir: bir aksilikte geri almak dosyaları yerine
+   > sürüklemekten ibarettir. Yer sıkıntısı varsa taşıma yerine yedeği indirip
+   > silebilirsiniz — ama önce yedeğin indiğini doğrulayın.
+
+3. **PHP sürümünü 8.1+ yapın** (Joomla eski sürümde çalışıyor olabilir).
+   Bu ayar hesabın tamamını etkiler; geri alırsanız Joomla için eski sürüme
+   dönmeniz gerekebilir.
+
+4. Bundan sonra **T4**'ten devam edin.
+
+**Kesinti süresi:** Joomla dosyaları taşındığı andan yeni site çalışana kadar
+site kapalıdır — yaklaşık yarım saat. Ziyaretçi yoğunluğunun düşük olduğu bir
+saatte yapın.
+
+**Geri alma:** `_joomla_eski/` içindekileri `public_html`'e geri taşıyın, yeni
+dosyaları (`index.html`, `assets/`, `api/`) silin. Joomla veritabanına hiç
+dokunulmadığı için site olduğu gibi geri gelir.
+
+> Sekans için **yeni ve ayrı** bir veritabanı oluşturun (bölüm 5). Joomla'nın
+> veritabanına dokunmayın — geri alma güvenceniz odur.
+
 ### T4. Kodu yükleyin
 
-Ana kılavuzun **2** ve **3** adımları:
-- `dist/` **içeriği** → `public_html/`
-- `api/` ağacı → `public_html/api/`
-- Önceki `public_html/assets/` içeriğini **silin** (eski hash'li dosyalar kalmasın)
+Yerelde arşivleri hazırlayın:
+
+```bash
+npx vite build
+python tools/cpanel-paketi.py          # docs/ + images/ hedefte varsa bu yeter
+# python tools/cpanel-paketi.py --medya   # yoksa medyayı da üretir (~511 MB)
+```
+
+`belgeler/cpanel-paket/` altında oluşan dosyaları File Manager ile
+`public_html/` içine yükleyip **Extract** edin:
+
+| Dosya | Boyut | Açılınca |
+|---|---|---|
+| `cpanel-site.zip` | ~0,4 MB | `index.html`, `assets/`, favicon'lar, `.htaccess` |
+| `cpanel-api.zip` | ~0,1 MB | `api/` |
+
+> 1200'den fazla dosyayı tek tek yüklemeyin: saatler sürer ve yarıda kesilirse
+> hangi dosyanın eksik kaldığı anlaşılmaz.
+
+- Önceki bir Sekans dağıtımı varsa `public_html/assets/` içeriğini **silin**
+  (eski hash'li JS/CSS kalmasın).
+- `cpanel-site.zip` içindeki `.htaccess` kök `.htaccess` olmalı — Joomla'nınkinin
+  üzerine yazmalı. *Show Hidden Files* açıkken doğrulayın.
+- `docs/` ve `images/` hedefte yoksa `cpanel-docs.zip` (~467 MB) ve
+  `cpanel-images.zip` (~49 MB) da gerekir. 467 MB'lık dosya File Manager'ı
+  zorlar; **FTP** kullanın.
 
 ### T5. Yüklenen dosyaları açın
 
