@@ -156,6 +156,7 @@ CREATE TABLE ara_yazilar (
   kapak_gorseli VARCHAR(512)    NULL,
   kapak_ustte   TINYINT(1)      NOT NULL DEFAULT 1,     -- kapak görseli yazı sayfasının üst bandında görünsün mü
   yayin_tarihi  DATE            NULL,
+  tarih_etiketi VARCHAR(80)     NULL,                   -- serbest metin tarih (ör. "Şubat - Mart 2005"); doluysa kartta bu görünür
   created_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -339,6 +340,8 @@ CREATE TABLE filtre_sayfalar (
   baslik             VARCHAR(255)    NOT NULL,
   aciklama           VARCHAR(500)    NULL,
   kategori           VARCHAR(160)    NULL,
+  geri_baslik        VARCHAR(160)    NULL,               -- "Geri Dön" butonu metni (boşsa "Ana Sayfa")
+  geri_hedef         VARCHAR(160)    NULL,               -- geri butonunun gideceği yerleşik sayfa (ör. 'arsiv')
   siralama           ENUM('yeni','eski','alfabetik') NOT NULL DEFAULT 'yeni',
   sayfa_basina       INT             NOT NULL DEFAULT 12,
   kapak_goster       TINYINT(1)      NOT NULL DEFAULT 1,

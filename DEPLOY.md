@@ -7,6 +7,13 @@ Kimlik doğrulama gerçek (bcrypt + PHP oturum çerezi + CSRF), OpenAI anahtarı
 > Bu kılavuz **kök alan adı** dağıtımı içindir (site `public_html/` kökünde).
 > Yükleme yalnızca File Manager / FTP iledir; sunucuda shell/composer gerekmez.
 
+> **Hangi bölümü izleyeceksiniz?**
+> - **Test sunucusundaki çalışmayı taşıyorsanız** → doğrudan
+>   [TEST SUNUCUSUNDAN cPANEL'E TAŞIMA](#test-sunucusundan-cpanele-taşıma) bölümüne gidin.
+>   (Bölüm 6 ve 6b'deki `schema.sql` + `seed.sql` içe aktarımını YAPMAYIN;
+>   döküm hem veriyi hem şemayı zaten getirir.)
+> - **Sıfırdan kuruyorsanız** → aşağıdaki 0–9 adımlarını sırayla izleyin.
+
 ---
 
 ## Mimari (sunucudaki yerleşim)
@@ -152,6 +159,127 @@ En çok referans alan klasörler: `docs/e-sayilar/` (472 PDF referansı), `image
 | Dosyalar | 644 |
 | `public_html/uploads/` | 755 (yazılabilir) |
 | `sekans_config/config.php` | 600 |
+
+---
+
+## TEST SUNUCUSUNDAN cPANEL'E TAŞIMA
+
+Test sunucusunda gerçek çalışma var: hazırlanan sayı, editör hesapları, Dergi
+Görünümü ayarları, panelden yüklenen görseller. Bunları `seed.sql` ile
+kuramazsınız — **veritabanının dökümünü** taşımak gerekir. Döküm ayrıca
+uygulanmış tüm migration'ları beraberinde getirir; cPanel'de tek tek migration
+çalıştırmanız gerekmez.
+
+### T1. Test sunucusunda paketi hazırlayın
+
+```bash
+cd /root/sekans-web-sitesi
+git pull
+bash deploy_test/tasima-paketi.sh
+```
+
+`/root/sekans-tasima/` altında üç dosya oluşur:
+
+| Dosya | İçerik |
+|---|---|
+| `sekans-db.sql.gz` | veritabanının tam dökümü (utf8mb4) |
+| `sekans-uploads.zip` | panelden yüklenen görsel/PDF dosyaları |
+| `OZET.txt` | içerik sayıları + kullanıcı listesi — **kontrol için saklayın** |
+
+Yerel bilgisayarınıza indirin:
+
+```bash
+scp root@<test-sunucusu>:/root/sekans-tasima/* ./
+```
+
+### T2. cPanel ön hazırlığı
+
+Ana kılavuzdaki **0**, **4**, **5** adımlarını uygulayın:
+PHP sürümü ve eklentiler, HTTPS/AutoSSL, `config.php`, veritabanı + kullanıcı.
+**Bölüm 6 ve 6b'yi ATLAYIN** — şema ve veri dökümden gelecek.
+
+> **HTTPS önce gelir.** Oturum çerezi `Secure` bayrağı taşır; AutoSSL etkin
+> değilken giriş sessizce başarısız olur.
+
+### T3. Veritabanını içe aktarın
+
+1. phpMyAdmin → **doğru veritabanını seçin** (`cpuser_sekans`).
+2. Veritabanı boş olmalı. Önceki bir deneme varsa tüm tabloları silin
+   (*Check all → Drop*), yoksa döküm çakışır.
+3. *Import* → `sekans-db.sql.gz` (phpMyAdmin gz dosyasını doğrudan kabul eder).
+   Karakter kümesi **utf8mb4** seçili olsun.
+4. Yükleme sınırına takılırsa: cPanel > *Terminal* varsa
+   `mysql -u KULLANICI -p VERITABANI < sekans-db.sql`, yoksa hosting
+   desteğinden içe aktarma isteyin.
+
+### T4. Kodu yükleyin
+
+Ana kılavuzun **2** ve **3** adımları:
+- `dist/` **içeriği** → `public_html/`
+- `api/` ağacı → `public_html/api/`
+- Önceki `public_html/assets/` içeriğini **silin** (eski hash'li dosyalar kalmasın)
+
+### T5. Yüklenen dosyaları açın
+
+`sekans-uploads.zip` → `public_html/` içine çıkarın; `public_html/uploads/`
+oluşmalı. İzin **755**, içindeki dosyalar **644**.
+
+> Bu adım atlanırsa panelden yüklenmiş kapak ve dizin görselleri kırık çıkar.
+> Eski Joomla sitesinden gelen `docs/` ve `images/` klasörleri ayrı bir iştir
+> (bkz. bölüm 6b) — henüz taşınmadıysa onları da alın.
+
+### T6. Test hesaplarını temizleyin — ATLAMAYIN
+
+Döküm test parolalarını da taşır (`admin / Sekans.Test.2026` ve oluşturduğunuz
+test editörü). Bunlar canlı sitede **açık kapı** demektir.
+
+1. `https://<alan-adı>/cms` → admin ile girin.
+2. **Kullanıcılar** → test editörünü **silin**.
+3. Admin parolasını güçlü bir parolayla **değiştirin**.
+4. `api/seed_admin.php` sunucuda varsa **silin** (dökümde kullanıcı olduğu için
+   zaten çalışmaz, ama durmasın).
+
+`OZET.txt` içindeki kullanıcı listesini karşılaştırarak fazladan hesap
+kalmadığını doğrulayın.
+
+### T7. Doğrulama
+
+`OZET.txt`'teki sayılarla karşılaştırın — **aynı olmalı**:
+
+| Kontrol | Nerede |
+|---|---|
+| Sayı / yazı / yazar / kategori sayıları | CMS > Kontrol Paneli |
+| Yayındaki sayı doğru mu | Ana sayfa |
+| Dergi Görünümü ayarları geldi mi | CMS > Dergi Görünümü (durum çubuğu "yayında olanla aynı" demeli) |
+| Kapak ve dizin görselleri | Ana sayfa içindekiler |
+| Derin bağlantı | `https://<alan-adı>/sayi/e29` adresini **doğrudan yazın** → 404 değil |
+| Sağ tık | Menüde bir öğeye sağ tık → "Yeni sekmede aç" |
+| API | `https://<alan-adı>/api/kategoriler` → JSON döner |
+| Gizli dosyalar | `/api/config.sample.php` ve `/api/lib/db.php` → **403** |
+| Yükleme | CMS'ten bir görsel yükleyin → `/uploads/...` altında açılır |
+| Editör kapsamı | Editör hesabıyla girin → yalnızca kendisine atanmış sayı görünür |
+
+### T8. Test sunucusunu ne yapmalı
+
+Canlı doğrulandıktan sonra test sunucusunu **hemen kapatmayın** — birkaç gün
+karşılaştırma için elde kalsın. Kapatırken:
+- `docker compose -f /opt/sekans/docker-compose.yml down -v` (veriyi de siler)
+- ya da sunucuyu tümden silin.
+
+> Test sunucusu açık kaldığı sürece arama motorlarına düşebilir. Kapatmayacaksanız
+> `robots.txt` ile engelleyin veya HTTP parola koruması ekleyin.
+
+### Taşımada sık çıkan sorunlar
+
+| Belirti | Sebep / çözüm |
+|---|---|
+| Türkçe karakterler bozuk | Döküm ya da içe aktarma utf8mb4 değil. DB'yi boşaltıp `--default-character-set=utf8mb4` ile alınmış dökümü tekrar aktarın. |
+| Giriş yapılamıyor | HTTPS yok ya da `Secure` çerez engelleniyor. Önce AutoSSL. |
+| `/api/...` HTML dönüyor | Kök `.htaccess` yüklenmemiş ya da `RewriteRule ^api(/.*)?$ - [L]` satırı yok. |
+| Derin adres 404 | Kök `.htaccess` yok; SPA geri dönüşü çalışmıyor. |
+| Görseller kırık | `uploads/` çıkarılmamış ya da izinler yanlış. |
+| Site eski görünüyor | `public_html/assets/` içindeki eski dosyalar silinmemiş. `.htaccess` index.html'i `no-store` yapar; yine de bir kez `Ctrl+Shift+R`. |
+| 500 hatası | `config.php` bulunamıyor ya da DB bilgileri yanlış. cPanel > *Errors* günlüğüne bakın. |
 
 ---
 
