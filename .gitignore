@@ -20,3 +20,6 @@ deploy_test/config.php
 
 # Günlükler
 *.log
+
+# cPanel yukleme arsivleri (uretilir, depoda tutulmaz)
+belgeler/cpanel-paket/
