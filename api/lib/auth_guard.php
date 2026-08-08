@@ -116,9 +116,14 @@ function current_uid(): int
 /**
  * EDİTÖR bu sayıya dokunabilir mi?
  *
- * Yönetici her sayıya dokunur. Editör yalnızca SORUMLUSU OLDUĞU sayılara
- * dokunabilir; sorumlusu atanmamış sayılar tüm editörlere açıktır (bir sayı
- * atama yapılmadan da hazırlanabilsin diye).
+ * Yönetici her sayıya dokunur. Editör YALNIZCA KENDİSİNE AÇIKÇA ATANMIŞ
+ * sayılara dokunabilir.
+ *
+ * Önceden sorumlusu atanmamış sayılar tüm editörlere açıktı ("atama yapılmadan
+ * da hazırlanabilsin" gerekçesiyle). Bu yanlıştı: yayındaki sayının sorumlusu
+ * genelde atanmamış olduğu için, gelecek bir sayıya atanan editör CANLI sayının
+ * bütün yazılarını düzenleyebiliyordu. Atanmamış sayı artık hiçbir editöre
+ * açık değildir; yetki tek yoldan verilir — yönetici o sayıya editörü atar.
  */
 function require_sayi_erisimi(int $sayiId): void
 {
@@ -127,8 +132,7 @@ function require_sayi_erisimi(int $sayiId): void
     $st->execute([$sayiId]);
     $editorId = $st->fetchColumn();
     if ($editorId === false) fail('NOT_FOUND', 'Sayı bulunamadı.', 404);
-    if ($editorId === null || $editorId === '') return;   // atanmamış: herkese açık
-    if ((int)$editorId !== current_uid()) {
+    if ($editorId === null || $editorId === '' || (int)$editorId !== current_uid()) {
         fail('FORBIDDEN', 'Bu sayının sorumlu editörü değilsiniz.', 403);
     }
 }

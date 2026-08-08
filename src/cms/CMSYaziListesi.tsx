@@ -1,6 +1,7 @@
 // CMS Yazı Listesi — seçili sayının yazılarını listeler (çoklu sayı destekli).
 import { useEffect } from 'react';
 import { useCMS } from '@/context/CMSContext';
+import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,12 +56,24 @@ interface CMSYaziListesiProps {
 
 export function CMSYaziListesi({ onEditYazi, initialSayiId, durum, onDurumChange }: CMSYaziListesiProps) {
   const { sayilar, sonSayi, deleteYazi } = useCMS();
+  const { user } = useAuth();
+  const yoneticiMi = user?.role === 'admin';
 
   const { sayfa: currentPage, sayfaBasina: itemsPerPage, arama: searchTerm } = durum;
   const yamala = (patch: Partial<YaziListeDurumu>) => onDurumChange({ ...durum, ...patch });
 
-  // Düzenlenebilir sayılar; boşsa yayındaki sayıya düş.
-  const secilebilir = sayilar.length ? sayilar : (sonSayi.id ? [sonSayi] : []);
+  /* Düzenlenebilir sayılar.
+     `sayilar` yetkiye göre SÜZÜLMÜŞ listedir (/cms/sayilar): yönetici hepsini,
+     editör yalnızca kendisine ATANMIŞ olanları görür.
+
+     `sonSayi` ise HERKESE AÇIK bootstrap verisidir, yetki süzgecinden geçmez.
+     Eskiden liste boşken ona düşülüyordu; bu, hiçbir sayıya atanmamış bir
+     editöre yayındaki sayının bütün yazılarını açıyordu. Yedek artık YALNIZCA
+     YÖNETİCİ için geçerli (yönetici zaten hepsini görebilir). Editörün listesi
+     boşsa hiçbir şey gösterilmez, açıklayıcı bir mesaj çıkar. */
+  const secilebilir = sayilar.length
+    ? sayilar
+    : (yoneticiMi && sonSayi.id ? [sonSayi] : []);
 
   // Sayı Yönetimi'nden "Yazıları Yönet" ile gelince o sayıya odaklan.
   useEffect(() => {
@@ -113,7 +126,11 @@ export function CMSYaziListesi({ onEditYazi, initialSayiId, durum, onDurumChange
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Yazı Yönetimi</h1>
-          <p className="text-gray-600 mt-1">Bir sayı seçin ve yazılarını yönetin</p>
+          <p className="text-gray-600 mt-1">
+            {yoneticiMi
+              ? 'Bir sayı seçin ve yazılarını yönetin'
+              : 'Yalnızca size atanmış sayıların yazıları listelenir.'}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           {/* Sayı seçici */}
@@ -125,7 +142,7 @@ export function CMSYaziListesi({ onEditYazi, initialSayiId, durum, onDurumChange
               {secilebilir.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
                   {(s.tamBaslik || `${s.ay} ${s.yil} — ${s.numara}`) +
-                    (s.durum === 'yayinda' ? '  (yayında)' : '  (taslak)')}
+                    (s.durum === 'yayinda' ? '  — YAYINDA (canlı)' : '  — taslak')}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -136,6 +153,24 @@ export function CMSYaziListesi({ onEditYazi, initialSayiId, durum, onDurumChange
           </Button>
         </div>
       </div>
+
+      {/* Editöre hiçbir sayı atanmamışsa: boş liste yerine sebebini söyle. */}
+      {secilebilir.length === 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Size atanmış bir sayı yok. Yazı düzenleyebilmeniz için yöneticinin
+          Sayı Yönetimi’nden bir sayıya <b>sorumlu editör</b> olarak sizi ataması
+          gerekir.
+        </div>
+      )}
+
+      {/* Yayındaki sayı düzenleniyorsa: değişiklikler ANINDA canlıya gider. */}
+      {aktifSayi?.durum === 'yayinda' && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          <b>Bu sayı yayında.</b> Buradaki değişiklikler siteye anında yansır —
+          önce taslağa almanız gerekmez, ama yaptığınız her düzenlemeyi okurlar
+          da görür.
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -180,10 +180,62 @@ else
   echo "    -> 'yazilar.kategori_goster' kolonu zaten var, atlanıyor."
 fi
 
-echo ">>> 19/20 API konteyneri yeniden başlatılıyor..."
+echo ">>> 19/21 API konteyneri yeniden başlatılıyor..."
 $DC restart api
 
-echo ">>> 20/20 Kontrol — sayı durumları + filtre sayfaları + menü:"
+# ---------------------------------------------------------------------------
+# nginx ayarı: index.html'in cache'lenmemesi kuralı.
+#
+# Varlık adları (index-AbC123.js) içeriğe göre hash'lidir; hangi varlığın
+# yükleneceğini SADECE index.html söyler. Bu dosya cache'lenirse tarayıcı yeni
+# sürümden habersiz eski varlıkları istemeye devam eder — site "geç
+# güncellenmiş" görünür ve hangi sürüme bakıldığı anlaşılamaz.
+#
+# Kural repodaki vhost dosyasında tanımlı. Sunucudaki kopya eskiyse güncellenir
+# ve nginx yeniden yüklenir. Ayar zaten güncelse hiçbir şey yapılmaz.
+# ---------------------------------------------------------------------------
+echo ">>> 20/21 nginx ayarı (index.html cache kuralı) kontrol ediliyor..."
+NGINX_HEDEF=/etc/nginx/sites-available/sekans.conf
+if [ -f "$NGINX_HEDEF" ] && command -v nginx >/dev/null 2>&1; then
+  if grep -q "no-store" "$NGINX_HEDEF"; then
+    echo "    -> kural zaten var, atlanıyor."
+  else
+    echo "    -> kural ekleniyor (mevcut ayarın yedeği: ${NGINX_HEDEF}.bak)..."
+    cp "$NGINX_HEDEF" "${NGINX_HEDEF}.bak"
+    # server_name satırındaki alan adı sunucuya özel; yalnızca cache
+    # bloklarını taşıyoruz, dosyanın tamamını EZMİYORUZ.
+    python3 - "$NGINX_HEDEF" "$REPO/deploy_test/sekans-nginx.conf" <<'PY' || echo "    (otomatik güncelleme atlandı; kuralı elle ekleyin)"
+import re, sys
+hedef, kaynak = sys.argv[1], sys.argv[2]
+mevcut = open(hedef, encoding="utf-8").read()
+yeni_bloklar = re.search(
+    r"( *# index\.html ASLA cache.*?\n *location / \{.*?\n *\}\n)",
+    open(kaynak, encoding="utf-8").read(), re.S)
+if not yeni_bloklar:
+    sys.exit(1)
+# Eski "location / { try_files ... }" bloğunu yenisiyle değiştir.
+guncel, adet = re.subn(
+    r" *# SPA geri donusu\n *location / \{[^}]*\}\n",
+    yeni_bloklar.group(1), mevcut)
+if adet == 0:
+    guncel, adet = re.subn(r" *location / \{[^}]*\}\n", yeni_bloklar.group(1), mevcut)
+if adet == 0:
+    sys.exit(1)
+open(hedef, "w", encoding="utf-8").write(guncel)
+print("    -> vhost güncellendi.")
+PY
+    if nginx -t >/dev/null 2>&1; then
+      systemctl reload nginx && echo "    -> nginx yeniden yüklendi."
+    else
+      echo "    !! nginx ayarı geçersiz; yedek geri alınıyor."
+      cp "${NGINX_HEDEF}.bak" "$NGINX_HEDEF"
+    fi
+  fi
+else
+  echo "    -> vhost bulunamadı ya da nginx yok; atlanıyor."
+fi
+
+echo ">>> 21/21 Kontrol — sayı durumları + filtre sayfaları + menü:"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \
   "SELECT durum, COUNT(*) FROM sayilar GROUP BY durum;" 2>/dev/null || echo "    (DB kontrolü atlandı)"
 $DC exec -T db mariadb -uroot -p"${DB_PASS}" sekans -N -e \

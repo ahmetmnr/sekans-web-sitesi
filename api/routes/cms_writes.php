@@ -760,15 +760,16 @@ function cms_sayi_by_code(string $code): array
 /** GET /api/cms/sayilar — düzenlenebilir sayılar (taslak + yayında), yazılarıyla. editör+ */
 function handle_cms_list_sayilar(): void
 {
-    // [15] Yönetici tüm sayıları görür. Editör yalnızca SORUMLUSU OLDUĞU
-    // sayıları ve henüz kimseye atanmamış sayıları görür.
+    // [15] Yönetici tüm sayıları görür. Editör YALNIZCA kendisine ATANMIŞ
+    // sayıları görür — atanmamış sayılar dahil değildir. (Aksi hâlde yayındaki
+    // sayının sorumlusu atanmamış olduğu için her editöre açık kalıyordu.)
     $sql = "SELECT s.*, k.name AS editor_ad
             FROM sayilar s
             LEFT JOIN kullanicilar k ON k.id = s.editor_id
             WHERE s.durum IN ('taslak','yayinda')";
     $args = [];
     if (!is_admin()) {
-        $sql .= " AND (s.editor_id IS NULL OR s.editor_id = ?)";
+        $sql .= " AND s.editor_id = ?";
         $args[] = current_uid();
     }
     $sql .= " ORDER BY FIELD(s.durum,'yayinda','taslak'), s.yayin_tarihi DESC, s.id DESC";

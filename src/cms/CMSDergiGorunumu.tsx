@@ -18,7 +18,7 @@
 //     verirdi: panel masaüstü genişliğinde açıldığı için masaüstü kuralları
 //     devreye girer, dizin görseli 1,5 kat büyük çıkar ve başlıklar gerçekte
 //     olmayacağı kadar çok satıra bölünürdü.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useCMS } from '@/context/CMSContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,7 +63,27 @@ export function CMSDergiGorunumu() {
   const [mesaj, setMesaj] = useState<string | null>(null);
   const [sayfa, setSayfa] = useState<Sayfa>('anasayfa');
 
-  useEffect(() => { setTaslak(icindekilerGorunum); }, [icindekilerGorunum]);
+  /* Sunucudan gelen ayarı taslağa AL — ama yalnızca kullanıcı henüz bir şey
+     değiştirmediyse.
+
+     Neden bu koruma var: CMSContext, panelde başka bir kayıt yapıldığında
+     (veya oturum tazelendiğinde) bootstrap'ı yeniden çeker ve HER SEFERİNDE
+     yeni bir nesne üretir. Koşulsuz bir senkron, tam ayarları değiştirirken
+     araya giren böyle bir tazelemede taslağı sessizce sıfırlıyordu: seçimler
+     geri dönüyor, "Kaydet" düğmesi de (değişiklik kalmadığı için) pasifleşiyordu.
+     Kullanıcı değiştirdiğini kaydettiğini sanıyor, aslında kaydedecek bir şey
+     kalmıyordu. */
+  const dokunuldu = useRef(false);
+  useEffect(() => {
+    if (dokunuldu.current) return;
+    setTaslak(icindekilerGorunum);
+  }, [icindekilerGorunum]);
+
+  // Bir ayarı değiştir; taslak artık kullanıcıya aittir.
+  const ayarla = (alan: keyof IcindekilerGorunum, deger: string) => {
+    dokunuldu.current = true;
+    setTaslak((t) => ({ ...t, [alan]: deger }));
+  };
 
   const degisti = useMemo(
     () => JSON.stringify(taslak) !== JSON.stringify(icindekilerGorunum),
@@ -81,6 +101,8 @@ export function CMSDergiGorunumu() {
     setMesaj(null);
     try {
       await updateIcindekilerGorunum(taslak);
+      // Kayıt bitti: taslak artık sunucudakiyle aynı, koruma kalkabilir.
+      dokunuldu.current = false;
       setMesaj('Kaydedildi. Sitede hemen geçerli.');
     } catch (e) {
       setMesaj(e instanceof Error ? e.message : 'Kaydedilemedi.');
@@ -101,7 +123,11 @@ export function CMSDergiGorunumu() {
           </p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
-          <Button variant="outline" onClick={() => setTaslak(VARSAYILAN_GORUNUM)} disabled={kaydediliyor}>
+          <Button
+            variant="outline"
+            onClick={() => { dokunuldu.current = true; setTaslak(VARSAYILAN_GORUNUM); }}
+            disabled={kaydediliyor}
+          >
             <RotateCcw className="h-4 w-4 mr-2" />
             Varsayılana dön
           </Button>
@@ -120,6 +146,24 @@ export function CMSDergiGorunumu() {
         </div>
       )}
 
+      {/* Durum çubuğu: neyin kayıtlı, neyin taslak olduğu her an belli olsun.
+          Şikâyet buydu — "kaydettim ama sonra bakınca değişmiş oluyordu";
+          kaydedilmemiş bir değişikliğin sessizce durması bunu doğuruyordu. */}
+      <div
+        className={`rounded-lg border px-4 py-2.5 text-sm flex items-center gap-2 ${
+          degisti
+            ? 'bg-amber-50 border-amber-200 text-amber-900'
+            : 'bg-gray-50 border-gray-200 text-gray-600'
+        }`}
+      >
+        <span
+          className={`inline-block w-2 h-2 rounded-full ${degisti ? 'bg-amber-500' : 'bg-green-500'}`}
+        />
+        {degisti
+          ? 'Kaydedilmemiş değişiklik var — önizlemede görüyorsunuz, sitede henüz geçerli değil.'
+          : 'Önizlemedeki görünüm sitede yayında olanla aynı.'}
+      </div>
+
       {/* Ayarlar dar sütunda; kalan genişliğin tamamı önizlemeye ayrılır. */}
       <div className="grid grid-cols-1 xl:grid-cols-[340px_minmax(0,1fr)] gap-6 items-start">
         {/* --- Sol: ayarlar --- */}
@@ -136,7 +180,7 @@ export function CMSDergiGorunumu() {
                     <Label className="text-sm">{alan.etiket}</Label>
                     <Select
                       value={taslak[alan.alan]}
-                      onValueChange={(v) => setTaslak((t) => ({ ...t, [alan.alan]: v }))}
+                      onValueChange={(v) => ayarla(alan.alan, v)}
                     >
                       <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                       <SelectContent>
