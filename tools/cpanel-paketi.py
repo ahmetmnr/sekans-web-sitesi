@@ -29,6 +29,16 @@ CIKTI = os.path.join(KOK, "belgeler", "cpanel-paket")
 # Site kabuğunda OLMAYACAKLAR: ayrı arşivlere giderler.
 MEDYA_KLASORLERI = {"docs", "images", "uploads"}
 
+# images/ KÖKÜNDEKİ dosyalar site kabuğuna DAHİL edilir (~3 MB).
+#
+# Neden: marka logosu gibi UYGULAMAYA ait görseller images/ kökünde durur
+# (kod /images/sekans-logo.png diye referans verir). images/ tamamen hariç
+# tutulunca bu dosyalar hiç yüklenmiyordu — canlıda logo yerine metin
+# yedeği çıktı, üstelik Joomla'dan kalma eski bir sekans-logo.png sessizce
+# servis edildi. İÇERİK görselleri images/ ALT KLASÖRLERİNDE (dergi/,
+# altyazilar/, yazilar/ ...) durur; onlar hariç kalmaya devam eder.
+IMAGES_KOKU_DAHIL = True
+
 
 def mb(bayt: int) -> str:
     return f"{bayt / 1024 / 1024:.1f} MB"
@@ -73,9 +83,19 @@ def main() -> None:
     os.makedirs(CIKTI, exist_ok=True)
     print(f"Çıktı: {CIKTI}\n")
 
-    # --- 1) Site kabuğu: index.html + assets + favicon + .htaccess ---
+    # --- 1) Site kabuğu: index.html + assets + favicon + .htaccess
+    #        + images/ kökündeki marka görselleri ---
     yol = os.path.join(CIKTI, "cpanel-site.zip")
     adet = arsivle(yol, dist, atla=MEDYA_KLASORLERI)
+    if IMAGES_KOKU_DAHIL:
+        kok_img = os.path.join(dist, "images")
+        if os.path.isdir(kok_img):
+            with zipfile.ZipFile(yol, "a", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
+                for d in sorted(os.listdir(kok_img)):
+                    tam = os.path.join(kok_img, d)
+                    if os.path.isfile(tam):
+                        z.write(tam, os.path.join("images", d))
+                        adet += 1
     print(f"  cpanel-site.zip   {mb(os.path.getsize(yol)):>10}  {adet:>5} dosya"
           f"   -> public_html/ içine Extract")
 
