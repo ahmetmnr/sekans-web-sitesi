@@ -55,10 +55,30 @@ echo "    -> sekans-db.sql.gz  ($(du -h "$CIKTI/sekans-db.sql.gz" | cut -f1))"
 # Panelden yüklenen görseller ve PDF'ler burada; veritabanı bunlara /uploads/...
 # yoluyla referans verir. Taşınmazsa kapaklar ve dizin görselleri kırık olur.
 echo ">>> 2/3 Yüklenen dosyalar paketleniyor..."
+YUKLEME_ARSIVI=""
 if [ -d "$APP/webroot/uploads" ]; then
-  ( cd "$APP/webroot" && zip -qr "$CIKTI/sekans-uploads.zip" uploads )
-  echo "    -> sekans-uploads.zip  ($(du -h "$CIKTI/sekans-uploads.zip" | cut -f1), \
-$(find "$APP/webroot/uploads" -type f | wc -l) dosya)"
+  ADET=$(find "$APP/webroot/uploads" -type f | wc -l)
+  # zip tercih edilir (cPanel File Manager'da en tanıdık biçim), ama minimal
+  # sunucularda kurulu olmayabilir. tar her yerde vardır ve cPanel File Manager
+  # .tar.gz dosyalarını da "Extract" ile açar.
+  if command -v zip >/dev/null 2>&1; then
+    ( cd "$APP/webroot" && zip -qr "$CIKTI/sekans-uploads.zip" uploads )
+    YUKLEME_ARSIVI="$CIKTI/sekans-uploads.zip"
+  else
+    echo "    (zip kurulu değil — tar.gz kullanılıyor; cPanel ikisini de açar)"
+    tar -czf "$CIKTI/sekans-uploads.tar.gz" -C "$APP/webroot" uploads
+    YUKLEME_ARSIVI="$CIKTI/sekans-uploads.tar.gz"
+  fi
+
+  # Arşiv gerçekten oluştu mu? Oluşmadıysa SESSİZ GEÇME — görseller taşınmazsa
+  # sitedeki kapaklar ve dizin görselleri kırık çıkar.
+  if [ -s "$YUKLEME_ARSIVI" ]; then
+    echo "    -> $(basename "$YUKLEME_ARSIVI")  ($(du -h "$YUKLEME_ARSIVI" | cut -f1), $ADET dosya)"
+  else
+    echo "    !! HATA: yükleme arşivi oluşturulamadı. Görselleri elle paketleyin:"
+    echo "       tar -czf $CIKTI/sekans-uploads.tar.gz -C $APP/webroot uploads"
+    YUKLEME_ARSIVI=""
+  fi
 else
   echo "    -> uploads klasörü yok, atlanıyor."
 fi
@@ -99,7 +119,11 @@ echo ">>> 3/3 Özet çıkarılıyor..."
 cat "$CIKTI/OZET.txt"
 
 echo
-echo "==================== PAKET HAZIR ===================="
+if [ -n "$YUKLEME_ARSIVI" ] && [ -s "$CIKTI/sekans-db.sql.gz" ]; then
+  echo "==================== PAKET HAZIR ===================="
+else
+  echo "============ PAKET EKSİK — YUKARIYI OKUYUN ========="
+fi
 ls -la "$CIKTI"
 echo
 echo "Bu dosyaları yerel bilgisayarınıza indirin:"

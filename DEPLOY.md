@@ -183,7 +183,7 @@ bash deploy_test/tasima-paketi.sh
 | Dosya | İçerik |
 |---|---|
 | `sekans-db.sql.gz` | veritabanının tam dökümü (utf8mb4) |
-| `sekans-uploads.zip` | panelden yüklenen görsel/PDF dosyaları |
+| `sekans-uploads.zip` *(ya da `.tar.gz`)* | panelden yüklenen görsel/PDF dosyaları — `zip` kurulu değilse tar.gz üretilir, cPanel ikisini de açar |
 | `OZET.txt` | içerik sayıları + kullanıcı listesi — **kontrol için saklayın** |
 
 Yerel bilgisayarınıza indirin:
@@ -221,8 +221,9 @@ Ana kılavuzun **2** ve **3** adımları:
 
 ### T5. Yüklenen dosyaları açın
 
-`sekans-uploads.zip` → `public_html/` içine çıkarın; `public_html/uploads/`
-oluşmalı. İzin **755**, içindeki dosyalar **644**.
+`sekans-uploads.zip` (ya da `sekans-uploads.tar.gz`) → cPanel File Manager ile
+`public_html/` içine yükleyip **Extract** edin; `public_html/uploads/` oluşmalı.
+İzin **755**, içindeki dosyalar **644**.
 
 > Bu adım atlanırsa panelden yüklenmiş kapak ve dizin görselleri kırık çıkar.
 > Eski Joomla sitesinden gelen `docs/` ve `images/` klasörleri ayrı bir iştir
