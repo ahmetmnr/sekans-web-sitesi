@@ -60,6 +60,8 @@ export default function YaziDetay({
         {yazi.kapakGorseli && yazi.kapakUstte !== false && (
           <div className={`${GORSEL_ORAN_SINIFI} bg-muted overflow-hidden mb-8`}>
             <img
+            loading="lazy"
+            decoding="async"
               src={yazi.kapakGorseli}
               alt={duzMetin(yazi.baslik)}
               className="w-full h-full object-cover"
@@ -140,6 +142,8 @@ export default function YaziDetay({
                   <div key={yzr.id} className="text-center">
                     {yzr.fotograf ? (
                       <img
+            loading="lazy"
+            decoding="async"
                         src={yzr.fotograf}
                         alt={yzr.tamAd}
                         className="w-24 h-24 rounded-full object-cover mx-auto border-2 border-border"

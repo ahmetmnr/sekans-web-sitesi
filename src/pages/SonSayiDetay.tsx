@@ -42,6 +42,8 @@ export default function SonSayiDetay({ sayi, onYaziClick, onBackClick }: SonSayi
           <div className="lg:sticky lg:top-24 max-w-[280px] mx-auto lg:mx-0 w-full">
             <div className="aspect-[3/4] bg-muted overflow-hidden shadow-lg">
               <img
+                /* Kapak sayfanın en üstünde: tembel YÜKLENMEZ, keşfi gecikmesin. */
+                decoding="async"
                 src={sayi.kapakGorseli}
                 alt={`${adi} kapak`}
                 className="w-full h-full object-cover"

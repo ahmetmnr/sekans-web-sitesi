@@ -168,6 +168,8 @@ export function IcindekilerSatiri({
       {kucukGorsel ? (
         <div className={`w-full bg-muted overflow-hidden ${GORSEL_ORAN_SINIFI} self-start`}>
           <img
+            loading="lazy"
+            decoding="async"
             src={kucukGorsel}
             alt={duzMetin(yazi.baslik)}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"

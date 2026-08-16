@@ -80,6 +80,8 @@ export default function AraYaziDetay({
         {araYazi.kapakGorseli && araYazi.kapakUstte !== false && (
           <div className={`${GORSEL_ORAN_SINIFI} bg-muted overflow-hidden mb-8`}>
             <img
+            loading="lazy"
+            decoding="async"
               src={araYazi.kapakGorseli}
               alt={duzMetin(araYazi.baslik)}
               className="w-full h-full object-cover"
@@ -128,6 +130,8 @@ export default function AraYaziDetay({
                   <div key={yzr.id} className="text-center">
                     {yzr.fotograf ? (
                       <img
+            loading="lazy"
+            decoding="async"
                         src={yzr.fotograf}
                         alt={yzr.tamAd}
                         className="w-24 h-24 rounded-full object-cover mx-auto border-2 border-border"
@@ -190,6 +194,8 @@ export default function AraYaziDetay({
                 >
                   <div className="aspect-[16/9] overflow-hidden">
                     <img
+            loading="lazy"
+            decoding="async"
                       src={yazi.kapakGorseli || '/images/default-cover.svg'}
                       alt={duzMetin(yazi.baslik)}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

@@ -61,6 +61,8 @@ export default function ArsivSayfasi({ arsivSayilari, onSayiAc }: ArsivSayfasiPr
                       className="arsiv-kapak block aspect-[3/4] bg-muted overflow-hidden shadow-md"
                     >
                       <img
+            loading="lazy"
+            decoding="async"
                         src={sayi.kapakGorseli}
                         alt={`${sayiAdi(sayi)} kapak`}
                         className="w-full h-full object-cover transition-transform duration-500"

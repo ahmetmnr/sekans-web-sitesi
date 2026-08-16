@@ -51,6 +51,8 @@ export default function AraYazilarSection({
               {/* Kapak Görseli */}
               <div className="aspect-[16/10] bg-muted overflow-hidden mb-4">
                 <img
+            loading="lazy"
+            decoding="async"
                   src={araYazi.kapakGorseli || '/images/default-cover.svg'}
                   alt={duzMetin(araYazi.baslik)}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"

@@ -75,6 +75,8 @@ export default function YazarDetay({
             {/* Fotoğraf */}
             {yazar.fotograf ? (
               <img
+            loading="lazy"
+            decoding="async"
                 src={yazar.fotograf}
                 alt={yazar.tamAd}
                 className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-background shadow-lg flex-shrink-0"
@@ -169,6 +171,8 @@ export default function YazarDetay({
                   {/* Kapak */}
                   <div className="aspect-[16/10] bg-muted overflow-hidden mb-3 rounded-md">
                     <img
+            loading="lazy"
+            decoding="async"
                       src={araYazi.kapakGorseli || '/images/default-cover.svg'}
                       alt={duzMetin(araYazi.baslik)}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"

@@ -123,6 +123,8 @@ export default function FiltreListeSayfasi({ slug, araYazilar, onAraYaziClick, o
                   {config.kapakGoster && (
                     <div className="aspect-[16/10] bg-muted overflow-hidden mb-4">
                       <img
+            loading="lazy"
+            decoding="async"
                         src={araYazi.kapakGorseli || '/images/default-cover.svg'}
                         alt={duzMetin(araYazi.baslik)}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -165,7 +167,9 @@ export default function FiltreListeSayfasi({ slug, araYazilar, onAraYaziClick, o
                   {config.yazarTarihGoster && (
                     <div className="flex items-center gap-2 mt-3">
                       {araYazi.yazar?.fotograf ? (
-                        <img src={araYazi.yazar.fotograf} alt={araYazi.yazar.tamAd} className="w-6 h-6 rounded-full object-cover" />
+                        <img
+            loading="lazy"
+            decoding="async" src={araYazi.yazar.fotograf} alt={araYazi.yazar.tamAd} className="w-6 h-6 rounded-full object-cover" />
                       ) : (
                         <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
                           <User className="w-3 h-3 text-muted-foreground" />

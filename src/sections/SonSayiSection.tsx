@@ -35,6 +35,8 @@ export default function SonSayiSection({ sayi, onYaziClick, onSayiClick }: SonSa
             >
               <div className="aspect-[3/4] bg-muted overflow-hidden shadow-lg transition-shadow duration-500 group-hover:shadow-xl">
                 <img
+                  /* Kapak sayfanın en üstünde: tembel YÜKLENMEZ, keşfi gecikmesin. */
+                  decoding="async"
                   src={sayi.kapakGorseli}
                   alt={`${adi} kapak`}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
