@@ -30,4 +30,4 @@ Options -Indexes
 
 # lib/ ve routes/ içindeki PHP yardımcıları yalnızca include edilmeli, doğrudan açılmamalı.
 # (index.php ve seed_admin.php kök dizindedir; bu kural alt klasörleri etkilemez.)
-RedirectMatch 403 ^/api/(lib|routes)/.*\.php$
+RedirectMatch 403 ^/api/(lib|routes|tools)/.*\.php$

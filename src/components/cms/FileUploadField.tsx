@@ -12,7 +12,8 @@ interface FileUploadFieldProps {
   value?: string;
   onChange: (url: string) => void;
   accept: string;
-  kind: 'image' | 'pdf' | 'foto';
+  /** Sunucu bu türe göre küçültme ölçüsünü seçer (bkz. api/lib/gorsel.php). */
+  kind: 'image' | 'dizin' | 'pdf' | 'foto';
   previewType?: 'image' | 'none';
 }
 

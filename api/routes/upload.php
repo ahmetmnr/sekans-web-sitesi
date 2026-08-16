@@ -8,6 +8,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/auth_guard.php';
 require_once __DIR__ . '/../lib/config.php';
+require_once __DIR__ . '/../lib/gorsel.php';
 
 function handle_upload(): void
 {
@@ -30,7 +31,7 @@ function handle_upload(): void
         fail('UPLOAD_FAILED', $msg, $status);
     }
 
-    $kind = (string)($_POST['kind'] ?? 'image'); // image | pdf | foto
+    $kind = (string)($_POST['kind'] ?? 'image'); // image | dizin | pdf | foto
     [$allowedExt, $allowedMime] = upload_allowlist($kind);
 
     // Gerçek MIME tespiti
@@ -56,13 +57,24 @@ function handle_upload(): void
 
     $safe = preg_replace('/[^a-zA-Z0-9._-]+/', '-', pathinfo($f['name'], PATHINFO_FILENAME));
     $safe = trim((string)$safe, '-') ?: 'dosya';
-    $name = $safe . '-' . substr(bin2hex(random_bytes(6)), 0, 8) . '.' . $ext;
+    $taban = $safe . '-' . substr(bin2hex(random_bytes(6)), 0, 8);
+    $name = $taban . '.' . $ext;
     $dest = $dir . '/' . $name;
 
     if (!move_uploaded_file($f['tmp_name'], $dest)) {
         fail('UPLOAD_MOVE', 'Dosya kaydedilemedi.', 500);
     }
     @chmod($dest, 0644);
+
+    // Görselse ekranda gösterileceği ölçüye indir. PNG→JPEG dönüşümünde
+    // uzantı değişebildiği için dönen değere göre adı güncelliyoruz.
+    if ($kind !== 'pdf') {
+        $sonExt = gorsel_kucult($dest, $ext, $kind);
+        if ($sonExt !== $ext) {
+            $name = $taban . '.' . $sonExt;
+            @chmod($dir . '/' . $name, 0644);
+        }
+    }
 
     respond(['url' => $urlBase . '/' . $name]);
 }
@@ -72,7 +84,8 @@ function upload_allowlist(string $kind): array
     if ($kind === 'pdf') {
         return [['pdf'], ['application/pdf']];
     }
-    // image / foto
+    // image / dizin / foto — hepsi görsel, izin listesi ortak; ayrım yalnızca
+    // küçültme ölçüsünde (bkz. gorsel_sinirlari).
     return [
         ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'],
         ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'],

@@ -361,7 +361,7 @@ export const api = {
   },
 
   // Yükleme
-  uploadFile: (file: File, kind: 'image' | 'pdf' | 'foto') => {
+  uploadFile: (file: File, kind: 'image' | 'dizin' | 'pdf' | 'foto') => {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('kind', kind);

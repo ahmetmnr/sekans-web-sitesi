@@ -35,7 +35,8 @@ const olcuMetni = (o: { genislik: number; yukseklik: number }) =>
 export const KAPAK_ACIKLAMA =
   `Oran 2:1 (yatay). Önerilen ölçü ${olcuMetni(KAPAK_OLCU)} — bu ölçüde ` +
   'yüklerseniz görsel sitede bilgisayarınızda gördüğünüz gibi çıkar. Farklı ' +
-  'ölçüde yüklerseniz site yalnızca büyütür/küçültür.';
+  'ölçüde yüklerseniz site yalnızca büyütür/küçültür. Çok büyük dosyalar ' +
+  'yüklenirken otomatik küçültülür; boyutu siz ayarlamak zorunda değilsiniz.';
 
 /** CMS'te dizin görseli alanının altında görünen açıklama. */
 export const DIZIN_ACIKLAMA =

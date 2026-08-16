@@ -484,7 +484,7 @@ export function CMSYaziEditor({ yaziId, preselectSayiId, onBack, onSave }: CMSYa
                 value={formData.dizinGorseli || ''}
                 onChange={(url) => setFormData({ ...formData, dizinGorseli: url })}
                 accept="image/*"
-                kind="image"
+                kind="dizin"
                 previewType="image"
               />
               <p className="text-xs text-gray-500 mt-1">{DIZIN_ACIKLAMA}</p>
