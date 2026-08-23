@@ -141,7 +141,7 @@ foreach (scandir($dir) ?: [] as $ad) {
         $satir = adresiGuncelle($ad, $yeniAd);
         $sayac['donusturuldu']++;
         $yol = $dir . '/' . $yeniAd;
-        printf("  %-52s → %s (%d kayıt)\n", $ad, $yeniAd, $satir);
+        printf("  %-52s -> %s (%d kayit)" . PHP_EOL, $ad, $yeniAd, $satir);
     }
 
     clearstatcache(true, $yol);
@@ -149,13 +149,32 @@ foreach (scandir($dir) ?: [] as $ad) {
     $sonrakiToplam += $sonraki;
     if ($sonraki > 0 && $sonraki < $onceki) {
         $sayac['kucultuldu']++;
-        printf("  %-52s %7s KB → %7s KB\n", $yeniAd, number_format($onceki / 1024), number_format($sonraki / 1024));
-    } else {
-        $sayac['atlandi']++;
+        printf("  %-52s %7s KB -> %7s KB" . PHP_EOL, $yeniAd,
+            number_format($onceki / 1024), number_format($sonraki / 1024));
+        continue;
     }
+
+    /* Dosya kucuulmedi. SEBEBINI yaz -- sessiz atlama yuzunden bir tur kaybettik:
+       rapor "139 atlandi" deyip duruyordu, nedeni belli degildi. */
+    $sayac['atlandi']++;
+    $bilgi = @getimagesize($yol);
+    [$azamiG, $azamiY] = gorsel_sinirlari($kind);
+    if (!$bilgi) {
+        $sebep = 'gorsel okunamadi (bozuk veya desteklenmeyen bicim)';
+    } elseif ($bilgi[0] <= $azamiG && $bilgi[1] <= $azamiY && $ext !== 'png') {
+        $sebep = sprintf('zaten sinir icinde (%dx%d <= %dx%d)', $bilgi[0], $bilgi[1], $azamiG, $azamiY);
+    } elseif (!is_writable($yol)) {
+        $sebep = 'dosyaya yazma izni yok';
+    } elseif (!is_writable($dir)) {
+        $sebep = 'uploads klasorune yazma izni yok';
+    } else {
+        $sebep = sprintf('kaydetme basarisiz (%dx%d, sinir %dx%d, %s)',
+            $bilgi[0], $bilgi[1], $azamiG, $azamiY, $ext);
+    }
+    if ($sayac['atlandi'] <= 15) printf("  ATLANDI %-44s %s" . PHP_EOL, $ad, $sebep);
 }
 
-echo "\n";
+echo PHP_EOL;
 echo $uygula ? "UYGULANDI\n" : "KURU ÇALIŞTIRMA — hiçbir dosyaya dokunulmadı\n";
 printf("  küçültülen        : %d\n", $sayac['kucultuldu']);
 printf("  JPEG'e çevrilen   : %d\n", $sayac['donusturuldu']);
