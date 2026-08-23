@@ -7,7 +7,13 @@ declare(strict_types=1);
 require_once __DIR__ . '/../lib/helpers.php';
 
 /** Sayı (DB satırı) + makalelerini serileştirilmiş Sayi olarak döndür. */
-function build_sayi_payload(array $sayiRow): array
+/**
+ * @param bool $icerikDahil false: yazı gövdeleri null döner. Bootstrap ve sayı
+ *        sayfası yalnızca içindekiler listesi gösterir; 21 yazının tam gövdesini
+ *        (7 MB, gömülü görsellerle) taşımak ana sayfayı saniyelerce yavaşlatıyordu.
+ *        Gövde, yazı açılınca /yazi/{id} ile ayrıca çekilir.
+ */
+function build_sayi_payload(array $sayiRow, bool $icerikDahil = true): array
 {
     $yazarMap = load_yazar_map();
     $katMap   = load_kategori_map();
@@ -21,7 +27,9 @@ function build_sayi_payload(array $sayiRow): array
         $yazar    = yazar_out($yazarMap[(int)$y['yazar_id']] ?? null);
         $kategori = $y['kategori_id'] !== null ? kategori_out($katMap[(int)$y['kategori_id']] ?? null) : null;
         $coklu    = yazarlar_out($yazarBaglari[(int)$y['id']] ?? [], $yazarMap);
-        $yazilar[] = yazi_out($y, $yazar, $kategori, (string)$sayiRow['code'], $coklu);
+        $out = yazi_out($y, $yazar, $kategori, (string)$sayiRow['code'], $coklu);
+        if (!$icerikDahil) $out['icerik'] = null;
+        $yazilar[] = $out;
     }
     return sayi_out($sayiRow, $yazilar);
 }
@@ -33,7 +41,7 @@ function handle_get_current_sayi(): void
     if (!$row) {
         fail('NOT_FOUND', 'Aktif sayı bulunamadı.', 404);
     }
-    respond(build_sayi_payload($row));
+    respond(build_sayi_payload($row, false));
 }
 
 /**
@@ -53,7 +61,7 @@ function handle_get_sayi(string $code): void
     if (!$row) {
         fail('NOT_FOUND', 'Sayı bulunamadı.', 404);
     }
-    respond(build_sayi_payload($row));
+    respond(build_sayi_payload($row, false));
 }
 
 /** GET /api/arsiv  — arşiv sayıları (durum='arsiv'). Taslak sayılar siteye ÇIKMAZ. */
@@ -667,7 +675,7 @@ function handle_get_hakkimizda(): void
 function handle_bootstrap(): void
 {
     $current = db()->query("SELECT * FROM sayilar WHERE durum = 'yayinda' ORDER BY id DESC LIMIT 1")->fetch();
-    $sonSayi = $current ? build_sayi_payload($current) : null;
+    $sonSayi = $current ? build_sayi_payload($current, false) : null;
 
     // Ana sayfada gösterilecek sayılar: yayındaki + admin'in işaretledikleri (arşivden).
     // Yayındaki her zaman ilk sırada; kolon migration öncesi yoksa yalnızca yayındaki.
@@ -679,7 +687,7 @@ function handle_bootstrap(): void
              ORDER BY yayin_tarihi DESC, id DESC"
         )->fetchAll();
         foreach ($extraRows as $r) {
-            $anasayfaSayilari[] = build_sayi_payload($r);
+            $anasayfaSayilari[] = build_sayi_payload($r, false);
         }
     } catch (PDOException $e) {
         // anasayfa_goster kolonu henüz yok (migration bekleniyor) — yalnızca yayındaki sayı.

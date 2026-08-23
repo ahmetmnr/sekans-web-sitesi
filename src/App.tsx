@@ -302,9 +302,17 @@ function AppContent() {
     }
   }, [navigateTo, sonSayi, anasayfaSayilari]);
 
-  // Yazı tıklama handler'ı — sayı bağlamıyla (çoklu sayı: ana sayfada 2 sayı olabilir)
+  // Yazı tıklama handler'ı — sayı bağlamıyla (çoklu sayı: ana sayfada 2 sayı olabilir).
+  // Bootstrap'taki sayı verisi GÖVDE İÇERMEZ (14 MB'lık açılışın sebebiydi);
+  // gövde yazı açılırken çekilir. Ara yazılardaki kalıbın aynısı.
   const handleYaziClick = useCallback((yazi: Yazi, sayi?: Sayi) => {
-    navigateTo('yazidetay', { selectedYazi: yazi, selectedSayi: sayi });
+    if (yazi.icerik) {
+      navigateTo('yazidetay', { selectedYazi: yazi, selectedSayi: sayi });
+      return;
+    }
+    api.yazi.get(yazi.id)
+      .then((full) => navigateTo('yazidetay', { selectedYazi: full, selectedSayi: sayi }))
+      .catch(() => navigateTo('yazidetay', { selectedYazi: yazi, selectedSayi: sayi }));
   }, [navigateTo]);
 
   // Sayı tıklama handler'ı (kapağa tıklanınca sayı detayına git)

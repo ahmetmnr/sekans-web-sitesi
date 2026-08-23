@@ -7,6 +7,12 @@
  */
 declare(strict_types=1);
 
+/* Yanıtları gzip'le. Sunucu (LiteSpeed) PHP çıktısını kendiliğinden
+   sıkıştırmıyordu; /bootstrap 15 MB olarak tele biniyordu. JSON 4-6 kat küçülür. */
+if (!ini_get('zlib.output_compression')) {
+    @ini_set('zlib.output_compression', '1');
+}
+
 require_once __DIR__ . '/lib/config.php';
 require_once __DIR__ . '/lib/response.php';
 require_once __DIR__ . '/lib/auth_guard.php';
