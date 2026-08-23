@@ -26,6 +26,9 @@ function gorsel_sinirlari(string $kind): array
     switch ($kind) {
         // İçindekilerdeki 2:1 dizin görseli — en fazla ~400 CSS px gösterilir.
         case 'dizin': return [800, 400, 80];
+        // Sayı kapağı — sayfada 280 px, arşiv ızgarasında 200 px. Daha büyüğü
+        // hiçbir yerde gösterilmiyor; e29 kapağı 1,6 MB olarak iniyordu.
+        case 'kapak': return [700, 940, 82];
         // Yazar fotoğrafı — 160 px daire.
         case 'foto':  return [400, 400, 82];
         // Kapak, ara yazı kapağı, yazı içi görsel: detay sayfasında büyük çıkar.

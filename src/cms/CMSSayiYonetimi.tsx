@@ -682,7 +682,7 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
               value={issueForm.kapakGorseli || ''}
               onChange={(url) => setIssueForm({ ...issueForm, kapakGorseli: url })}
               accept="image/*"
-              kind="image"
+              kind="kapak"
               previewType="image"
             />
             <FileUploadField
@@ -795,7 +795,7 @@ export function CMSSayiYonetimi({ onManageArticles, onNewYazi }: CMSSayiYonetimi
               value={arsivForm.kapakGorseli || ''}
               onChange={(url) => setArsivForm({ ...arsivForm, kapakGorseli: url })}
               accept="image/*"
-              kind="image"
+              kind="kapak"
               previewType="image"
             />
             <FileUploadField
