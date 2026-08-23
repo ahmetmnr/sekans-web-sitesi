@@ -34,6 +34,17 @@ require_once __DIR__ . '/../lib/gorsel.php';
 
 $uygula = in_array('--uygula', $argv, true);
 
+/* GD olmadan tek bir dosya bile kucultulemez; gorsel_kucult sessizce geri doner.
+   Bu durumda "139 atlandi, 16.3 MB -> 16.3 MB" gibi ise yaramis gibi gorunen bir
+   rapor cikiyordu. Yuksek sesle soyle. */
+if (!function_exists('imagecreatefromjpeg')) {
+    fwrite(STDERR, 'HATA: PHP GD eklentisi kapali. Hicbir gorsel kucultulemez.' . PHP_EOL);
+    fwrite(STDERR, "cPanel > PHP Surumunu Sec > Extensions > 'gd' kutusunu isaretleyin." . PHP_EOL);
+    exit(1);
+}
+echo 'GD acik. exif: ' . (function_exists('exif_read_data') ? 'var' : 'yok')
+    . ', webp: ' . (function_exists('imagewebp') ? 'var' : 'yok') . PHP_EOL . PHP_EOL;
+
 $cfg = sekans_config()['app'] ?? [];
 $dir = $cfg['upload_dir'] ?? (dirname(__DIR__, 2) . '/uploads');
 
