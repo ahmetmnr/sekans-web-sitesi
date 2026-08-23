@@ -1,25 +1,24 @@
 <?php
 /**
- * TEK SEFERLİK: uploads klasöründeki MEVCUT görselleri küçültür.
+ * TEK SEFERLİK: sitenin KULLANDIĞI görselleri küçültür.
  *
- * Yeni yüklemeler artık kaydedilirken küçülüyor (api/lib/gorsel.php), ama
- * geçmişte yüklenmiş yüzlerce tam boy görsel olduğu gibi duruyor — canlı
- * sitedeki 18,9 MB'lık ana sayfanın sebebi bunlar.
+ * Dosya listesi KLASÖR TARAYARAK değil VERİTABANINDAN çıkarılır. Önceki sürüm
+ * yalnızca uploads/ klasörüne bakıyordu; ana sayfayı ağırlaştıran dosyaların
+ * (sayı kapağı 1,6 MB, dizin görselleri 580/408 kB) hiçbiri orada değildi —
+ * eski Joomla kurulumundan kalan images/ klasöründe duruyorlar. Bu yüzden
+ * betik "139 dosya, hepsi sınır içinde" deyip hiçbir şey yapmıyordu.
  *
- * HANGİ DOSYA NE KADAR KÜÇÜLÜR: veritabanına bakılır. Bir dosya dizin görseli
- * olarak kullanılıyorsa 800x400'e, sayı kapağıysa 700x940'a, yazar fotoğrafıysa
- * 400x400'e, geri kalanı 1600 px uzun kenara iner.
+ * Her adresin nerede kullanıldığı bilindiği için küçültme ölçüsü de kesindir;
+ * ölçüler api/lib/gorsel.php içindeki gorsel_sinirlari'ndan gelir.
  *
- * PNG → JPEG: fotoğrafların PNG olarak durması boşuna yer kaplıyor (en büyük
- * beş dosyanın hepsi PNG'ydi). Saydamlığı olmayan PNG'ler JPEG'e çevrilir ve
- * VERİTABANINDAKİ ADRESLER de birlikte güncellenir — yazı gövdesindeki
- * <img src> etiketleri dahil. Saydam PNG'ler (logo, grafik) dokunulmadan kalır.
+ * PNG → JPEG: saydamlığı olmayan PNG'ler JPEG'e çevrilir ve veritabanındaki
+ * adresler de birlikte güncellenir. Saydam PNG'ler (logo, grafik) korunur.
  *
- * ÇALIŞTIRMA (cPanel → Terminal veya Cron İşleri):
- *     php api/tools/gorsel-toplu-kucult.php          # sadece rapor, DOSYAYA DOKUNMAZ
+ * ÇALIŞTIRMA:
+ *     php api/tools/gorsel-toplu-kucult.php          # sadece rapor
  *     php api/tools/gorsel-toplu-kucult.php --uygula # gerçekten küçültür
  *
- * ÖNCE UPLOADS KLASÖRÜNÜN VE VERİTABANININ YEDEĞİNİ ALIN. İşlem geri alınamaz.
+ * ÖNCE uploads/ + images/ KLASÖRLERİNİN VE VERİTABANININ YEDEĞİNİ ALIN.
  */
 declare(strict_types=1);
 
@@ -33,172 +32,175 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/gorsel.php';
 
 $uygula = in_array('--uygula', $argv, true);
+$KOK = dirname(__DIR__, 2);   // public_html
 
-/* GD olmadan tek bir dosya bile kucultulemez; gorsel_kucult sessizce geri doner.
-   Bu durumda "139 atlandi, 16.3 MB -> 16.3 MB" gibi ise yaramis gibi gorunen bir
-   rapor cikiyordu. Yuksek sesle soyle. */
 if (!function_exists('imagecreatefromjpeg')) {
     fwrite(STDERR, 'HATA: PHP GD eklentisi kapali. Hicbir gorsel kucultulemez.' . PHP_EOL);
-    fwrite(STDERR, "cPanel > PHP Surumunu Sec > Extensions > 'gd' kutusunu isaretleyin." . PHP_EOL);
     exit(1);
 }
-echo 'GD acik. exif: ' . (function_exists('exif_read_data') ? 'var' : 'yok')
-    . ', webp: ' . (function_exists('imagewebp') ? 'var' : 'yok') . PHP_EOL . PHP_EOL;
-
-$cfg = sekans_config()['app'] ?? [];
-$dir = $cfg['upload_dir'] ?? (dirname(__DIR__, 2) . '/uploads');
-
-if (!is_dir($dir)) exit("Yükleme klasörü yok: $dir\n");
+echo 'GD acik. Kok: ' . $KOK . PHP_EOL . PHP_EOL;
 
 /* --- Adres tutan sütunlar --------------------------------------------------
-   Dosya adı değişirse (PNG→JPEG) bu sütunların hepsinde metin değişimi yapılır.
-   icerik sütunları yazı gövdesidir; içinde <img src="/uploads/..."> geçebilir. */
-const ADRES_SUTUNLARI = [
-    ['sayilar',     'kapak_gorseli'],
-    ['yazilar',     'kapak_gorseli'],
-    ['yazilar',     'dizin_gorseli'],
-    ['yazilar',     'icerik'],
-    ['ara_yazilar', 'kapak_gorseli'],
-    ['ara_yazilar', 'icerik'],
-    ['yazarlar',    'fotograf'],
-    ['hakkimizda',  'icerik'],
-    ['sayfalar',    'icerik'],
+   [tablo, sütun, tür]. 'icerik' sütunları yazı gövdesidir: düz adres değil HTML
+   tutarlar, içlerindeki <img src="..."> etiketleri ayrıca ayıklanır. */
+const ALANLAR = [
+    ['sayilar',     'kapak_gorseli', 'kapak'],
+    ['yazilar',     'dizin_gorseli', 'dizin'],
+    ['yazilar',     'kapak_gorseli', 'image'],
+    ['ara_yazilar', 'kapak_gorseli', 'image'],
+    ['yazarlar',    'fotograf',      'foto'],
+];
+const ICERIK_SUTUNLARI = [
+    ['yazilar', 'icerik'], ['ara_yazilar', 'icerik'],
+    ['hakkimizda', 'icerik'], ['sayfalar', 'icerik'],
 ];
 
-/** Dosya adı → küçültme türü. Veritabanı hangi alanda kullanıldığını söyler. */
-function turleriBelirle(): array
+/** Sitenin kullandığı tüm görsel adresleri: adres => tür. */
+function adresleriTopla(): array
 {
-    $tur = [];
-    $sorgular = [
-        'dizin' => "SELECT dizin_gorseli AS u FROM yazilar WHERE dizin_gorseli <> ''",
-        'kapak' => "SELECT kapak_gorseli AS u FROM sayilar WHERE kapak_gorseli <> ''",
-        'foto'  => "SELECT fotograf     AS u FROM yazarlar WHERE fotograf <> ''",
-    ];
-    foreach ($sorgular as $ad => $sql) {
+    $harita = [];
+    // Bir adres birden çok yerde geçebilir; EN GENİŞ sınır kazansın ki
+    // dizin görselini kapak olarak da kullanan bir yazı bulanıklaşmasın.
+    $oncelik = ['foto' => 1, 'dizin' => 2, 'kapak' => 3, 'image' => 4];
+
+    $ekle = static function (string $u, string $tur) use (&$harita, $oncelik): void {
+        $u = trim($u);
+        if ($u === '' || preg_match('#^(https?:)?//#i', $u)) return;   // dış adres
+        if (!preg_match('#\.(jpe?g|png|webp)$#i', $u)) return;
+        if (!isset($harita[$u]) || $oncelik[$tur] > $oncelik[$harita[$u]]) $harita[$u] = $tur;
+    };
+
+    foreach (ALANLAR as [$tablo, $sutun, $tur]) {
         try {
-            foreach (db()->query($sql) as $sat) {
-                $dosya = basename((string)$sat['u']);
-                // Bir dosya birden çok yerde kullanılıyorsa en GENİŞ sınır kazanır;
-                // dizin görselini kapak olarak da kullanan yazı varsa bulanıklaşmasın.
-                if (!isset($tur[$dosya]) || $ad === 'kapak') $tur[$dosya] = $ad;
+            foreach (db()->query("SELECT `$sutun` AS u FROM `$tablo`") as $sat) {
+                $ekle((string)($sat['u'] ?? ''), $tur);
             }
         } catch (Throwable $e) {
-            fwrite(STDERR, "UYARI: $ad sorgusu başarısız — {$e->getMessage()}\n");
+            fwrite(STDERR, "UYARI: $tablo.$sutun okunamadi - {$e->getMessage()}" . PHP_EOL);
         }
     }
-    return $tur;
+    foreach (ICERIK_SUTUNLARI as [$tablo, $sutun]) {
+        try {
+            foreach (db()->query("SELECT `$sutun` AS u FROM `$tablo`") as $sat) {
+                if (preg_match_all('#src=["\']([^"\']+)["\']#i', (string)($sat['u'] ?? ''), $m)) {
+                    foreach ($m[1] as $u) $ekle($u, 'image');
+                }
+            }
+        } catch (Throwable $e) {
+            fwrite(STDERR, "UYARI: $tablo.$sutun okunamadi - {$e->getMessage()}" . PHP_EOL);
+        }
+    }
+    return $harita;
 }
 
-/** Yeniden adlandırılan dosyanın adresini tüm sütunlarda günceller. */
+/** Adres -> disk yolu. Kökün dışına çıkan veya var olmayan adresler elenir. */
+function diskYolu(string $kok, string $adres): ?string
+{
+    $temiz = parse_url($adres, PHP_URL_PATH) ?: $adres;
+    $temiz = ltrim(rawurldecode($temiz), '/');
+    if ($temiz === '' || strpos($temiz, '..') !== false) return null;
+    $gercek = realpath($kok . '/' . $temiz);
+    if ($gercek === false || strpos($gercek, (string)realpath($kok)) !== 0) return null;
+    return is_file($gercek) ? $gercek : null;
+}
+
+/** Adres değiştiyse tüm sütunlarda metin değişimi yap. */
 function adresiGuncelle(string $eski, string $yeni): int
 {
+    $sutunlar = array_merge(
+        array_map(static fn($a) => [$a[0], $a[1]], ALANLAR),
+        ICERIK_SUTUNLARI
+    );
     $toplam = 0;
-    foreach (ADRES_SUTUNLARI as [$tablo, $sutun]) {
+    foreach ($sutunlar as [$tablo, $sutun]) {
         try {
             $st = db()->prepare("UPDATE `$tablo` SET `$sutun` = REPLACE(`$sutun`, ?, ?) WHERE `$sutun` LIKE ?");
             $st->execute([$eski, $yeni, '%' . $eski . '%']);
             $toplam += $st->rowCount();
         } catch (Throwable $e) {
-            fwrite(STDERR, "UYARI: $tablo.$sutun güncellenemedi — {$e->getMessage()}\n");
+            fwrite(STDERR, "UYARI: $tablo.$sutun guncellenemedi - {$e->getMessage()}" . PHP_EOL);
         }
     }
     return $toplam;
 }
 
-$turler = turleriBelirle();
-$dagilim = array_count_values($turler);
-echo 'Veritabanindan eslesen dosya: ' . count($turler) . ' (';
+$harita = adresleriTopla();
+$dagilim = array_count_values($harita);
+ksort($dagilim);
+echo 'Veritabaninda ' . count($harita) . ' gorsel adresi (';
 foreach ($dagilim as $t => $n) echo $t . '=' . $n . ' ';
-echo ')' . PHP_EOL . PHP_EOL;
+echo ')' . PHP_EOL;
 
-$sayac = ['kucultuldu' => 0, 'atlandi' => 0, 'donusturuldu' => 0, 'hata' => 0];
-$oncekiToplam = 0;
-$enBuyukler = [];
-$sonrakiToplam = 0;
+// Hangi klasörlerde duruyorlar? Sorunun kaynağı buydu: uploads/ değil images/.
+$klasorler = [];
+foreach (array_keys($harita) as $adres) {
+    $ilk = explode('/', ltrim($adres, '/'))[0] ?: '?';
+    $klasorler[$ilk] = ($klasorler[$ilk] ?? 0) + 1;
+}
+arsort($klasorler);
+echo 'Klasor dagilimi: ';
+foreach ($klasorler as $k => $n) echo $k . '=' . $n . ' ';
+echo PHP_EOL . PHP_EOL;
 
-foreach (scandir($dir) ?: [] as $ad) {
-    $yol = $dir . '/' . $ad;
-    if (!is_file($yol)) continue;
+$sayac = ['kucultuldu' => 0, 'atlandi' => 0, 'donusturuldu' => 0, 'yok' => 0];
+$onceToplam = 0;
+$sonraToplam = 0;
+$buyukler = [];
 
-    $ext = strtolower(pathinfo($ad, PATHINFO_EXTENSION));
-    if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) continue;
+foreach ($harita as $adres => $kind) {
+    $yol = diskYolu($KOK, $adres);
+    if ($yol === null) {
+        $sayac['yok']++;
+        if ($sayac['yok'] <= 10) echo '  YOK   ' . $adres . PHP_EOL;
+        continue;
+    }
 
-    $onceki = (int)filesize($yol);
-    $oncekiToplam += $onceki;
-    $kind = $turler[$ad] ?? 'image';
-    $enBuyukler[] = [$onceki, $ad, $kind];
+    $ext = strtolower(pathinfo($yol, PATHINFO_EXTENSION));
+    $once = (int)filesize($yol);
+    $onceToplam += $once;
+    $olcu = @getimagesize($yol);
+    $buyukler[] = [$once, $adres, $kind, $olcu ? $olcu[0] . 'x' . $olcu[1] : '?'];
 
     if (!$uygula) {
-        $bilgi = @getimagesize($yol);
-        if (!$bilgi) { $sayac['hata']++; continue; }
+        $sonraToplam += $once;
         [$azamiG, $azamiY] = gorsel_sinirlari($kind);
-        $sonrakiToplam += $onceki;
-        $buyuk = $bilgi[0] > $azamiG || $bilgi[1] > $azamiY;
-        if (!$buyuk && $ext !== 'png') { $sayac['atlandi']++; continue; }
-        $sayac['kucultuldu']++;
-        printf("  %-52s %4dx%-4d %7s KB  [%s%s]\n", $ad, $bilgi[0], $bilgi[1],
-            number_format($onceki / 1024), $kind, $ext === 'png' ? ', png' : '');
+        $buyuk = $olcu && ($olcu[0] > $azamiG || $olcu[1] > $azamiY);
+        if ($buyuk || $ext === 'png') $sayac['kucultuldu']++; else $sayac['atlandi']++;
         continue;
     }
 
     $yeniExt = gorsel_kucult($yol, $ext, $kind);
-    $yeniAd = $ad;
     if ($yeniExt !== $ext) {
-        $yeniAd = preg_replace('/\.[^.]+$/', '.' . $yeniExt, $ad);
-        $satir = adresiGuncelle($ad, $yeniAd);
+        $yeniAdres = preg_replace('/\.[^.\/]+$/', '.' . $yeniExt, $adres);
+        $n = adresiGuncelle($adres, $yeniAdres);
+        $yol = preg_replace('/\.[^.\/]+$/', '.' . $yeniExt, $yol);
         $sayac['donusturuldu']++;
-        $yol = $dir . '/' . $yeniAd;
-        printf("  %-52s -> %s (%d kayit)" . PHP_EOL, $ad, $yeniAd, $satir);
+        printf('  JPEG  %-52s (%d kayit)' . PHP_EOL, basename($adres), $n);
     }
 
     clearstatcache(true, $yol);
-    $sonraki = (int)@filesize($yol);
-    $sonrakiToplam += $sonraki;
-    if ($sonraki > 0 && $sonraki < $onceki) {
+    $sonra = (int)@filesize($yol);
+    $sonraToplam += $sonra;
+    if ($sonra > 0 && $sonra < $once) {
         $sayac['kucultuldu']++;
-        printf("  %-52s %7s KB -> %7s KB" . PHP_EOL, $yeniAd,
-            number_format($onceki / 1024), number_format($sonraki / 1024));
-        continue;
-    }
-
-    /* Dosya kucuulmedi. SEBEBINI yaz -- sessiz atlama yuzunden bir tur kaybettik:
-       rapor "139 atlandi" deyip duruyordu, nedeni belli degildi. */
-    $sayac['atlandi']++;
-    $bilgi = @getimagesize($yol);
-    [$azamiG, $azamiY] = gorsel_sinirlari($kind);
-    if (!$bilgi) {
-        $sebep = 'gorsel okunamadi (bozuk veya desteklenmeyen bicim)';
-    } elseif ($bilgi[0] <= $azamiG && $bilgi[1] <= $azamiY && $ext !== 'png') {
-        $sebep = sprintf('zaten sinir icinde (%dx%d <= %dx%d)', $bilgi[0], $bilgi[1], $azamiG, $azamiY);
-    } elseif (!is_writable($yol)) {
-        $sebep = 'dosyaya yazma izni yok';
-    } elseif (!is_writable($dir)) {
-        $sebep = 'uploads klasorune yazma izni yok';
+        printf('  %-52s %7s KB -> %6s KB' . PHP_EOL, basename($yol),
+            number_format($once / 1024), number_format($sonra / 1024));
     } else {
-        $sebep = sprintf('kaydetme basarisiz (%dx%d, sinir %dx%d, %s)',
-            $bilgi[0], $bilgi[1], $azamiG, $azamiY, $ext);
+        $sayac['atlandi']++;
     }
-    if ($sayac['atlandi'] <= 40) printf("  ATLANDI %-44s %s" . PHP_EOL, $ad, $sebep);
 }
 
-echo PHP_EOL;
-echo $uygula ? "UYGULANDI\n" : "KURU ÇALIŞTIRMA — hiçbir dosyaya dokunulmadı\n";
-printf("  küçültülen        : %d\n", $sayac['kucultuldu']);
-printf("  JPEG'e çevrilen   : %d\n", $sayac['donusturuldu']);
-printf("  atlanan           : %d\n", $sayac['atlandi']);
-printf("  okunamayan        : %d\n", $sayac['hata']);
-printf("  toplam            : %s MB → %s MB\n",
-    number_format($oncekiToplam / 1048576, 1), number_format($sonrakiToplam / 1048576, 1));
-if (!$uygula) echo "\nGerçekten küçültmek için komutun sonuna --uygula ekleyin.\n";
+echo PHP_EOL . ($uygula ? 'UYGULANDI' : 'KURU CALISTIRMA - hicbir dosyaya dokunulmadi') . PHP_EOL;
+printf('  kuculen / kuculecek : %d' . PHP_EOL, $sayac['kucultuldu']);
+printf('  JPEG e cevrilen     : %d' . PHP_EOL, $sayac['donusturuldu']);
+printf('  dokunulmayan        : %d' . PHP_EOL, $sayac['atlandi']);
+printf('  diskte bulunamayan  : %d' . PHP_EOL, $sayac['yok']);
+printf('  toplam              : %s MB -> %s MB' . PHP_EOL,
+    number_format($onceToplam / 1048576, 1), number_format($sonraToplam / 1048576, 1));
+if (!$uygula) echo PHP_EOL . 'Gercekten kucultmek icin komutun sonuna --uygula ekleyin.' . PHP_EOL;
 
-/* En agir dosyalar -- hangi turde siniflandiklari ve gercek olculeri.
-   Sayfa yavassa suclu bu listenin tepesindedir. */
-usort($enBuyukler, fn($a, $b) => $b[0] <=> $a[0]);
-echo PHP_EOL . 'EN BUYUK 20 DOSYA' . PHP_EOL;
-foreach (array_slice($enBuyukler, 0, 20) as [$boyut, $ad, $kind]) {
-    $b = @getimagesize($dir . '/' . $ad);
-    printf("  %8s KB  %-52s %-6s %s" . PHP_EOL,
-        number_format($boyut / 1024), $ad, $kind,
-        $b ? $b[0] . 'x' . $b[1] : '?');
+usort($buyukler, static fn($a, $b) => $b[0] <=> $a[0]);
+echo PHP_EOL . 'EN BUYUK 20' . PHP_EOL;
+foreach (array_slice($buyukler, 0, 20) as [$b, $adres, $kind, $olcu]) {
+    printf('  %7s KB  %-6s %-11s %s' . PHP_EOL, number_format($b / 1024), $kind, $olcu, $adres);
 }
-

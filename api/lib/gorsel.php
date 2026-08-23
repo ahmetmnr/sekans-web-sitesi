@@ -24,15 +24,15 @@ declare(strict_types=1);
 function gorsel_sinirlari(string $kind): array
 {
     switch ($kind) {
-        // İçindekilerdeki 2:1 dizin görseli — en fazla ~400 CSS px gösterilir.
+        // Icindekilerdeki 2:1 dizin gorseli -- ekranda en fazla 400 px.
         case 'dizin': return [800, 400, 80];
-        // Sayı kapağı — sayfada 280 px, arşiv ızgarasında 200 px. Daha büyüğü
-        // hiçbir yerde gösterilmiyor; e29 kapağı 1,6 MB olarak iniyordu.
+        // Sayi kapagi -- sayfada 280 px, arsiv izgarasinda 200 px.
         case 'kapak': return [700, 940, 82];
-        // Yazar fotoğrafı — 160 px daire.
+        // Yazar fotografi -- 160 px daire.
         case 'foto':  return [400, 400, 82];
-        // Kapak, ara yazı kapağı, yazı içi görsel: detay sayfasında büyük çıkar.
-        default:      return [1600, 1600, 82];
+        // Yazi detayindaki ust gorsel ve metin ici gorseller. Metin kolonu
+        // en genis halinde ~1000 px; 1600 sinir bos yere genisti.
+        default:      return [1200, 1200, 80];
     }
 }
 
