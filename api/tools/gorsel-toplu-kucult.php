@@ -106,8 +106,14 @@ function adresiGuncelle(string $eski, string $yeni): int
 }
 
 $turler = turleriBelirle();
+$dagilim = array_count_values($turler);
+echo 'Veritabanindan eslesen dosya: ' . count($turler) . ' (';
+foreach ($dagilim as $t => $n) echo $t . '=' . $n . ' ';
+echo ')' . PHP_EOL . PHP_EOL;
+
 $sayac = ['kucultuldu' => 0, 'atlandi' => 0, 'donusturuldu' => 0, 'hata' => 0];
 $oncekiToplam = 0;
+$enBuyukler = [];
 $sonrakiToplam = 0;
 
 foreach (scandir($dir) ?: [] as $ad) {
@@ -120,6 +126,7 @@ foreach (scandir($dir) ?: [] as $ad) {
     $onceki = (int)filesize($yol);
     $oncekiToplam += $onceki;
     $kind = $turler[$ad] ?? 'image';
+    $enBuyukler[] = [$onceki, $ad, $kind];
 
     if (!$uygula) {
         $bilgi = @getimagesize($yol);
@@ -171,7 +178,7 @@ foreach (scandir($dir) ?: [] as $ad) {
         $sebep = sprintf('kaydetme basarisiz (%dx%d, sinir %dx%d, %s)',
             $bilgi[0], $bilgi[1], $azamiG, $azamiY, $ext);
     }
-    if ($sayac['atlandi'] <= 15) printf("  ATLANDI %-44s %s" . PHP_EOL, $ad, $sebep);
+    if ($sayac['atlandi'] <= 40) printf("  ATLANDI %-44s %s" . PHP_EOL, $ad, $sebep);
 }
 
 echo PHP_EOL;
@@ -183,3 +190,15 @@ printf("  okunamayan        : %d\n", $sayac['hata']);
 printf("  toplam            : %s MB → %s MB\n",
     number_format($oncekiToplam / 1048576, 1), number_format($sonrakiToplam / 1048576, 1));
 if (!$uygula) echo "\nGerçekten küçültmek için komutun sonuna --uygula ekleyin.\n";
+
+/* En agir dosyalar -- hangi turde siniflandiklari ve gercek olculeri.
+   Sayfa yavassa suclu bu listenin tepesindedir. */
+usort($enBuyukler, fn($a, $b) => $b[0] <=> $a[0]);
+echo PHP_EOL . 'EN BUYUK 20 DOSYA' . PHP_EOL;
+foreach (array_slice($enBuyukler, 0, 20) as [$boyut, $ad, $kind]) {
+    $b = @getimagesize($dir . '/' . $ad);
+    printf("  %8s KB  %-52s %-6s %s" . PHP_EOL,
+        number_format($boyut / 1024), $ad, $kind,
+        $b ? $b[0] . 'x' . $b[1] : '?');
+}
+
